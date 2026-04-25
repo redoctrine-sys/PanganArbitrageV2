@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PanganArbitrage v8</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:#1a1612; --ink-mid:#4a4540; --ink-dim:#8a8580;
+  --paper:#f5f1ea; --paper2:#edeae2; --paper3:#e5e1d8;
+  --rule:#d8d4cb; --rule-mid:#c4bfb5;
+  --sp:#1b5e3b; --sp-light:#e8f3ec; --sp-mid:#2d7a52;
+  --ped:#1e3a5f; --ped-light:#dbeafe;
+  --comp:#4c1d95; --comp-light:#ede9fe;
+  --arb:#7c2d12; --arb-light:#ffedd5;
+  --adm:#1c1c1c; --adm-light:#f0f0f0;
+  --up:#166534; --up-bg:#dcfce7;
+  --dn:#991b1b; --dn-bg:#fee2e2;
+  --warn:#78350f; --warn-bg:#fef3c7;
+  --hi:#9a3412; --hi-bg:#ffedd5;
+  --lo:#14532d; --lo-bg:#dcfce7;
+  --mid-c:#713f12; --mid-bg:#fef9c3;
+  --mono:'DM Mono',monospace;
+  --serif:'Fraunces',serif;
+  --sans:'DM Sans',sans-serif;
+  --r:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--paper);font-family:var(--sans);font-size:13px;color:var(--ink);display:flex;flex-direction:column;}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--ink);height:50px;display:flex;align-items:center;padding:0 16px;flex-shrink:0;position:relative;z-index:500;}
+.logo{font-family:var(--serif);font-size:16px;font-weight:700;color:#f5f1ea;margin-right:20px;white-space:nowrap;}
+.logo span{color:#6ee7a0;font-style:italic;}
+.topnav{display:flex;flex:1;gap:1px;overflow:hidden;}
+.tn{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:500;color:rgba(245,241,234,.38);cursor:pointer;transition:all .14s;white-space:nowrap;flex-shrink:0;}
+.tn:hover{background:rgba(245,241,234,.07);color:rgba(245,241,234,.7);}
+.tn.active{background:rgba(245,241,234,.12);color:#f5f1ea;}
+.tn-pip{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.tn-badge{font-size:9px;padding:1px 5px;border-radius:10px;background:rgba(245,241,234,.1);color:rgba(245,241,234,.45);font-family:var(--mono);}
+.tn-badge.hot{background:rgba(239,68,68,.25);color:#fca5a5;}
+.tn-badge.warn{background:rgba(251,191,36,.2);color:#fcd34d;}
+.topright{margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.top-time{font-size:10px;color:rgba(245,241,234,.28);font-family:var(--mono);}
+.top-btn{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;}
+.top-btn.green{background:var(--sp);color:#e8f3ec;}
+.top-btn.dark{background:rgba(245,241,234,.1);color:rgba(245,241,234,.6);border:1px solid rgba(245,241,234,.15);}
+.top-btn.dark:hover{background:rgba(245,241,234,.15);}
+
+/* ── LAYOUT ── */
+.app{display:flex;flex:1;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:186px;background:#f0ece4;border-right:1px solid var(--rule);padding:10px 7px;flex-shrink:0;display:flex;flex-direction:column;overflow-y:auto;}
+.sl{font-size:9px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--ink-dim);padding:7px 8px 4px;}
+.si{display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:6px;font-size:12px;color:var(--ink-mid);cursor:pointer;transition:all .12s;margin-bottom:1px;user-select:none;}
+.si:hover{background:var(--paper3);}
+.si.active{background:var(--ink);color:var(--paper);font-weight:500;}
+.si-pip{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.si-badge{margin-left:auto;font-size:9px;padding:1px 5px;border-radius:5px;font-family:var(--mono);}
+.si-sub{display:flex;align-items:center;gap:6px;padding:5px 9px 5px 26px;border-radius:5px;font-size:11px;color:var(--ink-dim);cursor:pointer;transition:all .12s;margin-bottom:1px;user-select:none;}
+.si-sub:hover{background:var(--paper3);color:var(--ink-mid);}
+.si-sub.active{color:var(--ink);font-weight:500;background:var(--paper3);}
+.sdiv{border:none;border-top:1px solid var(--rule);margin:6px 0;}
+.sinfo{margin-top:auto;padding:9px;background:var(--paper);border-radius:7px;border:1px solid var(--rule);font-size:10px;font-family:var(--mono);color:var(--ink-dim);line-height:1.8;}
+.sinfo b{color:var(--ink-mid);}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.tab-panel{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.tab-panel.active{display:flex;}
+
+/* ── TAB HEADER ── */
+.tab-hd{padding:12px 18px 9px;background:#f0ece4;border-bottom:2px solid var(--rule);flex-shrink:0;}
+.th-row{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.th-stripe{width:4px;height:22px;border-radius:3px;flex-shrink:0;}
+.th-title{font-family:var(--serif);font-size:15px;font-weight:700;}
+.th-sub{font-size:10px;color:var(--ink-dim);font-family:var(--mono);}
+
+.stat-row{display:flex;gap:7px;margin-bottom:9px;}
+.sc{background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);padding:7px 11px;flex:1;}
+.sc-l{font-size:9px;font-weight:600;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-dim);font-family:var(--mono);margin-bottom:3px;}
+.sc-v{font-size:17px;font-weight:700;font-family:var(--serif);letter-spacing:-.5px;}
+.sc-s{font-size:9px;font-family:var(--mono);color:var(--ink-dim);}
+.sc-s.up{color:var(--up);} .sc-s.dn{color:var(--dn);}
+
+.subtabs{display:flex;gap:3px;}
+.stab{padding:4px 12px;border-radius:5px;font-size:11px;font-weight:500;color:var(--ink-dim);cursor:pointer;border:1px solid transparent;transition:all .12s;}
+.stab:hover{color:var(--ink);background:var(--paper3);}
+.stab.active{color:var(--ink);background:var(--paper);border-color:var(--rule-mid);font-weight:600;}
+
+/* ── FILTER BAR ── */
+.fbar{display:flex;gap:6px;align-items:center;padding:8px 18px;background:var(--paper2);border-bottom:1px solid var(--rule);flex-wrap:wrap;flex-shrink:0;}
+.fsearch{display:flex;align-items:center;gap:5px;padding:5px 9px;background:var(--paper);border:1px solid var(--rule);border-radius:6px;font-size:11px;flex:1;max-width:190px;}
+.fsearch input{border:none;background:transparent;font-size:11px;font-family:var(--sans);color:var(--ink);outline:none;width:100%;}
+.fbtn{display:flex;align-items:center;gap:4px;padding:5px 9px;background:var(--paper);border:1px solid var(--rule);border-radius:6px;font-size:11px;font-weight:500;color:var(--ink-mid);cursor:pointer;white-space:nowrap;}
+.fbtn:hover{background:var(--paper3);}
+.fbtn.on{border-color:var(--sp);color:var(--sp);background:var(--sp-light);}
+.fhint{margin-left:auto;font-size:9px;color:var(--ink-dim);font-family:var(--mono);}
+
+/* ── PILLS ── */
+.pill{display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:5px;font-size:9px;font-weight:600;font-family:var(--mono);white-space:nowrap;}
+.pill.up{background:var(--up-bg);color:var(--up);}
+.pill.dn{background:var(--dn-bg);color:var(--dn);}
+.pill.neu{background:var(--paper3);color:var(--ink-dim);}
+.pill.warn{background:var(--warn-bg);color:var(--warn);}
+.pill.mm{background:var(--dn-bg);color:var(--dn);font-weight:700;}
+.pill.ok{background:var(--up-bg);color:var(--up);}
+.pill.hi{background:var(--hi-bg);color:var(--hi);}
+.pill.lo{background:var(--lo-bg);color:var(--lo);}
+.pill.mid{background:var(--mid-bg);color:var(--mid-c);}
+.pill.het{background:#fee2e2;color:#991b1b;font-weight:700;}
+.pill.sp{background:var(--sp-light);color:var(--sp);}
+.pill.ped{background:var(--ped-light);color:var(--ped);}
+.pill.new{background:#f0fdf4;color:#15803d;border:1px dashed #86efac;}
+
+/* ── COL HEADER ── */
+.colhd{display:grid;padding:6px 18px;background:var(--paper3);border-bottom:1px solid var(--rule);font-size:9px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-dim);align-items:center;position:sticky;top:0;z-index:10;}
+.sh{cursor:pointer;display:flex;align-items:center;gap:2px;}
+.sh:hover{color:var(--ink);}
+
+/* ── ACCORDION ── */
+.list-scroll{flex:1;overflow-y:auto;}
+.l1-block{border-bottom:1px solid var(--rule);}
+.l1-block:last-child{border-bottom:none;}
+.l1-row{display:grid;padding:10px 18px;cursor:pointer;align-items:center;transition:background .1s;user-select:none;}
+.l1-row:hover{background:var(--paper2);}
+.l1-block.open>.l1-row{background:var(--paper2);border-bottom:1px solid var(--rule);}
+.l1-block.anom>.l1-row{background:#fff9f8;}
+.l1-block.anom>.l1-row:hover{background:#fee8e8;}
+.l1-name{font-family:var(--serif);font-size:13px;font-weight:600;}
+.l1-sub{font-size:9px;color:var(--ink-dim);margin-top:1px;font-family:var(--mono);}
+.l1-sub.anom{color:var(--dn);font-weight:500;}
+.l1-price{font-family:var(--mono);font-size:12px;font-weight:600;}
+.l1-chev{font-size:10px;color:var(--ink-dim);text-align:center;transition:transform .2s;}
+.l1-block.open .l1-chev{transform:rotate(180deg);}
+.l1-exp{display:none;background:white;}
+.l1-block.open .l1-exp{display:block;}
+
+.l2-colhd{display:grid;padding:6px 18px;background:#f7f5f0;border-bottom:1px solid var(--rule);font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-dim);align-items:center;position:sticky;top:0;z-index:5;}
+.l2-block{border-bottom:1px dashed var(--rule);}
+.l2-block:last-child{border-bottom:none;}
+.l2-row{display:grid;padding:8px 18px;cursor:pointer;align-items:center;transition:background .1s;user-select:none;}
+.l2-row:hover{background:#f9f8f4;}
+.l2-block.open>.l2-row{background:#f4f2ec;border-bottom:1px solid var(--rule);}
+.l2-block.anom>.l2-row{background:#fff9f8;}
+.l2-name{font-size:12px;font-weight:500;}
+.l2-sub{font-size:9px;color:var(--ink-dim);margin-top:1px;}
+.l2-price{font-family:var(--mono);font-size:11px;font-weight:600;}
+.l2-chev{font-size:9px;color:var(--ink-dim);text-align:center;transition:transform .2s;}
+.l2-block.open .l2-chev{transform:rotate(180deg);}
+.l2-exp{display:none;border-top:1px solid var(--rule);background:white;}
+.l2-block.open .l2-exp{display:block;}
+
+.anom-bar{display:flex;align-items:flex-start;gap:7px;padding:9px 18px;border-bottom:1px solid;font-size:11px;line-height:1.5;}
+.anom-bar.danger{background:var(--dn-bg);border-color:#fecaca;color:var(--dn);}
+.anom-bar.warn{background:var(--warn-bg);border-color:#fde68a;color:var(--warn);}
+.anom-bar.good{background:var(--up-bg);border-color:#bbf7d0;color:var(--up);}
+.anom-bar.info{background:var(--ped-light);border-color:#bfdbfe;color:var(--ped);}
+
+.ce-grid{display:grid;grid-template-columns:1fr 210px;}
+.ce-chart{padding:13px 16px;border-right:1px solid var(--rule);}
+.ce-stats{padding:12px 14px;}
+.chart-toprow{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px;}
+.chart-name{font-family:var(--serif);font-size:12px;font-weight:700;}
+.chart-subt{font-size:9px;color:var(--ink-dim);font-family:var(--mono);margin-top:2px;}
+.tf-grp{display:flex;gap:1px;background:var(--paper2);border:1px solid var(--rule);padding:2px;border-radius:5px;}
+.tf{padding:3px 7px;border-radius:4px;font-size:10px;font-weight:500;color:var(--ink-dim);cursor:pointer;font-family:var(--mono);}
+.tf.active{background:white;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.legend{display:flex;gap:10px;margin-bottom:7px;flex-wrap:wrap;}
+.leg{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--ink-mid);}
+.leg-line{width:14px;height:2px;border-radius:2px;}
+.st-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ink-dim);margin-bottom:8px;font-family:var(--mono);}
+.st-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--rule);}
+.st-row:last-child{border-bottom:none;}
+.st-k{font-size:11px;color:var(--ink-mid);}
+.st-v{font-size:11px;font-weight:600;font-family:var(--mono);}
+
+/* ── SECTION HEADER ── */
+.section-hd{padding:10px 18px;background:var(--paper2);border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px;}
+.section-title{font-family:var(--serif);font-size:13px;font-weight:700;}
+.section-sub{font-size:10px;color:var(--ink-dim);font-family:var(--mono);}
+.section-badge{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:5px;font-weight:600;}
+
+/* ── ORPHAN SECTION ── */
+.orphan-wrap{padding:14px 18px;}
+.orphan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.orphan-card{background:white;border:1px solid var(--rule);border-radius:var(--r);padding:12px 14px;display:flex;align-items:flex-start;gap:10px;}
+.orphan-icon{font-size:18px;flex-shrink:0;}
+.orphan-name{font-family:var(--serif);font-size:12px;font-weight:600;margin-bottom:3px;}
+.orphan-meta{font-size:10px;font-family:var(--mono);color:var(--ink-dim);}
+.orphan-source{font-size:10px;font-family:var(--mono);margin-top:5px;}
+
+/* ── PENDING SECTION ── */
+.pending-banner{margin:12px 18px;padding:11px 14px;background:var(--warn-bg);border:1px solid #fde68a;border-radius:var(--r);display:flex;align-items:center;gap:10px;font-size:11px;color:var(--warn);}
+.pending-banner b{font-weight:700;}
+.pending-link{margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:700;text-decoration:underline;cursor:pointer;}
+
+/* ── KOMPARASI TABLE ── */
+.komp-colhd{display:grid;padding:6px 18px;gap:0;background:var(--paper3);border-bottom:1px solid var(--rule);font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-dim);align-items:center;}
+.komp-l1{display:grid;padding:10px 18px;cursor:pointer;align-items:center;transition:background .1s;border-bottom:1px solid var(--rule);}
+.komp-l1:hover{background:var(--paper2);}
+.komp-l2{display:grid;padding:8px 18px 8px 36px;align-items:center;border-bottom:1px dashed var(--rule);cursor:pointer;transition:background .1s;}
+.komp-l2:hover{background:#f9f8f4;}
+.komp-l2.open{background:#f4f2ec;border-bottom:1px solid var(--rule);}
+.komp-l2-exp{display:none;background:white;border-bottom:1px solid var(--rule);}
+.komp-l2.open+.komp-l2-exp{display:block;}
+
+/* ── ADMIN QUEUE ── */
+.queue-wrap{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px;}
+.queue-group{background:white;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;}
+.queue-group-hd{padding:9px 14px;background:var(--paper2);border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;}
+.queue-item{padding:11px 14px;border-bottom:1px solid var(--rule);display:flex;align-items:flex-start;gap:10px;}
+.queue-item:last-child{border-bottom:none;}
+.qi-left{flex:1;min-width:0;}
+.qi-raw{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink);}
+.qi-arrow{font-size:11px;color:var(--ink-dim);margin:0 6px;}
+.qi-suggest{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--sp);}
+.qi-meta{font-size:10px;color:var(--ink-dim);font-family:var(--mono);margin-top:4px;display:flex;gap:10px;}
+.qi-conf{font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;}
+.qi-conf.high{background:var(--up-bg);color:var(--up);}
+.qi-conf.mid{background:var(--warn-bg);color:var(--warn);}
+.qi-conf.low{background:var(--dn-bg);color:var(--dn);}
+.qi-actions{display:flex;gap:6px;align-items:flex-start;flex-shrink:0;}
+.qa{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;white-space:nowrap;}
+.qa.approve{background:var(--up-bg);color:var(--up);border-color:#bbf7d0;}
+.qa.reject{background:var(--paper2);color:var(--ink-dim);border-color:var(--rule);}
+.qa.add-new{background:var(--ped-light);color:var(--ped);border-color:#bfdbfe;}
+.qa.choose{background:var(--paper2);color:var(--ink-mid);border-color:var(--rule);}
+
+/* ── ARBITRASE ── */
+.arb-filters{padding:10px 18px;background:var(--paper2);border-bottom:1px solid var(--rule);display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+.chip{padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;font-family:var(--mono);cursor:pointer;border:1px solid var(--rule);background:var(--paper);color:var(--ink-dim);transition:all .12s;}
+.chip:hover{border-color:var(--rule-mid);color:var(--ink);}
+.chip.on{background:var(--sp);color:white;border-color:var(--sp);}
+.chip.on.arb{background:var(--arb);border-color:var(--arb);}
+.arb-list{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:9px;}
+.arb-card{background:white;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;}
+.arb-card.top{border-color:var(--sp);}
+.arb-head{display:flex;align-items:center;gap:9px;padding:10px 13px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.arb-commodity{font-family:var(--serif);font-size:13px;font-weight:700;flex:1;}
+.arb-ai-badge{padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;font-family:var(--mono);}
+.arb-ai-badge.beli{background:var(--up-bg);color:var(--up);border:1px solid #bbf7d0;}
+.arb-ai-badge.tunggu{background:var(--warn-bg);color:var(--warn);border:1px solid #fde68a;}
+.arb-ai-badge.hindari{background:var(--dn-bg);color:var(--dn);border:1px solid #fecaca;}
+.arb-roi{font-family:var(--mono);font-size:14px;font-weight:700;}
+.arb-body{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--rule);}
+.arb-sec{padding:9px 13px;border-right:1px solid var(--rule);}
+.arb-sec:last-child{border-right:none;}
+.arb-sec-t{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-dim);font-family:var(--mono);margin-bottom:6px;}
+.arb-price-row{display:flex;justify-content:space-between;font-size:11px;font-family:var(--mono);padding:2px 0;color:var(--ink-mid);}
+.arb-num{font-weight:600;color:var(--ink);}
+.arb-footer{padding:8px 13px;background:#fafaf8;font-size:11px;color:var(--ink-mid);line-height:1.5;display:flex;gap:7px;}
+
+/* ── CALC ── */
+.calc-wrap{flex:1;overflow-y:auto;padding:16px 18px;}
+.leg-card{background:white;border:1px solid var(--rule);border-radius:var(--r);margin-bottom:10px;overflow:hidden;}
+.leg-hd{display:flex;align-items:center;gap:9px;padding:9px 13px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.leg-num{width:21px;height:21px;border-radius:50%;background:var(--ink);color:var(--paper);font-size:11px;font-weight:700;font-family:var(--mono);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.leg-title{font-family:var(--serif);font-size:12px;font-weight:600;flex:1;}
+.leg-del{padding:3px 8px;background:var(--dn-bg);color:var(--dn);border:1px solid #fecaca;border-radius:5px;font-size:10px;cursor:pointer;}
+.leg-inputs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;padding:11px 13px;border-bottom:1px solid var(--rule);}
+.lg{display:flex;flex-direction:column;gap:4px;}
+.lg label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-dim);font-family:var(--mono);}
+.lg select,.lg input{padding:6px 8px;border:1px solid var(--rule);border-radius:6px;font-size:11px;font-family:var(--sans);background:var(--paper2);color:var(--ink);width:100%;outline:none;}
+.lg select:focus,.lg input:focus{border-color:var(--rule-mid);background:white;}
+.price-wrap{position:relative;}
+.price-src{position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:8px;font-family:var(--mono);color:var(--sp);font-weight:700;pointer-events:none;}
+.leg-dist{padding:7px 13px;background:#f7f5f0;border-bottom:1px solid var(--rule);display:flex;gap:16px;font-size:10px;font-family:var(--mono);color:var(--ink-mid);}
+.dist-v{color:var(--ink);font-weight:500;}
+.leg-result{padding:10px 13px;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+.lr-l{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-dim);font-family:var(--mono);margin-bottom:2px;}
+.lr-v{font-size:12px;font-weight:700;font-family:var(--mono);}
+.add-leg-btn{width:100%;padding:10px;border:2px dashed var(--rule-mid);border-radius:var(--r);background:transparent;font-family:var(--sans);font-size:12px;font-weight:500;color:var(--ink-dim);cursor:pointer;transition:all .14s;margin-bottom:14px;}
+.add-leg-btn:hover{border-color:var(--sp);color:var(--sp);background:var(--sp-light);}
+.chain-summary{background:var(--ink);border-radius:var(--r);padding:14px 16px;color:var(--paper);}
+.cs-title{font-family:var(--serif);font-size:14px;font-weight:700;margin-bottom:10px;}
+.cs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;}
+.cs-l{font-size:9px;text-transform:uppercase;letter-spacing:.9px;color:rgba(245,241,234,.4);font-family:var(--mono);margin-bottom:3px;}
+.cs-v{font-size:15px;font-weight:700;font-family:var(--mono);}
+
+/* ── DB TABLE ── */
+.db-table{width:100%;border-collapse:collapse;}
+.db-table thead tr{background:var(--paper3);}
+.db-table th{padding:7px 13px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-dim);border-bottom:1px solid var(--rule);white-space:nowrap;}
+.db-table td{padding:8px 13px;font-size:12px;border-bottom:1px solid var(--rule);}
+.db-table tr:last-child td{border-bottom:none;}
+.db-table tr:hover td{background:var(--paper2);}
+.lock{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:var(--mono);color:var(--ink-dim);background:var(--paper3);padding:2px 6px;border-radius:4px;}
+.db-act{padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;border:1px solid var(--rule);background:var(--paper);color:var(--ink-mid);}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:var(--rule-mid);border-radius:10px;}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">Pangan<span>Arbitrage</span></div>
+  <div class="topnav">
+    <div class="tn active" id="tn-sp" onclick="goTab('sp')"><div class="tn-pip" style="background:#6ee7a0"></div>SP2KP<span class="tn-badge">Harian</span></div>
+    <div class="tn" id="tn-ped" onclick="goTab('ped')"><div class="tn-pip" style="background:#93c5fd"></div>Pedagang</div>
+    <div class="tn" id="tn-komp" onclick="goTab('komp')"><div class="tn-pip" style="background:#c4b5fd"></div>Komparasi<span class="tn-badge hot">3⚠</span></div>
+    <div class="tn" id="tn-arb" onclick="goTab('arb')"><div class="tn-pip" style="background:#fb923c"></div>Arbitrase<span class="tn-badge warn">5⚡</span></div>
+    <div class="tn" id="tn-adm" onclick="goTab('adm')" style="opacity:.5"><div class="tn-pip" style="background:#6b7280"></div>Admin<span class="tn-badge hot">7 pending</span></div>
+  </div>
+  <div class="topright">
+    <div class="top-time">21 Apr 2026 · 07:14 WIB</div>
+    <div class="top-btn dark" onclick="goTab('adm')">🔒 Admin</div>
+    <div class="top-btn green">↑ Upload SP2KP</div>
+  </div>
+</div>
+
+<div class="app">
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sl">Sumber Data</div>
+  <div class="si active" id="si-sp" onclick="goTab('sp')"><div class="si-pip" style="background:var(--sp)"></div>SP2KP<span class="si-badge" style="background:var(--sp-light);color:var(--sp)">Live</span></div>
+  <div class="si" id="si-ped" onclick="goTab('ped')"><div class="si-pip" style="background:var(--ped)"></div>Pedagang<span class="si-badge">127</span></div>
+  <div class="si-sub active" id="si-ped-data" onclick="goTab('ped');pedSub('data')">Data Harga</div>
+  <div class="si-sub" id="si-ped-trp" onclick="goTab('ped');pedSub('trp')">Vendor Transport<span style="margin-left:auto;font-size:9px;font-family:var(--mono);color:var(--ink-dim)">18</span></div>
+  <div class="sdiv"></div>
+  <div class="sl">Analitik</div>
+  <div class="si" id="si-komp" onclick="goTab('komp')"><div class="si-pip" style="background:var(--comp)"></div>Komparasi<span class="si-badge" style="background:var(--dn-bg);color:var(--dn)">3⚠</span></div>
+  <div class="si" id="si-arb" onclick="goTab('arb')"><div class="si-pip" style="background:var(--arb)"></div>Arbitrase<span class="si-badge" style="background:var(--arb-light);color:var(--arb)">5⚡</span></div>
+  <div class="si-sub" id="si-arb-ai" onclick="goTab('arb');arbSub('ai')">AI Suggestion</div>
+  <div class="si-sub" id="si-arb-man" onclick="goTab('arb');arbSub('man')">Manual Kalkulator</div>
+  <div class="sdiv"></div>
+  <div class="sl">Admin</div>
+  <div class="si" id="si-adm" onclick="goTab('adm')" style="opacity:.7"><div class="si-pip" style="background:#6b7280"></div>Admin Hidden<span class="si-badge" style="background:var(--warn-bg);color:var(--warn)">7</span></div>
+  <div class="si-sub" id="si-adm-nam" onclick="goTab('adm');admSub('nam')">Naming Queue<span style="margin-left:auto;font-size:9px;font-family:var(--mono);color:var(--warn)">4</span></div>
+  <div class="si-sub" id="si-adm-comm" onclick="goTab('adm');admSub('comm')">Commodity Queue<span style="margin-left:auto;font-size:9px;font-family:var(--mono);color:var(--warn)">3</span></div>
+  <div class="si-sub" id="si-adm-log" onclick="goTab('adm');admSub('log')">Ingest Log</div>
+  <div class="sinfo" style="margin-top:16px"><b>SP2KP</b> 21 Apr 2026<br>138 kab/kota · 17 komoditas<br><br><b>Pedagang</b> 127 kontak<br><b>Transport</b> 18 vendor<br><br><b>Pending review</b><br>4 naming · 3 komoditas</div>
+</div>
+
+<div class="main">
+
+<!-- ══════════ TAB SP2KP ══════════ -->
+<div class="tab-panel active" id="tab-sp">
+  <div class="tab-hd">
+    <div class="th-row"><div class="th-stripe" style="background:var(--sp)"></div><div><div class="th-title">SP2KP — Sistem Pemantauan Pasar & Kebutuhan Pokok</div><div class="th-sub">Kemendag · Upload CSV ad hoc · Sumber data primer · HET/HA tersedia sebagai detail</div></div></div>
+    <div class="stat-row">
+      <div class="sc"><div class="sc-l">Kab/Kota</div><div class="sc-v">138</div><div class="sc-s">dalam scope</div></div>
+      <div class="sc"><div class="sc-l">Komoditas</div><div class="sc-v">17</div><div class="sc-s">kategori baku</div></div>
+      <div class="sc"><div class="sc-l">Pending Review</div><div class="sc-v" style="color:var(--warn)">4</div><div class="sc-s" style="color:var(--warn)">naming queue</div></div>
+      <div class="sc"><div class="sc-l">Data Terbaru</div><div class="sc-v">21 Apr</div><div class="sc-s up">✓ hari ini</div></div>
+    </div>
+    <div class="subtabs">
+      <div class="stab active" id="sp-st-c" onclick="spSub('city')">📍 By City</div>
+      <div class="stab" id="sp-st-k" onclick="spSub('commod')">🌾 By Commodity</div>
+    </div>
+  </div>
+  <div id="sp-city-v" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+    <div class="fbar">
+      <div class="fsearch"><span style="color:var(--ink-dim)">⌕</span><input placeholder="Cari kota..."/></div>
+      <div class="fbtn">📅 Tanggal</div>
+      <div class="fbtn on">Jawa ×</div>
+      <div class="fbtn">⊞ Provinsi</div>
+      <div class="fhint">Klik kota → komoditas · Klik komoditas → chart · HET tampil di detail</div>
+    </div>
+    <div class="colhd" style="grid-template-columns:24px 1fr 105px 68px 78px 68px 16px;padding:6px 18px;">
+      <span></span><span class="sh">Kota ↕</span><span class="sh">Harga Avg ↕</span><span class="sh">Ubah ↕</span><span class="sh">Volatilitas ↕</span><span class="sh">Trend ↕</span><span></span>
+    </div>
+    <div class="list-scroll">
+      <!-- YOGYAKARTA OPEN -->
+      <div class="l1-block open" id="l1-yogya">
+        <div class="l1-row" style="grid-template-columns:24px 1fr 105px 68px 78px 68px 16px" onclick="tgl1('l1-yogya')">
+          <span style="font-size:10px;font-family:var(--mono);color:var(--ink-dim)">01</span>
+          <div><div class="l1-name">Yogyakarta</div><div class="l1-sub">DI Yogyakarta · Kota · 17 komoditas</div></div>
+          <div class="l1-price" style="color:var(--sp)">Rp 44.200</div>
+          <div><span class="pill up">▲+0.8%</span></div>
+          <div><span class="pill lo">0.38 Rendah</span></div>
+          <div><svg width="32" height="12" viewBox="0 0 32 12" style="vertical-align:middle"><polyline points="2,9 7,7 13,8 19,5 25,4 30,3" fill="none" stroke="var(--up)" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+          <div class="l1-chev">▾</div>
+        </div>
+        <div class="l1-exp">
+          <div class="l2-colhd" style="grid-template-columns:32px 1fr 95px 68px 78px 68px 16px">
+            <span></span><span class="sh">Komoditas ↕</span><span class="sh">Harga ↕</span><span class="sh">Ubah ↕</span><span class="sh">Vol ↕</span><span class="sh">vs Avg ↕</span><span></span>
+          </div>
+          <!-- Cabai Rawit OPEN -->
+          <div class="l2-block open" id="l2-yogya-rawit">
+            <div class="l2-row" style="grid-template-columns:32px 1fr 95px 68px 78px 68px 16px" onclick="tgl2('l2-yogya-rawit')">
+              <span style="font-size:9px;font-family:var(--mono);color:var(--ink-dim);padding-left:12px">01</span>
+              <div><div class="l2-name">Cabai Rawit Merah</div><div class="l2-sub">Bumbu · per kg</div></div>
+              <div class="l2-price" style="color:var(--up)">Rp 44.500</div>
+              <div><span class="pill up">▲+0.5%</span></div>
+              <div><span class="pill lo">0.38</span></div>
+              <div><span class="pill up">▼−8.2%</span></div>
+              <div class="l2-chev">▾</div>
+            </div>
+            <div class="l2-exp">
+              <div class="anom-bar good">🏆 <span><b>Harga termurah nasional.</b> Spread +61.8% ke Denpasar. HET tersedia — lihat detail chart.</span></div>
+              <div class="ce-grid">
+                <div class="ce-chart">
+                  <div class="chart-toprow">
+                    <div><div class="chart-name">Yogyakarta — Cabai Rawit Merah</div><div class="chart-subt">SP2KP harian · Garis putus = HET Rp 55.000 (jika tersedia)</div></div>
+                    <div class="tf-grp"><div class="tf active">D</div><div class="tf">W</div><div class="tf">M</div></div>
+                  </div>
+                  <div class="legend">
+                    <div class="leg"><div class="leg-line" style="background:var(--sp)"></div>SP2KP</div>
+                    <div class="leg"><div style="width:14px;border-top:2px dashed #c4bfb5"></div>Avg Bln</div>
+                    <div class="leg"><div style="width:14px;border-top:1px dotted #991b1b;opacity:.6"></div>HET (jika ada)</div>
+                  </div>
+                  <svg viewBox="0 0 420 105" style="width:100%;height:105px">
+                    <line x1="0" y1="15" x2="420" y2="15" stroke="#e5e1d8" stroke-width="1"/>
+                    <line x1="0" y1="45" x2="420" y2="45" stroke="#e5e1d8" stroke-width="1"/>
+                    <line x1="0" y1="75" x2="420" y2="75" stroke="#e5e1d8" stroke-width="1"/>
+                    <line x1="0" y1="100" x2="420" y2="100" stroke="#e5e1d8" stroke-width="1"/>
+                    <text x="2" y="13" font-size="7" fill="#8a8580" font-family="DM Mono">52k</text>
+                    <text x="2" y="43" font-size="7" fill="#8a8580" font-family="DM Mono">48k</text>
+                    <text x="2" y="73" font-size="7" fill="#8a8580" font-family="DM Mono">44k</text>
+                    <!-- HET annotation -->
+                    <line x1="0" y1="28" x2="420" y2="28" stroke="#991b1b" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
+                    <text x="370" y="26" font-size="7" fill="#991b1b" font-family="DM Mono" opacity="0.6">HET 55k</text>
+                    <!-- avg -->
+                    <line x1="24" y1="62" x2="400" y2="62" stroke="#c4bfb5" stroke-width="1" stroke-dasharray="4,3"/>
+                    <path d="M24,68 C80,66 150,63 210,61 C270,59 330,58 400,56 L400,100 L24,100Z" fill="var(--sp)" opacity="0.07"/>
+                    <path d="M24,68 C80,66 150,63 210,61 C270,59 330,58 400,56" fill="none" stroke="var(--sp)" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="24" cy="68" r="3" fill="var(--sp)"/><circle cx="130" cy="63" r="3" fill="var(--sp)"/><circle cx="260" cy="60" r="3" fill="var(--sp)"/><circle cx="400" cy="56" r="3" fill="var(--sp)"/>
+                    <rect x="256" y="18" width="94" height="43" rx="4" fill="white" stroke="#d8d4cb" stroke-width="1" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,.07))"/>
+                    <text x="263" y="30" font-size="8" fill="#8a8580" font-family="DM Mono">21 Apr</text>
+                    <text x="263" y="43" font-size="10" font-weight="600" fill="var(--sp)" font-family="DM Mono">Rp 44.500</text>
+                    <text x="263" y="54" font-size="8" fill="var(--up)" font-family="DM Mono">▲ +0.5%</text>
+                  </svg>
+                </div>
+                <div class="ce-stats">
+                  <div class="st-title">Yogyakarta · Cabai Rawit</div>
+                  <div class="st-row"><span class="st-k">Harga hari ini</span><span class="st-v" style="color:var(--sp)">Rp 44.500</span></div>
+                  <div class="st-row"><span class="st-k">vs kemarin</span><span class="st-v"><span class="pill up">▲+0.5%</span></span></div>
+                  <div class="st-row"><span class="st-k">Avg bulanan</span><span class="st-v">Rp 45.200</span></div>
+                  <div class="st-row"><span class="st-k">vs rata-rata</span><span class="st-v"><span class="pill up">▼−8.2%</span></span></div>
+                  <div class="st-row"><span class="st-k">Volatilitas</span><span class="st-v"><span class="pill lo">0.38 Rendah</span></span></div>
+                  <div class="st-row"><span class="st-k">HET (SP2KP)</span><span class="st-v">Rp 55.000 <span style="font-size:9px;color:var(--lo)">✓ di bawah</span></span></div>
+                  <div class="st-row"><span class="st-k">Rank nasional</span><span class="st-v"><span class="pill ok">🏆 Termurah</span></span></div>
+                  <div class="st-row"><span class="st-k">Arbitrase</span><span class="st-v" style="color:var(--arb);cursor:pointer;font-size:10px">⚡ Lihat tab Arbitrase</span></div>
+                </div>
+              </div>
+            </div>
+          </div><!-- /rawit -->
+          <div class="l2-block" id="l2-yogya-bawang">
+            <div class="l2-row" style="grid-template-columns:32px 1fr 95px 68px 78px 68px 16px" onclick="tgl2('l2-yogya-bawang')">
+              <span style="font-size:9px;font-family:var(--mono);color:var(--ink-dim);padding-left:12px">02</span>
+              <div><div class="l2-name">Bawang Merah</div><div class="l2-sub">Bumbu · per kg</div></div>
+              <div class="l2-price" style="color:var(--up)">Rp 28.000</div>
+              <div><span class="pill neu">=0.0%</span></div><div><span class="pill lo">0.33</span></div>
+              <div><span class="pill up">▼−12%</span></div>
+              <div class="l2-chev">▾</div>
+            </div>
+            <div class="l2-exp">
+              <div class="anom-bar good">🏆 <span>Termurah nasional · Spread +23.2% ke Jakarta Selatan · HET: tidak tersedia untuk komoditas ini</span></div>
+              <div class="ce-grid">
+                <div class="ce-chart" style="padding:13px 16px">
+                  <div class="chart-toprow"><div><div class="chart-name">Yogyakarta — Bawang Merah</div><div class="chart-subt">HET tidak tersedia — kolom HET/HA kosong di SP2KP</div></div><div class="tf-grp"><div class="tf active">D</div><div class="tf">W</div></div></div>
+                  <svg viewBox="0 0 420 90" style="width:100%;height:90px">
+                    <line x1="0" y1="20" x2="420" y2="20" stroke="#e5e1d8" stroke-width="1"/>
+                    <line x1="0" y1="55" x2="420" y2="55" stroke="#e5e1d8" stroke-width="1"/>
+                    <text x="2" y="18" font-size="7" fill="#8a8580" font-family="DM Mono">32k</text>
+                    <text x="2" y="53" font-size="7" fill="#8a8580" font-family="DM Mono">28k</text>
+                    <path d="M24,55 C100,53 200,56 310,54 C360,53 400,53 410,53" fill="none" stroke="var(--sp)" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="24" cy="55" r="3" fill="var(--sp)"/><circle cx="410" cy="53" r="3" fill="var(--sp)"/>
+                    <text x="280" y="46" font-size="8" fill="var(--ink-dim)" font-family="DM Mono" font-style="italic">HET: tidak tersedia</text>
+                  </svg>
+                </div>
+                <div class="ce-stats">
+                  <div class="st-title">Yogyakarta · Bawang Merah</div>
+                  <div class="st-row"><span class="st-k">Harga</span><span class="st-v" style="color:var(--sp)">Rp 28.000</span></div>
+                  <div class="st-row"><span class="st-k">HET (SP2KP)</span><span class="st-v" style="color:var(--ink-dim);font-size:10px">— tidak tersedia</span></div>
+                  <div class="st-row"><span class="st-k">Volatilitas</span><span class="st-v"><span class="pill lo">0.33 Rendah</span></span></div>
+                  <div class="st-row"><span class="st-k">Rank</span><span class="st-v"><span class="pill ok">🏆 Termurah</span></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /yogya -->
+      <!-- DENPASAR anom -->
+      <div class="l1-block anom" id="l1-dps">
+        <div class="l1-row" style="grid-template-columns:24px 1fr 105px 68px 78px 68px 16px" onclick="tgl1('l1-dps')">
+          <span style="font-size:10px;font-family:var(--mono);color:var(--ink-dim)">02</span>
+          <div><div class="l1-name" style="color:var(--dn)">Denpasar ⚠</div><div class="l1-sub anom">Bali · Cabai Rawit di atas HET +31%</div></div>
+          <div class="l1-price" style="color:var(--dn)">Rp 72.000</div>
+          <div><span class="pill mm">▲+8.1%</span></div>
+          <div><span class="pill hi">0.88 Tinggi</span></div>
+          <div><svg width="32" height="12" viewBox="0 0 32 12"><polyline points="2,11 7,9 13,6 19,3 25,2 30,1" fill="none" stroke="var(--dn)" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+          <div class="l1-chev">▾</div>
+        </div>
+        <div class="l1-exp"><div class="l2-colhd" style="grid-template-columns:32px 1fr 95px 68px 78px 68px 16px"><span></span><span>Komoditas</span><span>Harga</span><span>Ubah</span><span>Vol</span><span>vs Avg</span><span></span></div>
+          <div class="l2-block anom" id="l2-dps-rawit">
+            <div class="l2-row" style="grid-template-columns:32px 1fr 95px 68px 78px 68px 16px" onclick="tgl2('l2-dps-rawit')">
+              <span style="font-size:9px;font-family:var(--mono);color:var(--ink-dim);padding-left:12px">01</span>
+              <div><div class="l2-name" style="color:var(--dn)">Cabai Rawit Merah ⚠</div><div class="l2-sub">Di atas HET +31% · Rp 72.000 vs HET 55.000</div></div>
+              <div class="l2-price" style="color:var(--dn)">Rp 72.000</div>
+              <div><span class="pill mm">▲+8.1%</span></div><div><span class="pill hi">0.88</span></div>
+              <div><span class="pill mm">▲+48.5%</span></div>
+              <div class="l2-chev">▾</div>
+            </div>
+            <div class="l2-exp">
+              <div class="anom-bar danger">⚠ <span><b>Di atas HET +31%</b> — Rp 72.000 vs HET Rp 55.000. Spread 61.8% vs Yogyakarta. HET tersedia dari SP2KP.</span></div>
+              <div class="ce-grid">
+                <div class="ce-chart" style="padding:13px 16px">
+                  <div class="chart-toprow"><div><div class="chart-name">Denpasar — Cabai Rawit Merah</div><div class="chart-subt">Garis merah putus = HET Rp 55.000</div></div><div class="tf-grp"><div class="tf active">D</div><div class="tf">W</div></div></div>
+                  <svg viewBox="0 0 420 105" style="width:100%;height:105px">
+                    <line x1="0" y1="20" x2="420" y2="20" stroke="#e5e1d8" stroke-width="1"/>
+                    <line x1="0" y1="55" x2="420" y2="55" stroke="#e5e1d8" stroke-width="1"/>
+                    <line x1="0" y1="90" x2="420" y2="90" stroke="#e5e1d8" stroke-width="1"/>
+                    <text x="2" y="18" font-size="7" fill="#8a8580" font-family="DM Mono">78k</text>
+                    <text x="2" y="53" font-size="7" fill="#8a8580" font-family="DM Mono">62k</text>
+                    <text x="2" y="88" font-size="7" fill="#8a8580" font-family="DM Mono">46k</text>
+                    <line x1="0" y1="60" x2="420" y2="60" stroke="#991b1b" stroke-width="1.5" stroke-dasharray="4,3"/>
+                    <text x="370" y="57" font-size="7" fill="#991b1b" font-family="DM Mono">HET 55k</text>
+                    <!-- price above HET shaded -->
+                    <path d="M24,90 C80,80 150,65 220,48 C280,33 340,22 400,15 L400,60 L24,60Z" fill="#991b1b" opacity="0.06"/>
+                    <path d="M24,90 C80,80 150,65 220,48 C280,33 340,22 400,15" fill="none" stroke="var(--dn)" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="24" cy="90" r="3" fill="var(--dn)"/><circle cx="220" cy="48" r="3" fill="var(--dn)"/><circle cx="400" cy="15" r="3" fill="var(--dn)"/>
+                  </svg>
+                </div>
+                <div class="ce-stats">
+                  <div class="st-title">Denpasar · Cabai Rawit</div>
+                  <div class="st-row"><span class="st-k">Harga hari ini</span><span class="st-v" style="color:var(--dn)">Rp 72.000</span></div>
+                  <div class="st-row"><span class="st-k">HET pemerintah</span><span class="st-v">Rp 55.000</span></div>
+                  <div class="st-row"><span class="st-k">Di atas HET</span><span class="st-v"><span class="pill het">+30.9%</span></span></div>
+                  <div class="st-row"><span class="st-k">vs Yogyakarta</span><span class="st-v"><span class="pill mm">+61.8% spread</span></span></div>
+                  <div class="st-row"><span class="st-k">Volatilitas</span><span class="st-v"><span class="pill hi">0.88 Sangat Tinggi</span></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /dps -->
+    </div>
+  </div>
+  <div id="sp-commod-v" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+    <div class="fbar"><div class="fsearch"><span style="color:var(--ink-dim)">⌕</span><input placeholder="Cari komoditas..."/></div><div class="fbtn">⊞ Kategori</div><div class="fhint">By Commodity — klik komoditas → kota</div></div>
+    <div style="padding:24px 18px;color:var(--ink-dim);font-size:12px;font-family:var(--mono)">Pattern sama dengan By City — Level 1 = Komoditas, Level 2 = Kota</div>
+  </div>
+</div><!-- /tab-sp -->
+
+<!-- ══════════ TAB PEDAGANG ══════════ -->
+<div class="tab-panel" id="tab-ped">
+  <div class="tab-hd">
+    <div class="th-row"><div class="th-stripe" style="background:var(--ped)"></div><div><div class="th-title">Database Pedagang & Transport</div><div class="th-sub">Input manual · Komoditas baru → masuk Commodity Agent queue</div></div></div>
+    <div class="subtabs">
+      <div class="stab active" id="ped-st-d" onclick="pedSub('data')">👥 Data Pedagang <span style="font-family:var(--mono);font-size:9px;color:var(--ink-dim);margin-left:3px">127</span></div>
+      <div class="stab" id="ped-st-t" onclick="pedSub('trp')">🚛 Vendor Transport <span style="font-family:var(--mono);font-size:9px;color:var(--ink-dim);margin-left:3px">18</span></div>
+    </div>
+  </div>
+  <div id="ped-data-v" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+    <div class="fbar">
+      <div class="fsearch"><span style="color:var(--ink-dim)">⌕</span><input placeholder="Cari pedagang/kota..."/></div>
+      <div class="fbtn">⊞ Kota</div><div class="fbtn">🌾 Komoditas</div>
+      <div class="fhint">Komoditas non-SP2KP akan masuk antrian Commodity Agent</div>
+      <div class="fbtn" style="margin-left:auto;background:var(--ped);color:white;border-color:var(--ped)">+ Tambah Pedagang</div>
+    </div>
+    <!-- Pending notice -->
+    <div class="pending-banner" style="margin:10px 18px 0">
+      ⏳ <b>2 entri komoditas pedagang</b> menunggu review Commodity Agent — "Cabai Hijau Besar", "Terasi Rebon"
+      <span class="pending-link" onclick="goTab('adm');admSub('comm')">→ Review di Admin</span>
+    </div>
+    <div class="list-scroll" style="padding:0;margin-top:10px">
+      <table class="db-table">
+        <thead><tr><th>#</th><th>Nama</th><th>Kota</th><th>Lokasi</th><th>Komoditas</th><th>Harga Terakhir</th><th>Status Komoditas</th><th>Kontak</th><th></th></tr></thead>
+        <tbody>
+          <tr><td style="font-family:var(--mono);color:var(--ink-dim)">01</td><td style="font-weight:500">Bu S***</td><td>Yogyakarta</td><td style="color:var(--ink-dim);font-size:11px">Pasar Beringharjo</td><td><span class="pill sp">Cabai Rawit</span></td><td style="font-family:var(--mono);color:var(--sp)">Rp 44.000 <span style="color:var(--ink-dim);font-size:9px">kemarin</span></td><td><span class="pill ok" style="font-size:9px">✓ Mapped SP2KP</span></td><td><div class="lock">🔒 Admin</div></td><td><button class="db-act">Edit</button></td></tr>
+          <tr><td style="font-family:var(--mono);color:var(--ink-dim)">02</td><td style="font-weight:500">Pak D***</td><td>Yogyakarta</td><td style="color:var(--ink-dim);font-size:11px">Pasar Kranggan</td><td><span class="pill sp">Bawang Merah</span></td><td style="font-family:var(--mono);color:var(--sp)">Rp 27.500 <span style="color:var(--ink-dim);font-size:9px">2 hr lalu</span></td><td><span class="pill ok" style="font-size:9px">✓ Mapped SP2KP</span></td><td><div class="lock">🔒 Admin</div></td><td><button class="db-act">Edit</button></td></tr>
+          <tr style="background:#fffbf0"><td style="font-family:var(--mono);color:var(--ink-dim)">03</td><td style="font-weight:500">Bu R***</td><td>Bandung</td><td style="color:var(--ink-dim);font-size:11px">Pasar Caringin</td><td><span class="pill warn" style="font-size:9px">Cabai Hijau Besar</span></td><td style="font-family:var(--mono);color:var(--warn)">Rp 38.000 <span style="color:var(--ink-dim);font-size:9px">hari ini</span></td><td><span class="pill warn" style="font-size:9px">⏳ Pending Review</span></td><td><div class="lock">🔒 Admin</div></td><td><button class="db-act">Edit</button></td></tr>
+          <tr style="background:#fffbf0"><td style="font-family:var(--mono);color:var(--ink-dim)">04</td><td style="font-weight:500">Pak M***</td><td>Denpasar</td><td style="color:var(--ink-dim);font-size:11px">Pasar Badung</td><td><span class="pill warn" style="font-size:9px">Terasi Rebon</span></td><td style="font-family:var(--mono);color:var(--warn)">Rp 85.000 <span style="color:var(--ink-dim);font-size:9px">3 hr lalu</span></td><td><span class="pill warn" style="font-size:9px">⏳ Pending Review</span></td><td><div class="lock">🔒 Admin</div></td><td><button class="db-act">Edit</button></td></tr>
+          <tr><td style="font-family:var(--mono);color:var(--ink-dim)">05</td><td style="font-weight:500">Bu N***</td><td>Denpasar</td><td style="color:var(--ink-dim);font-size:11px">Pasar Badung</td><td><span class="pill sp">Cabai Rawit</span></td><td style="font-family:var(--mono);color:var(--dn)">Rp 75.000 <span style="color:var(--ink-dim);font-size:9px">hari ini</span></td><td><span class="pill ok" style="font-size:9px">✓ Mapped SP2KP</span></td><td><div class="lock">🔒 Admin</div></td><td><button class="db-act">Edit</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div id="ped-trp-v" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div class="fbar"><div class="fsearch"><span style="color:var(--ink-dim)">⌕</span><input placeholder="Cari vendor..."/></div><div class="fbtn">🚛 Moda</div><div class="fbtn">🏝 Cakupan</div><div class="fbtn" style="margin-left:auto;background:var(--ped);color:white;border-color:var(--ped)">+ Tambah Vendor</div></div>
+    <div class="list-scroll" style="padding:0">
+      <table class="db-table">
+        <thead><tr><th>#</th><th>Nama Vendor</th><th>Moda</th><th>Tipe Harga</th><th>Harga</th><th>Kapasitas</th><th>Cakupan</th><th>Kontak</th><th></th></tr></thead>
+        <tbody>
+          <tr><td style="font-family:var(--mono);color:var(--ink-dim)">01</td><td style="font-weight:500">Truk Pak B***</td><td><span class="pill mid" style="font-size:9px">🚛 Truk</span></td><td style="font-family:var(--mono);font-size:11px">Per km</td><td style="font-family:var(--mono);font-weight:600;color:var(--ped)">Rp 1.200/km</td><td style="font-family:var(--mono)">8.000 kg</td><td style="font-size:10px">Jawa · Madura</td><td><div class="lock">🔒 Admin</div></td><td><button class="db-act">Edit</button></td></tr>
+          <tr><td style="font-family:var(--mono);color:var(--ink-dim)">02</td><td style="font-weight:500">Pickup Murah</td><td><span class="pill lo" style="font-size:9px">🛻 Pickup</span></td><td style="font-family:var(--mono);font-size:11px">Per km</td><td style="font-family:var(--mono);font-weight:600;color:var(--ped)">Rp 800/km</td><td style="font-family:var(--mono)">1.500 kg</td><td style="font-size:10px">Jawa</td><td><div class="lock">🔒 Admin</div></td><td><button class="db-act">Edit</button></td></tr>
+          <tr><td style="font-family:var(--mono);color:var(--ink-dim)">03</td><td style="font-weight:500">Kapal Feri Jawa–Bali</td><td><span class="pill ped" style="font-size:9px">⛴ Kapal</span></td><td style="font-family:var(--mono);font-size:11px">Flat/trip</td><td style="font-family:var(--mono);font-weight:600;color:var(--ped)">Rp 2.500.000</td><td style="font-family:var(--mono)">10.000 kg</td><td style="font-size:10px">Jawa → Bali</td><td style="font-size:11px">Pelni</td><td><button class="db-act">Edit</button></td></tr>
+          <tr><td style="font-family:var(--mono);color:var(--ink-dim)">04</td><td style="font-weight:500">Feri Bali–Lombok</td><td><span class="pill ped" style="font-size:9px">⛴ Kapal</span></td><td style="font-family:var(--mono);font-size:11px">Flat/trip</td><td style="font-family:var(--mono);font-weight:600;color:var(--ped)">Rp 1.800.000</td><td style="font-family:var(--mono)">8.000 kg</td><td style="font-size:10px">Bali → Lombok</td><td style="font-size:11px">Pelni</td><td><button class="db-act">Edit</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /tab-ped -->
+
+<!-- ══════════ TAB KOMPARASI ══════════ -->
+<div class="tab-panel" id="tab-komp">
+  <div class="tab-hd">
+    <div class="th-row"><div class="th-stripe" style="background:var(--comp)"></div><div><div class="th-title">Komparasi — Data Bersih (Approved Only)</div><div class="th-sub">Hanya data yang sudah melalui Naming + Commodity Agent · HET/HA di detail chart</div></div></div>
+    <div class="stat-row">
+      <div class="sc"><div class="sc-l">Bisa Dibandingkan</div><div class="sc-v">15</div><div class="sc-s">komoditas ≥2 source</div></div>
+      <div class="sc"><div class="sc-l">Mismatch &gt;5%</div><div class="sc-v" style="color:var(--dn)">3</div><div class="sc-s dn">⚠ perlu cek</div></div>
+      <div class="sc"><div class="sc-l">Eksklusif 1 Source</div><div class="sc-v" style="color:var(--warn)">3</div><div class="sc-s" style="color:var(--warn)">orphan</div></div>
+      <div class="sc"><div class="sc-l">Pending Review</div><div class="sc-v" style="color:var(--ink-dim)">7</div><div class="sc-s">belum masuk</div></div>
+    </div>
+    <div class="subtabs">
+      <div class="stab active" id="komp-st-a" onclick="kompSub('a')">🔀 Multi-Source <span style="font-size:9px;font-family:var(--mono);color:var(--ink-dim);margin-left:3px">15 komoditas</span></div>
+      <div class="stab" id="komp-st-b" onclick="kompSub('b')">📦 Eksklusif <span style="font-size:9px;font-family:var(--mono);color:var(--warn);margin-left:3px">3 komoditas</span></div>
+    </div>
+  </div>
+
+  <!-- SECTION A: Multi-source -->
+  <div id="komp-a-v" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+    <div class="pending-banner" style="margin:10px 18px 0">
+      ⏳ <b>7 baris data</b> belum masuk komparasi karena menunggu approval di Admin.
+      <span class="pending-link" onclick="goTab('adm')">→ Buka Admin</span>
+    </div>
+    <div class="fbar" style="margin-top:0">
+      <div class="fsearch"><span style="color:var(--ink-dim)">⌕</span><input placeholder="Cari kota..."/></div>
+      <div class="fbtn">📅 Tanggal</div><div class="fbtn">🌾 Komoditas</div><div class="fbtn">↕ Sort Selisih</div>
+    </div>
+    <div class="colhd komp-colhd" style="grid-template-columns:24px 1fr 85px 85px 75px 65px 18px">
+      <span></span><span>Kota</span><span class="sh">SP2KP ↕</span><span class="sh">Pedagang ↕</span><span class="sh">Selisih ↕</span><span class="sh">Status ↕</span><span></span>
+    </div>
+    <div class="list-scroll">
+      <!-- Kota Yogya -->
+      <div class="l1-block" id="lk-yogya">
+        <div class="l1-row" style="grid-template-columns:24px 1fr 85px 85px 75px 65px 18px" onclick="tgl1('lk-yogya')">
+          <span style="font-size:10px;font-family:var(--mono);color:var(--ink-dim)">01</span>
+          <div><div class="l1-name">Yogyakarta</div><div class="l1-sub">DI Yogyakarta</div></div>
+          <div style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--sp)">44.500</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--ped)">44.000</div>
+          <div><span class="pill ok">1.1%</span></div>
+          <div><span class="pill ok">✓ OK</span></div>
+          <div class="l1-chev">▾</div>
+        </div>
+        <div class="l1-exp">
+          <div class="l2-colhd" style="grid-template-columns:32px 1fr 85px 85px 75px 65px 18px"><span></span><span>Komoditas</span><span>SP2KP</span><span>Pedagang</span><span>Selisih</span><span>Status</span><span></span></div>
+          <div class="l2-block" id="lk-yogya-rawit" onclick="tgl2('lk-yogya-rawit')">
+            <div class="l2-row" style="grid-template-columns:32px 1fr 85px 85px 75px 65px 18px">
+              <span style="font-size:9px;font-family:var(--mono);color:var(--ink-dim);padding-left:12px">01</span>
+              <div class="l2-name">Cabai Rawit Merah</div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--sp);font-weight:600">44.500</div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--ped)">44.000</div>
+              <div><span class="pill ok">1.1%</span></div>
+              <div><span class="pill ok">✓</span></div>
+              <div class="l2-chev">▾</div>
+            </div>
+          </div>
+          <div class="l2-block" onclick="">
+            <div class="l2-row" style="grid-template-columns:32px 1fr 85px 85px 75px 65px 18px">
+              <span style="font-size:9px;font-family:var(--mono);color:var(--ink-dim);padding-left:12px">02</span>
+              <div class="l2-name">Bawang Merah</div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--sp);font-weight:600">28.000</div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--ped)">27.500</div>
+              <div><span class="pill ok">1.8%</span></div>
+              <div><span class="pill ok">✓</span></div>
+              <div class="l2-chev">▾</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Kota Denpasar mismatch -->
+      <div class="l1-block anom" id="lk-dps">
+        <div class="l1-row" style="grid-template-columns:24px 1fr 85px 85px 75px 65px 18px;background:#fff8f8" onclick="tgl1('lk-dps')">
+          <span style="font-size:10px;font-family:var(--mono);color:var(--ink-dim)">02</span>
+          <div><div class="l1-name" style="color:var(--dn)">Denpasar ⚠</div><div class="l1-sub">Bali</div></div>
+          <div style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--dn)">72.000</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--ped)">75.000</div>
+          <div><span class="pill mm">4.2%</span></div>
+          <div><span class="pill het">⚠ HET+31%</span></div>
+          <div class="l1-chev">▾</div>
+        </div>
+        <div class="l1-exp">
+          <div style="padding:12px 18px;font-size:11px;color:var(--dn)">⚠ Cabai Rawit Merah 30.9% di atas HET · Pedagang Rp 75.000 konfirmasi harga tinggi · Spread 61.8% vs Yogyakarta</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION B: Orphan -->
+  <div id="komp-b-v" style="display:none;flex:1;overflow-y:auto">
+    <div class="section-hd" style="margin:0">
+      <div>
+        <div class="section-title">📦 Komoditas Eksklusif — Hanya 1 Sumber</div>
+        <div class="section-sub">Tidak dapat dibandingkan antar sumber · Tetap ditampilkan sebagai informasi</div>
+      </div>
+      <span class="section-badge" style="background:var(--warn-bg);color:var(--warn)">3 komoditas</span>
+    </div>
+    <div class="orphan-wrap">
+      <div class="orphan-grid">
+        <div class="orphan-card">
+          <div class="orphan-icon">🫑</div>
+          <div>
+            <div class="orphan-name">Cabai Hijau Besar</div>
+            <div class="orphan-meta">Kategori: Bumbu · Satuan: kg</div>
+            <div class="orphan-source"><span class="pill ped" style="font-size:9px">Hanya dari Pedagang</span> · 3 kota · 8 entri</div>
+            <div style="font-size:10px;color:var(--ink-dim);font-family:var(--mono);margin-top:5px">Tidak ada di 17 komoditas SP2KP<br>Avg harga: Rp 38.000/kg</div>
+          </div>
+        </div>
+        <div class="orphan-card">
+          <div class="orphan-icon">🦐</div>
+          <div>
+            <div class="orphan-name">Terasi Rebon</div>
+            <div class="orphan-meta">Kategori: Bumbu · Satuan: kg</div>
+            <div class="orphan-source"><span class="pill ped" style="font-size:9px">Hanya dari Pedagang</span> · 2 kota · 4 entri</div>
+            <div style="font-size:10px;color:var(--ink-dim);font-family:var(--mono);margin-top:5px">Komoditas baru disetujui admin<br>Avg harga: Rp 85.000/kg</div>
+          </div>
+        </div>
+        <div class="orphan-card">
+          <div class="orphan-icon">🐟</div>
+          <div>
+            <div class="orphan-name">Ikan Tongkol</div>
+            <div class="orphan-meta">Kategori: Protein · Satuan: kg</div>
+            <div class="orphan-source"><span class="pill ped" style="font-size:9px">Hanya dari Pedagang</span> · 5 kota · 18 entri</div>
+            <div style="font-size:10px;color:var(--ink-dim);font-family:var(--mono);margin-top:5px">Tidak ada di SP2KP<br>Avg harga: Rp 32.000/kg</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px;padding:12px 14px;background:var(--paper2);border:1px solid var(--rule);border-radius:var(--r);font-size:11px;color:var(--ink-mid);">
+        💡 Komoditas eksklusif <b>tidak masuk kalkulasi arbitrase</b> karena tidak ada pembanding harga antar sumber. Jika source baru ditambahkan dan memiliki komoditas ini → otomatis pindah ke Section Multi-Source.
+      </div>
+    </div>
+  </div>
+</div><!-- /tab-komp -->
+
+<!-- ══════════ TAB ARBITRASE ══════════ -->
+<div class="tab-panel" id="tab-arb">
+  <div class="tab-hd">
+    <div class="th-row"><div class="th-stripe" style="background:var(--arb)"></div><div><div class="th-title">Arbitrase</div><div class="th-sub">Pull dari komparasi_harga VIEW (data bersih) · Transport dari vendor DB · OSRM routing</div></div></div>
+    <div class="subtabs">
+      <div class="stab active" id="arb-st-ai" onclick="arbSub('ai')">🤖 AI Suggestion <span style="font-size:9px;font-family:var(--mono);color:var(--arb);background:var(--arb-light);padding:1px 5px;border-radius:4px;margin-left:3px">5 peluang</span></div>
+      <div class="stab" id="arb-st-man" onclick="arbSub('man')">⚡ Manual Kalkulator</div>
+    </div>
+  </div>
+  <!-- AI -->
+  <div id="arb-ai-v" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+    <div class="arb-filters">
+      <span style="font-size:10px;font-weight:600;color:var(--ink-dim);font-family:var(--mono)">KOMODITAS</span>
+      <div class="chip on">Semua</div><div class="chip">Cabai Rawit</div><div class="chip">Bawang Merah</div>
+      <div style="width:1px;height:14px;background:var(--rule);margin:0 4px"></div>
+      <div class="chip">Jawa only</div><div class="chip">Lintas Pulau</div>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <span style="font-size:10px;color:var(--ink-dim);font-family:var(--mono)">Sort:</span>
+        <div class="chip on arb">ROI Tertinggi ▾</div>
+      </div>
+    </div>
+    <div class="arb-list">
+      <div class="arb-card top">
+        <div class="arb-head">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--warn)">⭐</span>
+          <div class="arb-commodity">Cabai Rawit Merah</div>
+          <div class="arb-ai-badge beli">🤖 BELI</div>
+          <div style="margin-left:auto;text-align:right"><div class="arb-roi" style="color:var(--sp)">ROI +54.6%</div><div style="font-size:9px;font-family:var(--mono);color:var(--ink-dim)">net setelah logistik</div></div>
+        </div>
+        <div class="arb-body">
+          <div class="arb-sec">
+            <div class="arb-sec-t">Rute</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;margin-bottom:4px"><span style="font-family:var(--serif);font-weight:600">Yogyakarta</span><span style="color:var(--ink-dim);font-size:10px">──→</span><span style="font-family:var(--serif);font-weight:600">Denpasar</span></div>
+            <div style="font-size:9px;font-family:var(--mono);color:var(--ink-dim);margin-bottom:5px">Jawa → Bali · darat+ferry · ~8.5 jam</div>
+            <div class="arb-price-row"><span>Jarak OSRM</span><span class="arb-num">312 km + 60 km ferry</span></div>
+            <div class="arb-price-row"><span>Data dari</span><span class="arb-num"><span class="pill sp" style="font-size:8px">SP2KP</span> ✓ approved</span></div>
+          </div>
+          <div class="arb-sec">
+            <div class="arb-sec-t">Kalkulasi (1.000 kg)</div>
+            <div class="arb-price-row"><span>Harga beli Yogya</span><span class="arb-num" style="color:var(--up)">Rp 44.500/kg</span></div>
+            <div class="arb-price-row"><span>Harga jual Denpasar</span><span class="arb-num" style="color:var(--dn)">Rp 72.000/kg</span></div>
+            <div class="arb-price-row"><span>Modal beli</span><span class="arb-num">Rp 44.500.000</span></div>
+            <div class="arb-price-row"><span>Truk (312km × 1.200)</span><span class="arb-num">Rp 374.400</span></div>
+            <div class="arb-price-row"><span>Kapal Feri flat</span><span class="arb-num">Rp 2.500.000</span></div>
+          </div>
+          <div class="arb-sec">
+            <div class="arb-sec-t">Hasil Bersih</div>
+            <div style="margin-bottom:7px"><div style="font-size:10px;color:var(--ink-dim);font-family:var(--mono);margin-bottom:2px">Net Profit</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--up)">Rp 24.625.600</div></div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap"><span class="pill ok">✓ Viable</span><span class="pill mid">Risiko SEDANG</span><span class="pill het">HET+31%</span></div>
+          </div>
+        </div>
+        <div class="arb-footer">
+          <span>🤖</span>
+          <span><b>BELI</b> — Tren divergen 7 hari. Harga Yogyakarta stabil, Denpasar masih naik. <b>Timing: 2-3 hari.</b> Risk: volatilitas Denpasar 0.88.</span>
+        </div>
+      </div>
+      <div class="arb-card">
+        <div class="arb-head">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--ink-mid)">02</span>
+          <div class="arb-commodity">Bawang Merah</div>
+          <div class="arb-ai-badge beli">🤖 BELI</div>
+          <div style="margin-left:auto;text-align:right"><div class="arb-roi" style="color:var(--ped)">ROI +18.4%</div></div>
+        </div>
+        <div class="arb-body">
+          <div class="arb-sec"><div class="arb-sec-t">Rute</div><div style="display:flex;align-items:center;gap:5px;font-size:12px;margin-bottom:4px"><span style="font-family:var(--serif);font-weight:600">Yogyakarta</span><span style="color:var(--ink-dim);font-size:10px">──→</span><span style="font-family:var(--serif);font-weight:600">Jakarta Sel.</span></div><div style="font-size:9px;font-family:var(--mono);color:var(--ink-dim)">Jawa darat · ~7 jam · 560 km</div></div>
+          <div class="arb-sec"><div class="arb-sec-t">Kalkulasi (500 kg)</div><div class="arb-price-row"><span>Spread gross</span><span class="arb-num">+23.2%</span></div><div class="arb-price-row"><span>Transport</span><span class="arb-num">Rp 448.000</span></div><div class="arb-price-row"><span>Net profit</span><span class="arb-num" style="color:var(--up)">Rp 2.802.000</span></div></div>
+          <div class="arb-sec"><div class="arb-sec-t">Hasil</div><div style="display:flex;gap:5px"><span class="pill ok">✓ Viable</span><span class="pill lo">Risiko RENDAH</span></div></div>
+        </div>
+        <div class="arb-footer"><span>🤖</span><span><b>BELI</b> — Spread konsisten 3 minggu. Rute darat stabil. <b>Kapan saja.</b></span></div>
+      </div>
+    </div>
+  </div>
+  <!-- MANUAL CALC -->
+  <div id="arb-man-v" style="display:none;flex:1;overflow:hidden">
+    <div class="calc-wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div><div style="font-family:var(--serif);font-size:14px;font-weight:700">Manual Arbitrase Calculator</div><div style="font-size:10px;font-family:var(--mono);color:var(--ink-dim);margin-top:2px">Multi-leg bebas · Harga auto dari komparasi VIEW · + Tambah leg sesuka hati</div></div>
+        <div style="display:flex;gap:7px"><button style="padding:6px 11px;border:1px solid var(--rule);border-radius:6px;background:var(--paper2);font-family:var(--sans);font-size:11px;cursor:pointer;color:var(--ink-mid)">📂 Load</button><button style="padding:6px 11px;border:1px solid var(--sp);border-radius:6px;background:var(--sp-light);font-family:var(--sans);font-size:11px;cursor:pointer;color:var(--sp);font-weight:600">💾 Simpan</button></div>
+      </div>
+      <div class="leg-card">
+        <div class="leg-hd"><div class="leg-num">1</div><div class="leg-title">Leg 1 — Yogyakarta → Denpasar</div><div style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--ink-dim)">darat + ferry</div></div>
+        <div class="leg-inputs">
+          <div class="lg"><label>Komoditas</label><select><option>Cabai Rawit Merah</option><option>Bawang Merah</option></select></div>
+          <div class="lg"><label>Kota Beli</label><select><option>Yogyakarta</option><option>Semarang</option></select></div>
+          <div class="lg"><label>Kota Jual</label><select><option>Denpasar</option><option>Mataram</option></select></div>
+          <div class="lg"><label>Harga Beli (Rp/kg)</label><div class="price-wrap"><input type="number" value="44500"/><div class="price-src">SP2KP✓</div></div></div>
+          <div class="lg"><label>Harga Jual (Rp/kg)</label><div class="price-wrap"><input type="number" value="72000"/><div class="price-src">SP2KP✓</div></div></div>
+          <div class="lg"><label>Volume (kg)</label><input type="number" value="1000"/></div>
+          <div class="lg" style="grid-column:1/3"><label>Vendor Transport</label><select><option>Truk Pak B*** — Rp 1.200/km · 8.000 kg</option><option>Kapal Feri Jawa-Bali — Flat Rp 2.500.000</option></select></div>
+          <div class="lg"><label>Trips</label><input value="1 trip" readonly style="background:var(--paper3);color:var(--ink-dim)"/></div>
+        </div>
+        <div class="leg-dist">
+          <span>🗺 Darat: <span class="dist-v">312 km (OSRM)</span></span>
+          <span>⛴ Ferry: <span class="dist-v">+60 km est.</span></span>
+          <span>⏱ Est: <span class="dist-v">~8.5 jam</span></span>
+          <span>💰 Truk: <span class="dist-v">Rp 374.400</span></span>
+          <span>💰 Feri: <span class="dist-v">Rp 2.500.000</span></span>
+        </div>
+        <div class="leg-result">
+          <div><div class="lr-l">Pendapatan</div><div class="lr-v">Rp 72.000.000</div></div>
+          <div><div class="lr-l">Modal Beli</div><div class="lr-v">Rp 44.500.000</div></div>
+          <div><div class="lr-l">Biaya Transport</div><div class="lr-v">Rp 2.874.400</div></div>
+          <div><div class="lr-l">Net Profit</div><div class="lr-v" style="color:var(--up)">Rp 24.625.600</div></div>
+        </div>
+      </div>
+      <button class="add-leg-btn" onclick="addLegCalc()">+ Tambah Leg Baru</button>
+      <div class="chain-summary">
+        <div class="cs-title">📊 Chain Summary — 1 Leg</div>
+        <div class="cs-grid">
+          <div><div class="cs-l">Total Modal</div><div class="cs-v" style="color:#fcd34d">Rp 44.500.000</div></div>
+          <div><div class="cs-l">Total Transport</div><div class="cs-v" style="color:rgba(245,241,234,.55)">Rp 2.874.400</div></div>
+          <div><div class="cs-l">Net Profit</div><div class="cs-v" style="color:#6ee7a0">Rp 24.625.600</div></div>
+          <div><div class="cs-l">ROI Chain</div><div class="cs-v" style="color:#6ee7a0">+55.3%</div></div>
+        </div>
+        <div style="border-top:1px solid rgba(245,241,234,.1);padding-top:9px;display:flex;gap:7px;align-items:center">
+          <span style="padding:3px 8px;border-radius:5px;font-size:10px;font-family:var(--mono);font-weight:600;background:rgba(110,231,160,.12);color:#6ee7a0;border:1px solid rgba(110,231,160,.25)">✓ Viable</span>
+          <span style="padding:3px 8px;border-radius:5px;font-size:10px;font-family:var(--mono);background:rgba(252,211,77,.1);color:#fcd34d;border:1px solid rgba(252,211,77,.2)">⏱ ~8.5 jam</span>
+          <span style="font-size:10px;font-family:var(--mono);color:rgba(245,241,234,.35);margin-left:auto">Data dari komparasi_harga VIEW ✓</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /tab-arb -->
+
+<!-- ══════════ TAB ADMIN (HIDDEN) ══════════ -->
+<div class="tab-panel" id="tab-adm">
+  <div class="tab-hd">
+    <div class="th-row"><div class="th-stripe" style="background:#6b7280"></div><div><div class="th-title" style="display:flex;align-items:center;gap:8px">Admin Hidden <span class="pill" style="background:#f0f0f0;color:#374151;font-size:10px">🔒 Akses Terbatas</span></div><div class="th-sub">Naming Agent · Commodity Agent · Approval queue · Data tidak masuk Komparasi sebelum di-approve</div></div></div>
+    <div class="subtabs">
+      <div class="stab active" id="adm-st-nam" onclick="admSub('nam')">🏷 Naming Queue <span style="font-size:9px;font-family:var(--mono);color:var(--warn);background:var(--warn-bg);padding:1px 5px;border-radius:4px;margin-left:3px">4</span></div>
+      <div class="stab" id="adm-st-comm" onclick="admSub('comm')">🌾 Commodity Queue <span style="font-size:9px;font-family:var(--mono);color:var(--warn);background:var(--warn-bg);padding:1px 5px;border-radius:4px;margin-left:3px">3</span></div>
+      <div class="stab" id="adm-st-log" onclick="admSub('log')">📋 Ingest Log</div>
+    </div>
+  </div>
+
+  <!-- NAMING QUEUE -->
+  <div id="adm-nam-v" style="display:flex;flex:1;overflow:hidden;flex-direction:column">
+    <div class="fbar">
+      <div class="fbtn on">Kota <span style="font-family:var(--mono);font-size:9px;margin-left:3px">4</span></div>
+      <div class="fbtn">Komoditas 0</div>
+      <div class="fbtn">Approved</div>
+      <div class="fbtn">Rejected</div>
+      <div style="margin-left:auto;display:flex;gap:7px">
+        <div class="fbtn" style="background:var(--sp);color:white;border-color:var(--sp)" onclick="">▶ Jalankan Naming Agent</div>
+      </div>
+    </div>
+    <div class="queue-wrap">
+      <!-- Group: Confidence tinggi -->
+      <div class="queue-group">
+        <div class="queue-group-hd" style="background:#f0fdf4;border-bottom-color:#bbf7d0">
+          <span style="color:var(--up)">✓</span> <span>Confidence Tinggi — Aman di-approve</span>
+          <span style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--ink-dim)">2 items</span>
+        </div>
+        <div class="queue-item">
+          <div class="qi-left">
+            <div style="display:flex;align-items:center">
+              <span class="qi-raw">"Kota Adm. Jakarta Pusat"</span>
+              <span class="qi-arrow">→</span>
+              <span class="qi-suggest">Jakarta Pusat</span>
+              <span style="margin-left:8px"><span class="qi-conf high">0.99 · exact</span></span>
+            </div>
+            <div class="qi-meta"><span>📍 Kota</span><span>Source: sp2kp</span><span>17 rows affected</span><span>Metode: name_sp2kp exact match</span></div>
+          </div>
+          <div class="qi-actions"><div class="qa approve">✓ Approve</div><div class="qa reject">✗</div></div>
+        </div>
+        <div class="queue-item">
+          <div class="qi-left">
+            <div style="display:flex;align-items:center">
+              <span class="qi-raw">"Kab. Bangkalan"</span>
+              <span class="qi-arrow">→</span>
+              <span class="qi-suggest">Bangkalan</span>
+              <span style="margin-left:8px"><span class="qi-conf high">0.97 · kode BPS</span></span>
+            </div>
+            <div class="qi-meta"><span>📍 Kabupaten · Madura</span><span>Source: sp2kp</span><span>17 rows affected</span><span>Kode: 3526</span></div>
+          </div>
+          <div class="qi-actions"><div class="qa approve">✓ Approve</div><div class="qa reject">✗</div></div>
+        </div>
+      </div>
+
+      <!-- Group: Perlu review -->
+      <div class="queue-group">
+        <div class="queue-group-hd" style="background:var(--warn-bg);border-bottom-color:#fde68a">
+          <span style="color:var(--warn)">⚡</span> <span>Perlu Review — Confidence Sedang</span>
+          <span style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--ink-dim)">1 item</span>
+        </div>
+        <div class="queue-item">
+          <div class="qi-left">
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+              <span class="qi-raw">"Kab. Adm. Kep. Seribu"</span>
+              <span class="qi-arrow">→</span>
+              <span class="qi-suggest">Kepulauan Seribu</span>
+              <span><span class="qi-conf mid">0.78 · fuzzy</span></span>
+            </div>
+            <div class="qi-meta"><span>📍 Kota/Kab</span><span>Source: sp2kp</span><span>17 rows affected</span><span>Gemini: "Kepulauan Seribu — kabupaten administrasi DKI"</span></div>
+            <div style="margin-top:6px;padding:6px 10px;background:var(--paper2);border-radius:5px;font-size:10px;color:var(--ink-mid)">
+              💡 Catatan: Kepulauan Seribu adalah kab. administrasi DKI — di luar scope wilayah Jawa+Bali+Lombok normal. Pertimbangkan exclude.
+            </div>
+          </div>
+          <div class="qi-actions" style="flex-direction:column;gap:5px">
+            <div class="qa approve">✓ Approve</div>
+            <div class="qa choose">Pilih lain ▾</div>
+            <div class="qa reject">✗ Exclude</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group: Tidak ditemukan -->
+      <div class="queue-group">
+        <div class="queue-group-hd" style="background:var(--dn-bg);border-bottom-color:#fecaca">
+          <span style="color:var(--dn)">⚠</span> <span>Tidak Ditemukan — Input Manual Diperlukan</span>
+          <span style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--ink-dim)">1 item</span>
+        </div>
+        <div class="queue-item">
+          <div class="qi-left">
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+              <span class="qi-raw">"KOTA MADIUN KOTA"</span>
+              <span class="qi-arrow">→</span>
+              <span style="font-family:var(--mono);font-size:12px;color:var(--ink-dim)">— tidak ada suggestion —</span>
+              <span><span class="qi-conf low">0.42 · gemini</span></span>
+            </div>
+            <div class="qi-meta"><span>📍 Kota</span><span>Source: sp2kp</span><span>17 rows affected</span><span>Gemini: "Kemungkinan Madiun, tapi format tidak dikenal"</span></div>
+          </div>
+          <div class="qi-actions" style="flex-direction:column;gap:5px">
+            <div class="qa choose">Pilih dari list ▾</div>
+            <div class="qa reject">✗ Skip</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMMODITY QUEUE -->
+  <div id="adm-comm-v" style="display:none;flex:1;overflow:hidden;flex-direction:column">
+    <div class="fbar">
+      <div class="fbtn on">Mirip Existing <span style="font-size:9px;font-family:var(--mono);margin-left:3px">1</span></div>
+      <div class="fbtn">Komoditas Baru <span style="font-size:9px;font-family:var(--mono);margin-left:3px;color:var(--warn)">2</span></div>
+      <div class="fbtn">Approved</div>
+      <div style="margin-left:auto">
+        <div class="fbtn" style="background:var(--ped);color:white;border-color:var(--ped)">▶ Jalankan Commodity Agent</div>
+      </div>
+    </div>
+    <div class="queue-wrap">
+      <!-- Mirip existing -->
+      <div class="queue-group">
+        <div class="queue-group-hd" style="background:#f0fdf4;border-bottom-color:#bbf7d0">
+          <span style="color:var(--up)">🔀</span> <span>Mirip Komoditas Existing — Approve Mapping</span>
+        </div>
+        <div class="queue-item">
+          <div class="qi-left">
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+              <span class="qi-raw">"Cabe Merah Kriting"</span>
+              <span class="qi-arrow">→</span>
+              <span class="qi-suggest">Cabai Merah Keriting</span>
+              <span><span class="qi-conf high">0.88 · fuzzy</span></span>
+            </div>
+            <div class="qi-meta"><span>🌾 Komoditas</span><span>Source: pedagang</span><span>Bu R*** · 12 rows affected</span></div>
+            <div style="margin-top:5px;font-size:10px;color:var(--ink-dim);font-family:var(--mono)">Setelah approve → disimpan di <b>commodity_aliases</b>. Entri serupa berikutnya auto-apply.</div>
+          </div>
+          <div class="qi-actions"><div class="qa approve">✓ Approve Mapping</div><div class="qa choose">Pilih lain ▾</div><div class="qa reject">✗</div></div>
+        </div>
+      </div>
+      <!-- Komoditas baru -->
+      <div class="queue-group">
+        <div class="queue-group-hd" style="background:var(--ped-light);border-bottom-color:#bfdbfe">
+          <span style="color:var(--ped)">✨</span> <span>Komoditas Baru — Belum Ada di Database</span>
+          <span style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--ink-dim)">2 items</span>
+        </div>
+        <div class="queue-item">
+          <div class="qi-left">
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+              <span class="qi-raw">"Cabai Hijau Besar"</span>
+              <span class="qi-arrow">→</span>
+              <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--ped)">+ Komoditas Baru</span>
+              <span><span class="qi-conf mid">0.70 · gemini</span></span>
+            </div>
+            <div class="qi-meta"><span>🌾 Komoditas Baru</span><span>Source: pedagang</span><span>Bu R*** · 8 rows</span></div>
+            <div style="margin-top:7px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
+              <div class="lg"><label style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-dim);font-family:var(--mono)">Nama Canonical</label><input value="Cabai Hijau Besar" style="padding:5px 8px;border:1px solid var(--rule);border-radius:5px;font-size:11px;font-family:var(--sans);width:100%;background:var(--paper2)"/></div>
+              <div class="lg"><label style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-dim);font-family:var(--mono)">Kategori</label><select style="padding:5px 8px;border:1px solid var(--rule);border-radius:5px;font-size:11px;font-family:var(--sans);width:100%;background:var(--paper2)"><option>Bumbu</option><option>Pokok</option><option>Protein</option></select></div>
+              <div class="lg"><label style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-dim);font-family:var(--mono)">Satuan</label><select style="padding:5px 8px;border:1px solid var(--rule);border-radius:5px;font-size:11px;font-family:var(--sans);width:100%;background:var(--paper2)"><option>kg</option><option>liter</option><option>buah</option></select></div>
+            </div>
+          </div>
+          <div class="qi-actions" style="flex-direction:column;gap:5px;padding-top:24px">
+            <div class="qa add-new">+ Tambah Komoditas</div>
+            <div class="qa reject">✗ Reject</div>
+          </div>
+        </div>
+        <div class="queue-item">
+          <div class="qi-left">
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+              <span class="qi-raw">"Terasi Rebon"</span>
+              <span class="qi-arrow">→</span>
+              <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--ped)">+ Komoditas Baru</span>
+              <span><span class="qi-conf mid">0.72 · gemini</span></span>
+            </div>
+            <div class="qi-meta"><span>🌾 Komoditas Baru</span><span>Source: pedagang</span><span>Pak M*** · 4 rows</span></div>
+          </div>
+          <div class="qi-actions" style="flex-direction:column;gap:5px">
+            <div class="qa add-new">+ Tambah Komoditas</div>
+            <div class="qa reject">✗ Reject</div>
+          </div>
+        </div>
+      </div>
+      <!-- Alias history -->
+      <div class="queue-group">
+        <div class="queue-group-hd"><span style="color:var(--ink-dim)">📚</span> <span>Alias Tersimpan — Auto-apply untuk ingest berikutnya</span><span style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--ink-dim)">5 aliases</span></div>
+        <div class="queue-item" style="background:#fafaf8">
+          <div class="qi-left"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="qi-raw" style="color:var(--ink-dim)">"Cabe Rawit"</span><span>→</span><span class="qi-suggest">Cabai Rawit Merah</span><span class="qi-conf high">approved · exact</span></div><div class="qi-meta"><span>pedagang</span><span>Diapprove 20 Apr</span><span>Auto-apply ✓</span></div></div>
+        </div>
+        <div class="queue-item" style="background:#fafaf8">
+          <div class="qi-left"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="qi-raw" style="color:var(--ink-dim)">"Bawang Bombai"</span><span>→</span><span class="qi-suggest">Bawang Putih Honan</span><span class="qi-conf mid">approved · gemini</span></div><div class="qi-meta"><span>pedagang</span><span>Diapprove 19 Apr</span><span>Auto-apply ✓</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INGEST LOG -->
+  <div id="adm-log-v" style="display:none;flex:1;overflow:hidden;flex-direction:column">
+    <div class="list-scroll" style="padding:0">
+      <table class="db-table">
+        <thead><tr><th>Waktu</th><th>Source</th><th>File / Keterangan</th><th>Rows</th><th>Approved</th><th>Pending</th><th>Skip</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td style="font-family:var(--mono);font-size:11px">21 Apr · 07:02</td><td><span class="pill sp" style="font-size:9px">SP2KP</span></td><td style="font-size:11px">Tabulasi_SP2KP_Apr2026.CSV</td><td style="font-family:var(--mono)">2.207</td><td style="font-family:var(--mono);color:var(--up)">2.190</td><td style="font-family:var(--mono);color:var(--warn)">4</td><td style="font-family:var(--mono);color:var(--ink-dim)">13</td><td><span class="pill ok" style="font-size:9px">✓ Sukses</span></td></tr>
+          <tr><td style="font-family:var(--mono);font-size:11px">20 Apr · 14:30</td><td><span class="pill ped" style="font-size:9px">Pedagang</span></td><td style="font-size:11px">Bu R*** — Cabai Hijau Besar</td><td style="font-family:var(--mono)">8</td><td style="font-family:var(--mono);color:var(--ink-dim)">0</td><td style="font-family:var(--mono);color:var(--warn)">8</td><td style="font-family:var(--mono)">0</td><td><span class="pill warn" style="font-size:9px">⏳ Pending Commodity</span></td></tr>
+          <tr><td style="font-family:var(--mono);font-size:11px">19 Apr · 09:15</td><td><span class="pill sp" style="font-size:9px">SP2KP</span></td><td style="font-size:11px">Tabulasi_SP2KP_Mar2026.CSV</td><td style="font-family:var(--mono)">2.207</td><td style="font-family:var(--mono);color:var(--up)">2.207</td><td style="font-family:var(--mono)">0</td><td style="font-family:var(--mono);color:var(--ink-dim)">0</td><td><span class="pill ok" style="font-size:9px">✓ Sukses</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /tab-adm -->
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ── Tab navigation ──
+function goTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.si,.tn').forEach(el => el.classList.remove('active'));
+  const p = document.getElementById('tab-' + name);
+  if (p) p.classList.add('active');
+  ['si-'+name,'tn-'+name].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+  });
+}
+
+// ── Sub tabs ──
+function spSub(s) {
+  ['city','commod'].forEach(x => {
+    document.getElementById('sp-st-'+(x==='city'?'c':'k')).classList.toggle('active', s===x);
+    document.getElementById('sp-'+x+'-v').style.display = s===x ? 'flex' : 'none';
+  });
+}
+function pedSub(s) {
+  document.getElementById('ped-st-d').classList.toggle('active', s==='data');
+  document.getElementById('ped-st-t').classList.toggle('active', s==='trp');
+  document.getElementById('ped-data-v').style.display = s==='data' ? 'flex' : 'none';
+  document.getElementById('ped-trp-v').style.display  = s==='trp'  ? 'flex' : 'none';
+  document.getElementById('si-ped-data').classList.toggle('active', s==='data');
+  document.getElementById('si-ped-trp').classList.toggle('active', s==='trp');
+}
+function kompSub(s) {
+  ['a','b'].forEach(x => {
+    document.getElementById('komp-st-'+x).classList.toggle('active', s===x);
+    document.getElementById('komp-'+x+'-v').style.display = s===x ? 'flex' : 'none';
+  });
+}
+function arbSub(s) {
+  document.getElementById('arb-st-ai').classList.toggle('active', s==='ai');
+  document.getElementById('arb-st-man').classList.toggle('active', s==='man');
+  document.getElementById('arb-ai-v').style.display  = s==='ai'  ? 'flex' : 'none';
+  document.getElementById('arb-man-v').style.display = s==='man' ? 'flex' : 'none';
+  document.getElementById('si-arb-ai').classList.toggle('active', s==='ai');
+  document.getElementById('si-arb-man').classList.toggle('active', s==='man');
+}
+function admSub(s) {
+  ['nam','comm','log'].forEach(x => {
+    document.getElementById('adm-st-'+x).classList.toggle('active', s===x);
+    const v = document.getElementById('adm-'+x+'-v');
+    if (v) v.style.display = s===x ? 'flex' : 'none';
+    const si = document.getElementById('si-adm-'+x);
+    if (si) si.classList.toggle('active', s===x);
+  });
+}
+
+// ── Accordion ──
+function tgl1(id) {
+  const b = document.getElementById(id);
+  if (!b) return;
+  const isOpen = b.classList.contains('open');
+  const container = b.closest('.list-scroll');
+  if (container) container.querySelectorAll('.l1-block.open').forEach(x => { if (x!==b) x.classList.remove('open'); });
+  b.classList.toggle('open', !isOpen);
+  if (!isOpen) setTimeout(() => b.scrollIntoView({behavior:'smooth',block:'nearest'}), 60);
+}
+function tgl2(id) {
+  const b = document.getElementById(id);
+  if (!b) return;
+  const isOpen = b.classList.contains('open');
+  const container = b.closest('.l1-exp');
+  if (container) container.querySelectorAll('.l2-block.open').forEach(x => { if (x!==b) x.classList.remove('open'); });
+  b.classList.toggle('open', !isOpen);
+  if (!isOpen) setTimeout(() => b.scrollIntoView({behavior:'smooth',block:'nearest'}), 60);
+}
+
+// ── Add leg ──
+let legN = 1;
+function addLegCalc() {
+  legN++;
+  const wrap = document.querySelector('.calc-wrap');
+  const addBtn = wrap.querySelector('.add-leg-btn');
+  const card = document.createElement('div');
+  card.className = 'leg-card';
+  card.innerHTML = `
+    <div class="leg-hd">
+      <div class="leg-num">${legN}</div>
+      <div class="leg-title">Leg ${legN} — Pilih rute baru</div>
+      <div style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--ink-dim)">isi form di bawah</div>
+      <button class="leg-del" onclick="this.closest('.leg-card').remove();renum()">🗑 Hapus</button>
+    </div>
+    <div class="leg-inputs">
+      <div class="lg"><label>Komoditas</label><select><option>— Pilih —</option><option>Cabai Rawit Merah</option><option>Bawang Merah</option><option>Beras Medium</option><option>Telur Ayam Ras</option></select></div>
+      <div class="lg"><label>Kota Beli</label><select><option>— Pilih —</option><option>Yogyakarta</option><option>Semarang</option><option>Bandung</option><option>Denpasar</option><option>Mataram</option></select></div>
+      <div class="lg"><label>Kota Jual</label><select><option>— Pilih —</option><option>Denpasar</option><option>Mataram</option><option>Jakarta Selatan</option><option>Surabaya</option></select></div>
+      <div class="lg"><label>Harga Beli</label><div class="price-wrap"><input type="number" placeholder="Auto dari VIEW"/><div class="price-src" style="color:var(--ink-dim)">—</div></div></div>
+      <div class="lg"><label>Harga Jual</label><div class="price-wrap"><input type="number" placeholder="Auto dari VIEW"/><div class="price-src" style="color:var(--ink-dim)">—</div></div></div>
+      <div class="lg"><label>Volume (kg)</label><input type="number" value="500"/></div>
+      <div class="lg" style="grid-column:1/3"><label>Vendor Transport</label><select><option>— Pilih vendor —</option><option>Truk Pak B*** — Rp 1.200/km · 8.000 kg</option><option>Pickup — Rp 800/km · 1.500 kg</option><option>Kapal Feri Jawa-Bali — Flat 2.500.000</option><option>Feri Bali-Lombok — Flat 1.800.000</option></select></div>
+      <div class="lg"><label>Trips</label><input value="— pilih vendor" readonly style="background:var(--paper3);color:var(--ink-dim)"/></div>
+    </div>
+    <div class="leg-dist" style="color:var(--ink-dim);font-style:italic"><span style="font-family:var(--mono);font-size:10px">Pilih kota & vendor → jarak OSRM otomatis dihitung</span></div>
+    <div class="leg-result">
+      <div><div class="lr-l">Pendapatan</div><div class="lr-v" style="color:var(--ink-dim)">—</div></div>
+      <div><div class="lr-l">Modal Beli</div><div class="lr-v" style="color:var(--ink-dim)">—</div></div>
+      <div><div class="lr-l">Transport</div><div class="lr-v" style="color:var(--ink-dim)">—</div></div>
+      <div><div class="lr-l">Net Profit</div><div class="lr-v" style="color:var(--ink-dim)">—</div></div>
+    </div>`;
+  wrap.insertBefore(card, addBtn);
+}
+function renum() {
+  document.querySelectorAll('.leg-card').forEach((c,i) => {
+    const n = c.querySelector('.leg-num'); if (n) n.textContent = i+1;
+    const t = c.querySelector('.leg-title'); if (t) t.textContent = `Leg ${i+1}`;
+  });
+  legN = document.querySelectorAll('.leg-card').length;
+}
+</script>
+</body>
+</html>
