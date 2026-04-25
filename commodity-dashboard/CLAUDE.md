@@ -28,7 +28,16 @@ Naming queue / commodity pairing / arbitrage engine = Phase 2+.
 - UNIQUE: `(date, city_raw, commodity_raw, source)`.
 - Hanya data dengan `city_id IS NOT NULL` AND `commodity_id IS NOT NULL` yang ditampilkan di UI.
 - `commodity_id`: 17 komoditas SP2KP sudah seeded → exact match selalu berhasil.
-- `city_id`: di-resolve dari `kode_wilayah` (paling reliable) atau `name_sp2kp`. Kalau null, kota masuk pending review (Phase 2).
+- `city_id`: di-resolve dari `kode_wilayah` (paling reliable) atau `name_sp2kp`. Kalau null, akan
+  di-backfill oleh `auto_seed_cities()` RPC yang dipanggil dari ingest route — Phase 1 tidak butuh
+  naming agent karena kode_wilayah BPS deterministic.
+
+## Auto-seed cities (Phase 1)
+- Migration `004_auto_seed_cities.sql`: fungsi `auto_seed_cities()` — INSERT cities baru + UPDATE city_id NULL.
+- Province dan island di-derive dari kode prefix; entity_type dari prefix nama (`Kota%` vs `Kab.%`).
+- Madura override: kode 3526–3529 → island='Madura' (province tetap Jawa Timur).
+- Ingest API route memanggil `sb.rpc('auto_seed_cities')` setelah batch insert, return
+  `cities_seeded` + `rows_backfilled` di response.
 
 ## 17 Komoditas SP2KP (seed exact)
 Bawang Merah, Bawang Putih Honan, Beras Medium, Beras Premium,

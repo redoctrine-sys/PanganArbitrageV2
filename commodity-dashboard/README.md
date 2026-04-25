@@ -16,6 +16,7 @@ In Supabase SQL editor, run migrations in order:
 1. `supabase/migrations/001_schema_core.sql`
 2. `supabase/migrations/002_seed_commodities.sql`
 3. `supabase/migrations/003_get_sp2kp_latest_fn.sql`
+4. `supabase/migrations/004_auto_seed_cities.sql`
 
 ## Develop
 

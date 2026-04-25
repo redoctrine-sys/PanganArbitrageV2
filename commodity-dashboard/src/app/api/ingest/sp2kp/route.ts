@@ -79,9 +79,14 @@ export async function POST(req: Request): Promise<NextResponse> {
     upserted += data?.length ?? 0;
   }
 
-  const new_cities_detected = [
-    ...new Set(toInsert.filter((r) => r.city_id === null).map((r) => r.city_raw)),
-  ];
+  // Auto-seed cities + backfill city_id pada row yang baru di-insert.
+  // Kode_wilayah BPS reliable, jadi tidak butuh naming agent untuk Phase 1.
+  let auto_seed: { seeded: number; backfilled: number } = { seeded: 0, backfilled: 0 };
+  const { data: seedData, error: seedErr } = await sb.rpc("auto_seed_cities");
+  if (!seedErr && seedData) {
+    auto_seed = seedData as { seeded: number; backfilled: number };
+  }
+
   const unresolved_commodities = [
     ...new Set(
       toInsert.filter((r) => r.commodity_id === null).map((r) => r.commodity_raw),
@@ -92,7 +97,8 @@ export async function POST(req: Request): Promise<NextResponse> {
     received: toInsert.length,
     inserted: upserted,
     skipped_duplicates: toInsert.length - upserted,
-    new_cities_detected,
+    cities_seeded:    auto_seed.seeded,
+    rows_backfilled:  auto_seed.backfilled,
     unresolved_commodities,
   });
 }
