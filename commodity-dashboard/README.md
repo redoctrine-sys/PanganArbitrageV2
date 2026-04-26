@@ -11,7 +11,11 @@ cp .env.example .env.local
 # Edit .env.local with your Supabase project credentials
 ```
 
-Run migrations di Supabase SQL editor (urut):
+Run migrations di Supabase SQL editor.
+
+**Cara cepat (recommended)**: paste seluruh isi `supabase/setup.sql` ke SQL Editor → Run. Idempotent, aman re-run.
+
+**Cara manual** (per-file, urut):
 
 1. `supabase/migrations/001_schema_core.sql`        — cities, commodities, prices_raw + index
 2. `supabase/migrations/002_seed_commodities.sql`   — seed 17 komoditas SP2KP
@@ -67,6 +71,24 @@ Setelah deploy, buka URL Vercel → harus redirect ke `/dashboard/sp2kp`:
 - [ ] Klik **✓ Ingest** → tunggu ~6-10 detik → modal close, page reload
 - [ ] Setelah reload: 133 kota tampil, expand salah satu (mis. Kota Yogyakarta) → 17 komoditas dgn harga rupiah utuh (Rp 35.000 dst.)
 - [ ] Klik komoditas → chart muncul dengan garis harga + (opsional) garis HET merah putus
+
+## Upload berkala
+
+Aman dilakukan kapanpun — architecture-nya idempotent:
+
+- `prices_raw` punya `UNIQUE(date, city_raw, commodity_raw, source)` + `ON CONFLICT DO NOTHING`
+- Re-upload file yang sama → semua row di-skip (preview menampilkan "Duplikat di-skip")
+- Tanggal baru → masuk; tanggal lama (sudah ada di DB) → skip
+- Kota baru (jarang, hanya jika SP2KP tambah scope) → auto-seeded
+- 30-day stats di RPC `get_sp2kp_latest()` ikut tanggal terbaru di DB → otomatis update
+
+Pola yang didukung: harian / mingguan / bulanan, semua aman.
+
+### Batas ukuran file
+
+- Vercel function body limit: **4.5 MB** per request
+- File SP2KP yearly cumulative: ~3 MB → aman dengan margin
+- File > 4.5 MB → split per kuartal/tahun, upload bertahap (data overlap aman karena duplicate skip)
 
 ## Phase 1 scope
 
