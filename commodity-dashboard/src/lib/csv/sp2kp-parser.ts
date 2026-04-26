@@ -91,14 +91,51 @@ export function parseSP2KP(fileBuffer: ArrayBuffer): ParseResult {
   }
 
   // Build date columns: terima DD/MM/YYYY string atau Excel serial (number/numeric-string).
-  const dateColumns: { idx: number; dateStr: string }[] = [];
+  // Pertahankan column order utk monotonicity check (deteksi format campuran).
+  const dateColumnsInFileOrder: { idx: number; dateStr: string; raw: string }[] = [];
   for (let i = 0; i < headerRaw.length; i++) {
     const iso = headerToIsoDate(headerRaw[i]);
-    if (iso) dateColumns.push({ idx: i, dateStr: iso });
+    if (iso) {
+      dateColumnsInFileOrder.push({
+        idx: i,
+        dateStr: iso,
+        raw: typeof headerRaw[i] === "string" ? (headerRaw[i] as string).trim() : String(headerRaw[i]),
+      });
+    }
   }
-  // Sort ascending by date so chart series datang berurutan.
-  dateColumns.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
-  // Hilangkan duplikat tanggal (kolom monthly aggregate yang sama dgn salah satu daily).
+
+  // Monotonicity check: header tanggal SP2KP selalu naik kronologis di file order.
+  // Jika TIDAK monoton, kemungkinan ada header dgn format MM/DD/YYYY tercampur
+  // dengan DD/MM/YYYY → flag sebagai data quality issue.
+  const outOfOrder: { col: number; raw: string; parsed: string; prevParsed: string }[] = [];
+  for (let i = 1; i < dateColumnsInFileOrder.length; i++) {
+    const prev = dateColumnsInFileOrder[i - 1];
+    const cur  = dateColumnsInFileOrder[i];
+    if (cur.dateStr <= prev.dateStr) {
+      outOfOrder.push({
+        col: cur.idx + 1,
+        raw: cur.raw,
+        parsed: cur.dateStr,
+        prevParsed: prev.dateStr,
+      });
+    }
+  }
+  if (outOfOrder.length > 0) {
+    const sample = outOfOrder.slice(0, 3)
+      .map((o) => `kolom ${o.col} "${o.raw}" → ${o.parsed} (setelah ${o.prevParsed})`)
+      .join("; ");
+    const more = outOfOrder.length > 3 ? ` (+${outOfOrder.length - 3} lagi)` : "";
+    warnings.push(
+      `⚠ Format tanggal tidak konsisten — ${outOfOrder.length} header di luar urutan kronologis. ` +
+      `Cek header: ${sample}${more}. ` +
+      `Parser pakai DD/MM/YYYY (konvensi Indonesia); pastikan SEMUA header pakai format sama.`,
+    );
+  }
+
+  // Sort ascending by date utk chart series + dedupe.
+  const dateColumns = [...dateColumnsInFileOrder].sort((a, b) =>
+    a.dateStr.localeCompare(b.dateStr),
+  );
   const seenDates = new Set<string>();
   const uniqueDateColumns = dateColumns.filter((d) => {
     if (seenDates.has(d.dateStr)) return false;
