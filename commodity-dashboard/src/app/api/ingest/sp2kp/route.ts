@@ -1,6 +1,25 @@
 import { NextResponse } from "next/server";
 import { parseSP2KP } from "@/lib/csv/sp2kp-parser";
-import { getServiceClient } from "@/lib/supabase/server";
+import { getServiceClient, getSupabaseUrlPrefix } from "@/lib/supabase/server";
+
+interface SupabaseLikeError {
+  message?: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+}
+
+function fmtSupabaseError(err: SupabaseLikeError | null | undefined, ctx: string) {
+  if (!err) return `${ctx}: unknown error`;
+  const parts = [
+    `${ctx}: ${err.message ?? "(no message)"}`,
+    err.code ? `code=${err.code}` : null,
+    err.details ? `details=${err.details}` : null,
+    err.hint ? `hint=${err.hint}` : null,
+    `supabase_url=${getSupabaseUrlPrefix()}`,
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,7 +74,22 @@ export async function POST(req: Request): Promise<NextResponse> {
     .from("commodities")
     .select("id, name")
     .eq("is_sp2kp", true);
-  if (cErr) return NextResponse.json({ error: cErr.message }, { status: 500 });
+  if (cErr) {
+    return NextResponse.json(
+      { error: fmtSupabaseError(cErr, "Query commodities gagal") },
+      { status: 500 },
+    );
+  }
+  if (!commodities || commodities.length === 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Tabel commodities kosong. Jalankan migration 002_seed_commodities.sql " +
+          "(atau supabase/setup.sql) di Supabase SQL Editor terlebih dahulu.",
+      },
+      { status: 500 },
+    );
+  }
   const commMap = new Map((commodities ?? []).map((c) => [c.name, c.id as string]));
 
   // Build payload utk RPC: tambah commodity_id, biarkan city_id NULL
@@ -88,9 +122,11 @@ export async function POST(req: Request): Promise<NextResponse> {
       if (error) {
         return NextResponse.json(
           {
-            error: error.message,
+            error: fmtSupabaseError(error, "RPC bulk_insert_sp2kp_prices gagal"),
             inserted_so_far: totalInserted,
-            hint: "Pastikan migration 005_bulk_insert_fn.sql sudah dijalankan",
+            hint:
+              "Pastikan migration 005_bulk_insert_fn.sql sudah dijalankan, " +
+              "dan NEXT_PUBLIC_SUPABASE_URL di Vercel benar (tanpa trailing slash).",
           },
           { status: 500 },
         );
