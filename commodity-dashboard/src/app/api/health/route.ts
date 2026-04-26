@@ -31,18 +31,21 @@ export async function GET() {
 
   // 1. Cek tabel commodities + count
   const cmRes = await sb.from("commodities").select("id", { count: "exact", head: true });
-  checks.commodities_count = cmRes.count ?? null;
-  checks.commodities_error = cmRes.error?.message ?? null;
+  checks.commodities_count = cmRes.count;
+  checks.commodities_error =
+    cmRes.error?.message ?? (cmRes.count == null ? "silent fail (URL kemungkinan malformed)" : null);
 
   // 2. Cek tabel cities + count
   const ciRes = await sb.from("cities").select("id", { count: "exact", head: true });
-  checks.cities_count = ciRes.count ?? null;
-  checks.cities_error = ciRes.error?.message ?? null;
+  checks.cities_count = ciRes.count;
+  checks.cities_error =
+    ciRes.error?.message ?? (ciRes.count == null ? "silent fail" : null);
 
   // 3. Cek tabel prices_raw + count
   const prRes = await sb.from("prices_raw").select("id", { count: "exact", head: true });
-  checks.prices_count = prRes.count ?? null;
-  checks.prices_error = prRes.error?.message ?? null;
+  checks.prices_count = prRes.count;
+  checks.prices_error =
+    prRes.error?.message ?? (prRes.count == null ? "silent fail" : null);
 
   // 4. Probe RPC bulk_insert (kirim array kosong → harus return {inserted: 0})
   const bulkRes = await sb.rpc("bulk_insert_sp2kp_prices", { p_rows: [] });
@@ -68,7 +71,8 @@ export async function GET() {
     prRes.error ||
     bulkRes.error ||
     seedRes.error ||
-    latestRes.error;
+    latestRes.error ||
+    cmRes.count == null;
 
   return NextResponse.json(
     {
