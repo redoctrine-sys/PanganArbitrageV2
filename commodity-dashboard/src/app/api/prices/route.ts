@@ -1,0 +1,39 @@
+import { NextResponse } from "next/server";
+import { getServerClient } from "@/lib/supabase/server";
+import { daysAgoIso } from "@/lib/utils/date";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET(req: Request): Promise<NextResponse> {
+  const { searchParams } = new URL(req.url);
+  const city_id = searchParams.get("city_id");
+  const commodity_id = searchParams.get("commodity_id");
+  const days = Math.max(1, Math.min(365, parseInt(searchParams.get("days") ?? "30", 10)));
+
+  let sb;
+  try {
+    sb = getServerClient();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Supabase belum dikonfigurasi";
+    return NextResponse.json({ error: msg, data: [] }, { status: 200 });
+  }
+
+  let query = sb
+    .from("prices_raw")
+    .select("date, price, het_ha, city_id, commodity_id")
+    .eq("source", "sp2kp")
+    .not("city_id", "is", null)
+    .not("commodity_id", "is", null)
+    .gte("date", daysAgoIso(days))
+    .order("date", { ascending: true })
+    .limit(2000);
+
+  if (city_id) query = query.eq("city_id", city_id);
+  if (commodity_id) query = query.eq("commodity_id", commodity_id);
+
+  const { data, error } = await query;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ data: data ?? [] });
+}

@@ -1,0 +1,132 @@
+export function Sidebar() {
+  return (
+    <aside
+      className="flex flex-col flex-shrink-0 overflow-y-auto"
+      style={{
+        width: 186,
+        background: "#f0ece4",
+        borderRight: "1px solid var(--rule)",
+        padding: "10px 7px",
+      }}
+    >
+      <SectionLabel>Sumber Data</SectionLabel>
+      <Item active label="SP2KP" pip="var(--sp)" badge="Live" badgeStyle={{ background: "var(--sp-light)", color: "var(--sp)" }} />
+      <Item label="Pedagang" pip="var(--ped)" placeholder />
+      <Sub label="Data Harga" placeholder />
+      <Sub label="Vendor Transport" placeholder />
+
+      <Divider />
+      <SectionLabel>Analitik</SectionLabel>
+      <Item label="Komparasi" pip="var(--comp)" placeholder />
+      <Item label="Arbitrase" pip="var(--arb)" placeholder />
+      <Sub label="AI Suggestion" placeholder />
+      <Sub label="Manual Kalkulator" placeholder />
+
+      <Divider />
+      <SectionLabel>Admin</SectionLabel>
+      <Item label="Admin Hidden" pip="#6b7280" placeholder dim />
+      <Sub label="Naming Queue" placeholder />
+      <Sub label="Commodity Queue" placeholder />
+      <Sub label="Ingest Log" placeholder />
+
+      <div
+        className="mt-auto p-2.5 font-mono"
+        style={{
+          marginTop: "auto",
+          background: "var(--paper)",
+          borderRadius: 7,
+          border: "1px solid var(--rule)",
+          fontSize: 10,
+          color: "var(--ink-dim)",
+          lineHeight: 1.8,
+        }}
+      >
+        <b style={{ color: "var(--ink-mid)" }}>Phase 1</b>
+        <br />
+        Tab SP2KP only — tab lain tersedia di Phase 2+.
+      </div>
+    </aside>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        fontSize: 9, fontWeight: 700, letterSpacing: "1.6px",
+        textTransform: "uppercase", color: "var(--ink-dim)", padding: "7px 8px 4px",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Item({
+  label, pip, badge, badgeStyle, active, placeholder, dim,
+}: {
+  label: string; pip: string; badge?: string;
+  badgeStyle?: React.CSSProperties; active?: boolean;
+  placeholder?: boolean; dim?: boolean;
+}) {
+  return (
+    <div
+      className="flex items-center gap-2 mb-px select-none"
+      style={{
+        padding: "6px 9px",
+        borderRadius: 6,
+        fontSize: 12,
+        color: active ? "var(--paper)" : "var(--ink-mid)",
+        background: active ? "var(--ink)" : "transparent",
+        fontWeight: active ? 500 : 400,
+        opacity: dim ? 0.7 : 1,
+        cursor: placeholder ? "not-allowed" : "pointer",
+      }}
+      title={placeholder ? "Tab ini akan tersedia di Phase 2+" : undefined}
+    >
+      <div style={{ width: 7, height: 7, borderRadius: "50%", background: pip, flexShrink: 0 }} />
+      {label}
+      {badge && (
+        <span
+          className="ml-auto font-mono"
+          style={{
+            fontSize: 9, padding: "1px 5px", borderRadius: 5,
+            ...badgeStyle,
+          }}
+        >
+          {badge}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function Sub({ label, placeholder }: { label: string; placeholder?: boolean }) {
+  return (
+    <div
+      className="flex items-center gap-1.5 select-none"
+      style={{
+        padding: "5px 9px 5px 26px",
+        borderRadius: 5,
+        fontSize: 11,
+        color: "var(--ink-dim)",
+        cursor: placeholder ? "not-allowed" : "pointer",
+        marginBottom: 1,
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
+function Divider() {
+  return (
+    <hr
+      style={{
+        border: "none",
+        borderTop: "1px solid var(--rule)",
+        margin: "6px 0",
+      }}
+    />
+  );
+}
