@@ -13,7 +13,9 @@ interface Props {
 
 interface PreviewState extends PreviewResponse {
   fileName: string;
-  rowsAll: ParsedRow[];
+  // File reference disimpan untuk re-upload saat Ingest — TIDAK menyimpan
+  // 155k row array di memory client (hemat 22MB).
+  file: File;
 }
 
 export function CSVUploader({ onClose, onIngestSuccess }: Props) {
@@ -26,11 +28,14 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
     setError(null);
     setBusy("parsing");
     try {
-      // Parse di browser supaya UI tetap responsif untuk file besar.
+      // Parse di browser hanya untuk preview stats — rows array di-discard
+      // setelah ekstrak preview 10 baris pertama. Saat Ingest, file di-upload
+      // ulang ke server (server-side parse).
       const buf = await file.arrayBuffer();
       const local = parseSP2KP(buf);
 
-      // Kirim ke /api/csv/preview untuk dapat duplicate-check + new-cities check via DB.
+      // Kirim file ke /api/csv/preview untuk dapat duplicate-check + new-cities
+      // check via DB. Server juga parse ulang (tidak masalah, file kecil).
       const fd = new FormData();
       fd.append("file", file);
       let server: PreviewResponse | null = null;
@@ -43,7 +48,7 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
 
       const merged: PreviewState = {
         fileName: file.name,
-        rowsAll: local.rows,
+        file,
         rows_preview: local.rows.slice(0, 10),
         total_parsed: local.rows.length,
         total_rows_file: local.total_rows_file,
@@ -51,7 +56,7 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
         total_observations: local.total_observations,
         dates_found: local.dates_found,
         warnings: local.warnings,
-        unique_cities: new Set(local.rows.map((r) => r.city_raw)).size,
+        unique_cities: new Set(local.rows.map((r: ParsedRow) => r.city_raw)).size,
         duplicates_skipped: server?.duplicates_skipped ?? 0,
         rows_will_insert: server?.rows_will_insert ?? local.rows.length,
         new_cities: server?.new_cities ?? [],
@@ -70,10 +75,13 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
     setBusy("ingesting");
     setError(null);
     try {
+      // Upload file ke server (3MB), bukan kirim 22MB JSON rows.
+      // Server parse ulang + chunked bulk RPC insert.
+      const fd = new FormData();
+      fd.append("file", preview.file);
       const res = await fetch("/api/ingest/sp2kp", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: preview.rowsAll }),
+        body: fd,
       });
       const json = await res.json();
       if (!res.ok) {
@@ -169,7 +177,7 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
             <button
               className="btn btn-green"
               onClick={handleIngest}
-              disabled={busy !== "idle" || preview.rowsAll.length === 0}
+              disabled={busy !== "idle" || preview.total_parsed === 0}
             >
               {busy === "ingesting"
                 ? "Mengingest..."

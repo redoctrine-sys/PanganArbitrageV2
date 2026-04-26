@@ -1,24 +1,45 @@
 import { NextResponse } from "next/server";
+import { parseSP2KP } from "@/lib/csv/sp2kp-parser";
 import { getServiceClient } from "@/lib/supabase/server";
-import type { ParsedRow } from "@/types/sp2kp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Vercel Pro: 60s. Hobby ignore (capped 10s) — chunked parallel insert
+// dirancang selesai dalam <10s untuk file SP2KP standar (~155k observasi).
+export const maxDuration = 60;
 
-interface IngestBody {
-  rows: ParsedRow[];
-}
+// Chunk size & concurrency dipilih supaya:
+//   - Body JSON per RPC call < 1MB (PostgREST default body limit)
+//   - 155k rows / 5000 = 31 chunks → 8 batch parallel × 4 concurrent ≈ 6-8s
+const CHUNK_SIZE = 5000;
+const CONCURRENCY = 4;
 
 export async function POST(req: Request): Promise<NextResponse> {
-  let body: IngestBody;
+  // Terima file via multipart/form-data — body 3MB, bukan 22MB JSON
+  // (memenuhi Vercel function body limit 4.5MB).
+  let form: FormData;
   try {
-    body = (await req.json()) as IngestBody;
+    form = await req.formData();
   } catch {
-    return NextResponse.json({ error: "Body harus JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Body bukan multipart/form-data" }, { status: 400 });
   }
-  const rows = Array.isArray(body?.rows) ? body.rows : [];
-  if (rows.length === 0) {
-    return NextResponse.json({ error: "Tidak ada rows" }, { status: 400 });
+
+  const file = form.get("file");
+  if (!(file instanceof File)) {
+    return NextResponse.json({ error: "Field 'file' tidak ada" }, { status: 400 });
+  }
+
+  const buffer = await file.arrayBuffer();
+  let parsed;
+  try {
+    parsed = parseSP2KP(buffer);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Parser error";
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
+
+  if (parsed.rows.length === 0) {
+    return NextResponse.json({ error: "Tidak ada baris yang lolos filter scope" }, { status: 400 });
   }
 
   let sb;
@@ -29,6 +50,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 
+  // Resolve commodity_id dari nama (17 komoditas SP2KP sudah seeded → exact match)
   const { data: commodities, error: cErr } = await sb
     .from("commodities")
     .select("id, name")
@@ -36,51 +58,49 @@ export async function POST(req: Request): Promise<NextResponse> {
   if (cErr) return NextResponse.json({ error: cErr.message }, { status: 500 });
   const commMap = new Map((commodities ?? []).map((c) => [c.name, c.id as string]));
 
-  const { data: cities, error: ciErr } = await sb
-    .from("cities")
-    .select("id, kode_wilayah, name_sp2kp");
-  if (ciErr) return NextResponse.json({ error: ciErr.message }, { status: 500 });
-  const cityByKode = new Map<string, string>();
-  const cityByName = new Map<string, string>();
-  for (const c of cities ?? []) {
-    if (c.kode_wilayah) cityByKode.set(c.kode_wilayah, c.id as string);
-    if (c.name_sp2kp) cityByName.set(c.name_sp2kp, c.id as string);
-  }
-
-  const toInsert = rows.map((r) => ({
-    date: r.date,
-    city_raw: r.city_raw,
+  // Build payload utk RPC: tambah commodity_id, biarkan city_id NULL
+  // (auto_seed_cities akan backfill berdasarkan kode_wilayah)
+  const rowsForInsert = parsed.rows.map((r) => ({
+    date:          r.date,
+    city_raw:      r.city_raw,
     commodity_raw: r.commodity_raw,
-    price: r.price,
-    het_ha: r.het_ha,
-    source: "sp2kp",
-    kode_wilayah: r.kode_wilayah,
-    city_id: cityByKode.get(r.kode_wilayah) ?? cityByName.get(r.city_raw) ?? null,
-    commodity_id: commMap.get(r.commodity_raw) ?? null,
+    price:         r.price,
+    het_ha:        r.het_ha,
+    kode_wilayah:  r.kode_wilayah,
+    commodity_id:  commMap.get(r.commodity_raw) ?? null,
   }));
 
-  const batchSize = 500;
-  let upserted = 0;
-  for (let i = 0; i < toInsert.length; i += batchSize) {
-    const batch = toInsert.slice(i, i + batchSize);
-    const { data, error } = await sb
-      .from("prices_raw")
-      .upsert(batch, {
-        onConflict: "date,city_raw,commodity_raw,source",
-        ignoreDuplicates: true,
-      })
-      .select("id");
-    if (error) {
-      return NextResponse.json(
-        { error: error.message, upserted_so_far: upserted },
-        { status: 500 },
-      );
-    }
-    upserted += data?.length ?? 0;
+  // Chunked bulk insert via RPC, dengan parallelism limit
+  const chunks: typeof rowsForInsert[] = [];
+  for (let i = 0; i < rowsForInsert.length; i += CHUNK_SIZE) {
+    chunks.push(rowsForInsert.slice(i, i + CHUNK_SIZE));
   }
 
-  // Auto-seed cities + backfill city_id pada row yang baru di-insert.
-  // Kode_wilayah BPS reliable, jadi tidak butuh naming agent untuk Phase 1.
+  let totalInserted = 0;
+  for (let i = 0; i < chunks.length; i += CONCURRENCY) {
+    const slice = chunks.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(
+      slice.map((chunk) =>
+        sb.rpc("bulk_insert_sp2kp_prices", { p_rows: chunk }),
+      ),
+    );
+    for (const { data, error } of results) {
+      if (error) {
+        return NextResponse.json(
+          {
+            error: error.message,
+            inserted_so_far: totalInserted,
+            hint: "Pastikan migration 005_bulk_insert_fn.sql sudah dijalankan",
+          },
+          { status: 500 },
+        );
+      }
+      const payload = data as { inserted: number } | null;
+      totalInserted += payload?.inserted ?? 0;
+    }
+  }
+
+  // Auto-seed cities + backfill city_id (single RPC, non-parallel)
   let auto_seed: { seeded: number; backfilled: number } = { seeded: 0, backfilled: 0 };
   const { data: seedData, error: seedErr } = await sb.rpc("auto_seed_cities");
   if (!seedErr && seedData) {
@@ -89,16 +109,18 @@ export async function POST(req: Request): Promise<NextResponse> {
 
   const unresolved_commodities = [
     ...new Set(
-      toInsert.filter((r) => r.commodity_id === null).map((r) => r.commodity_raw),
+      rowsForInsert.filter((r) => r.commodity_id === null).map((r) => r.commodity_raw),
     ),
   ];
 
   return NextResponse.json({
-    received: toInsert.length,
-    inserted: upserted,
-    skipped_duplicates: toInsert.length - upserted,
-    cities_seeded:    auto_seed.seeded,
-    rows_backfilled:  auto_seed.backfilled,
+    received:           parsed.rows.length,
+    inserted:           totalInserted,
+    skipped_duplicates: parsed.rows.length - totalInserted,
+    cities_seeded:      auto_seed.seeded,
+    rows_backfilled:    auto_seed.backfilled,
+    chunks_processed:   chunks.length,
+    parse_warnings:     parsed.warnings,
     unresolved_commodities,
   });
 }
