@@ -19,6 +19,12 @@ const SCOPE_PREFIXES = new Set([
 
 const DATE_PATTERN = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 
+// SP2KP menyimpan harga dalam satuan RIBU (mis. cell `35` = Rp 35.000,
+// `12.813` = Rp 12.813, HET `41.5` = Rp 41.500). Konversi sekali di parser
+// sebagai single source of truth — semua downstream code (UI/RPC/chart)
+// melihat angka rupiah utuh.
+const PRICE_SCALE = 1000;
+
 // Excel serial dates can appear in headers when XLSX is exported without
 // preserving the cell format. SP2KP files often mix DD/MM/YYYY strings with
 // monthly serial columns (1st-of-month aggregates) — handle both.
@@ -128,7 +134,7 @@ export function parseSP2KP(fileBuffer: ArrayBuffer): ParseResult {
     const hetRaw = idxHet >= 0 ? r[idxHet] : null;
     const het_ha =
       hetRaw != null && hetRaw !== "" && !Number.isNaN(Number(hetRaw))
-        ? Number(hetRaw)
+        ? Number(hetRaw) * PRICE_SCALE
         : null;
 
     cityCommodityPairs.add(`${cityRaw}||${commRaw}`);
@@ -143,7 +149,7 @@ export function parseSP2KP(fileBuffer: ArrayBuffer): ParseResult {
         date: dateStr,
         city_raw: cityRaw,
         commodity_raw: commRaw,
-        price: Number(priceRaw),
+        price: Number(priceRaw) * PRICE_SCALE,
         het_ha,
         kode_wilayah: kodeWilayah,
       });

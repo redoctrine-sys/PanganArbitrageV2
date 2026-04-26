@@ -20,6 +20,9 @@ Naming queue / commodity pairing / arbitrage engine = Phase 2+.
 - Lombok include: Kab. Lombok Barat/Tengah/Timur/Utara + Kota Mataram.
 - Lombok exclude: Kab/Kota Bima, Dompu, Sumbawa, Sumbawa Barat.
 - Harga dtype: float64, TIDAK ada prefix 'Rp', TIDAK ada titik ribuan.
+- **Skala harga: SP2KP simpan dalam RIBU** — cell `35` berarti Rp 35.000, `12.813` berarti Rp 12.813,
+  HET `41.5` berarti Rp 41.500. Parser kalikan `× 1000` (`PRICE_SCALE`) sekali sebagai single
+  source of truth — semua downstream (UI/RPC/chart) sudah terima rupiah utuh.
 - HET/HA: ~9% null = normal, kolom nullable.
 - Tanggal di file: `DD/MM/YYYY` → simpan `YYYY-MM-DD`.
 
