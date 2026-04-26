@@ -94,18 +94,23 @@ ON CONFLICT (name) DO NOTHING;
 
 
 -- ═══════════════════════════════════════
--- 003 — RPC get_sp2kp_latest(): display layer
--- 1 row per (city, commodity) approved, dengan harga terbaru,
--- harga sebelumnya untuk Δ%, dan stats 30-hari.
+-- 003 — RPC get_sp2kp_latest(): SP2KP raw display layer
+-- Group: (kode_wilayah, commodity_id). province/island/entity_type
+-- di-derive dari kode_wilayah inline (no JOIN ke cities table).
+-- cities table dipakai Phase 2 untuk cross-source canonicalization.
 -- ═══════════════════════════════════════
 
-CREATE OR REPLACE FUNCTION get_sp2kp_latest(
+-- DROP dulu karena return type berubah dari schema lama (city_id uuid →
+-- kode_wilayah text). CREATE OR REPLACE tidak bisa ubah signature.
+DROP FUNCTION IF EXISTS get_sp2kp_latest(text, text);
+
+CREATE FUNCTION get_sp2kp_latest(
   p_island   text DEFAULT NULL,
   p_province text DEFAULT NULL
 )
 RETURNS TABLE(
-  city_id        uuid,
-  city_name      text,
+  kode_wilayah   text,
+  city_raw       text,
   province       text,
   island         text,
   entity_type    text,
@@ -125,45 +130,82 @@ RETURNS TABLE(
 ) AS $$
   WITH ranked AS (
     SELECT
-      pr.city_id, pr.commodity_id, pr.price, pr.het_ha, pr.date,
+      pr.kode_wilayah, pr.city_raw, pr.commodity_id,
+      pr.price, pr.het_ha, pr.date,
       ROW_NUMBER() OVER (
-        PARTITION BY pr.city_id, pr.commodity_id
+        PARTITION BY pr.kode_wilayah, pr.commodity_id
         ORDER BY pr.date DESC
       ) AS rn
     FROM prices_raw pr
     WHERE pr.source = 'sp2kp'
-      AND pr.city_id IS NOT NULL
+      AND pr.kode_wilayah IS NOT NULL
       AND pr.commodity_id IS NOT NULL
   ),
   latest AS (SELECT * FROM ranked WHERE rn = 1),
   prev   AS (SELECT * FROM ranked WHERE rn = 2),
   stats  AS (
     SELECT
-      pr.city_id, pr.commodity_id,
+      pr.kode_wilayah, pr.commodity_id,
       AVG(pr.price)   AS avg_30d,
       MAX(pr.price)   AS max_30d,
       MIN(pr.price)   AS min_30d,
       COUNT(*)        AS obs_30d
     FROM prices_raw pr
     WHERE pr.source = 'sp2kp'
-      AND pr.city_id IS NOT NULL
+      AND pr.kode_wilayah IS NOT NULL
       AND pr.commodity_id IS NOT NULL
       AND pr.date >= CURRENT_DATE - INTERVAL '30 days'
-    GROUP BY pr.city_id, pr.commodity_id
+    GROUP BY pr.kode_wilayah, pr.commodity_id
   )
   SELECT
-    c.id,  c.name, c.province, c.island, c.entity_type,
+    l.kode_wilayah,
+    l.city_raw,
+    CASE substr(l.kode_wilayah, 1, 2)
+      WHEN '31' THEN 'DKI Jakarta'
+      WHEN '32' THEN 'Jawa Barat'
+      WHEN '33' THEN 'Jawa Tengah'
+      WHEN '34' THEN 'DI Yogyakarta'
+      WHEN '35' THEN 'Jawa Timur'
+      WHEN '36' THEN 'Banten'
+      WHEN '51' THEN 'Bali'
+      WHEN '52' THEN 'Nusa Tenggara Barat'
+      ELSE NULL
+    END AS province,
+    CASE
+      WHEN l.kode_wilayah IN ('3526','3527','3528','3529') THEN 'Madura'
+      WHEN substr(l.kode_wilayah, 1, 2) = '51' THEN 'Bali'
+      WHEN substr(l.kode_wilayah, 1, 2) = '52' THEN 'Lombok'
+      ELSE 'Jawa'
+    END AS island,
+    CASE WHEN l.city_raw ILIKE 'Kota%' THEN 'kota' ELSE 'kabupaten' END AS entity_type,
     cm.id, cm.name, cm.category, cm.unit,
     l.price, p.price, l.het_ha,
     l.date, p.date,
     s.avg_30d, s.max_30d, s.min_30d, COALESCE(s.obs_30d, 0)
   FROM latest l
-  JOIN cities      c  ON c.id  = l.city_id
   JOIN commodities cm ON cm.id = l.commodity_id
-  LEFT JOIN prev   p  ON p.city_id = l.city_id AND p.commodity_id = l.commodity_id
-  LEFT JOIN stats  s  ON s.city_id = l.city_id AND s.commodity_id = l.commodity_id
-  WHERE (p_island   IS NULL OR c.island   = p_island)
-    AND (p_province IS NULL OR c.province = p_province);
+  LEFT JOIN prev   p  ON p.kode_wilayah = l.kode_wilayah AND p.commodity_id = l.commodity_id
+  LEFT JOIN stats  s  ON s.kode_wilayah = l.kode_wilayah AND s.commodity_id = l.commodity_id
+  WHERE
+    (p_island IS NULL OR
+      CASE
+        WHEN l.kode_wilayah IN ('3526','3527','3528','3529') THEN 'Madura'
+        WHEN substr(l.kode_wilayah, 1, 2) = '51' THEN 'Bali'
+        WHEN substr(l.kode_wilayah, 1, 2) = '52' THEN 'Lombok'
+        ELSE 'Jawa'
+      END = p_island)
+    AND (p_province IS NULL OR
+      CASE substr(l.kode_wilayah, 1, 2)
+        WHEN '31' THEN 'DKI Jakarta'
+        WHEN '32' THEN 'Jawa Barat'
+        WHEN '33' THEN 'Jawa Tengah'
+        WHEN '34' THEN 'DI Yogyakarta'
+        WHEN '35' THEN 'Jawa Timur'
+        WHEN '36' THEN 'Banten'
+        WHEN '51' THEN 'Bali'
+        WHEN '52' THEN 'Nusa Tenggara Barat'
+        ELSE NULL
+      END = p_province);
 $$ LANGUAGE SQL STABLE;
 
 
@@ -298,10 +340,16 @@ CREATE POLICY commodities_public_read ON commodities
   FOR SELECT
   USING (true);
 
+-- SP2KP raw display: tidak gating pada city_id (Phase 2 canonicalization).
 DROP POLICY IF EXISTS prices_raw_public_read_approved ON prices_raw;
-CREATE POLICY prices_raw_public_read_approved ON prices_raw
+DROP POLICY IF EXISTS prices_raw_public_read_sp2kp ON prices_raw;
+CREATE POLICY prices_raw_public_read_sp2kp ON prices_raw
   FOR SELECT
-  USING (city_id IS NOT NULL AND commodity_id IS NOT NULL);
+  USING (
+    source = 'sp2kp'
+    AND kode_wilayah IS NOT NULL
+    AND commodity_id IS NOT NULL
+  );
 
 
 -- ═══════════════════════════════════════════════════════════════════════════

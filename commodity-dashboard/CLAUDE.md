@@ -29,11 +29,16 @@ Naming queue / commodity pairing / arbitrage engine = Phase 2+.
 ## DB rules
 - `prices_raw`: INSERT ONLY, `ON CONFLICT DO NOTHING`.
 - UNIQUE: `(date, city_raw, commodity_raw, source)`.
-- Hanya data dengan `city_id IS NOT NULL` AND `commodity_id IS NOT NULL` yang ditampilkan di UI.
-- `commodity_id`: 17 komoditas SP2KP sudah seeded → exact match selalu berhasil.
-- `city_id`: di-resolve dari `kode_wilayah` (paling reliable) atau `name_sp2kp`. Kalau null, akan
-  di-backfill oleh `auto_seed_cities()` RPC yang dipanggil dari ingest route — Phase 1 tidak butuh
-  naming agent karena kode_wilayah BPS deterministic.
+- **SP2KP tab = RAW DISPLAY**: data ditampilkan apa adanya pakai `kode_wilayah` +
+  `city_raw` langsung. Display gate hanya `source='sp2kp'` AND `kode_wilayah IS NOT NULL`
+  AND `commodity_id IS NOT NULL` (commodity_id = exact match ke 17 seeded commodities).
+- TIDAK ADA approval gate untuk SP2KP — itu Phase 2 untuk Komparasi tab (cross-source).
+- `cities` table dipakai HANYA untuk Phase 2 cross-source canonicalization (mis. matching
+  "Kab. Bogor" SP2KP ↔ "Bogor Kabupaten" Pedagang). Tidak dipakai SP2KP display.
+- `city_id` tetap di-backfill via `auto_seed_cities()` saat ingest — pre-seeding untuk
+  Phase 2, tapi tidak blocking Phase 1.
+- province/island/entity_type SP2KP di-derive dari `kode_wilayah` inline di RPC
+  `get_sp2kp_latest()` (no JOIN ke cities table).
 
 ## Auto-seed cities (Phase 1)
 - Migration `004_auto_seed_cities.sql`: fungsi `auto_seed_cities()` — INSERT cities baru + UPDATE city_id NULL.

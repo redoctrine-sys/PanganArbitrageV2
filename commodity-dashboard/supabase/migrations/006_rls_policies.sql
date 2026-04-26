@@ -3,13 +3,15 @@
 -- Supabase project baru DEFAULT RLS ON. Tanpa policy, anon key gagal SELECT
 -- → UI tampil empty walaupun data ada di DB.
 --
--- Policy untuk Phase 1:
---   - SELECT: public (anon + authenticated) bisa baca cities, commodities,
---     prices_raw approved (city_id NOT NULL AND commodity_id NOT NULL).
---   - INSERT/UPDATE/DELETE: hanya service_role (dipakai di /api/ingest server route).
+-- Policy untuk Phase 1 (SP2KP raw display):
+--   - SELECT cities/commodities: public.
+--   - SELECT prices_raw: public, kondisi source='sp2kp' AND kode_wilayah IS
+--     NOT NULL AND commodity_id IS NOT NULL. Tidak gating pada city_id —
+--     itu dipakai Phase 2 untuk cross-source canonicalization.
+--   - INSERT/UPDATE/DELETE: hanya service_role (dipakai di /api/ingest).
 -- ═══════════════════════════════════════
 
--- Enable RLS (idempotent kalau sudah on)
+-- Enable RLS (idempotent)
 ALTER TABLE cities      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE commodities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE prices_raw  ENABLE ROW LEVEL SECURITY;
@@ -26,21 +28,18 @@ CREATE POLICY commodities_public_read ON commodities
   FOR SELECT
   USING (true);
 
--- ── prices_raw: public read approved-only ─
--- UI hanya tampilkan row dengan city_id + commodity_id resolved.
--- Policy ini juga hide raw pending data dari client anon.
+-- ── prices_raw: public read SP2KP raw ─────
+-- SP2KP source = raw display, no approval gate. Phase 2 sources akan punya
+-- policy sendiri (mis. pedagang_public_read dengan rules berbeda).
 DROP POLICY IF EXISTS prices_raw_public_read_approved ON prices_raw;
-CREATE POLICY prices_raw_public_read_approved ON prices_raw
+DROP POLICY IF EXISTS prices_raw_public_read_sp2kp ON prices_raw;
+CREATE POLICY prices_raw_public_read_sp2kp ON prices_raw
   FOR SELECT
-  USING (city_id IS NOT NULL AND commodity_id IS NOT NULL);
-
--- ── prices_raw: server-side preview/ingest needs full read for dup-check ──
--- Service role bypass RLS by default, tapi route preview pakai server client
--- (anon). Tambah policy authenticated read full untuk kasus future role.
--- Untuk Phase 1, /api/csv/preview dup-check → cukup pakai SELECT approved
--- (kalau ada row dengan kombinasi date+city+commodity sama, sudah pasti
--- approved karena ingest selalu set commodity_id).
--- → Tidak perlu tambah policy lain.
+  USING (
+    source = 'sp2kp'
+    AND kode_wilayah IS NOT NULL
+    AND commodity_id IS NOT NULL
+  );
 
 -- ── INSERT/UPDATE/DELETE: tidak ada policy → DEFAULT DENY untuk anon. ──
 -- service_role bypass RLS otomatis (dipakai di /api/ingest/sp2kp route).

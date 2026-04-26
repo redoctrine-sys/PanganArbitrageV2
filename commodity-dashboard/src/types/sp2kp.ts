@@ -30,9 +30,12 @@ export interface PreviewResponse extends ParseStats {
   unique_cities: number;
 }
 
+// Phase 1: SP2KP raw row dari RPC get_sp2kp_latest. kode_wilayah + city_raw
+// langsung dari prices_raw (no JOIN ke cities table). province/island/
+// entity_type di-derive dari kode_wilayah di server (RPC SQL).
 export interface SP2KPLatestRow {
-  city_id: string;
-  city_name: string;
+  kode_wilayah: string;
+  city_raw: string;
   province: string;
   island: Island;
   entity_type: "kota" | "kabupaten" | null;

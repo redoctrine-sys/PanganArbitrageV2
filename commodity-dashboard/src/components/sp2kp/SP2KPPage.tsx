@@ -52,7 +52,7 @@ export function SP2KPPage() {
       if (province !== "Semua" && r.province !== province) return false;
       if (!q) return true;
       return (
-        r.city_name.toLowerCase().includes(q) ||
+        r.city_raw.toLowerCase().includes(q) ||
         r.commodity_name.toLowerCase().includes(q) ||
         r.province.toLowerCase().includes(q)
       );
@@ -62,17 +62,17 @@ export function SP2KPPage() {
   const cityGroups = useMemo<CityGroup[]>(() => {
     const map = new Map<string, CityGroup>();
     for (const r of filtered) {
-      let g = map.get(r.city_id);
+      let g = map.get(r.kode_wilayah);
       if (!g) {
         g = {
-          city_id: r.city_id,
-          city_name: r.city_name,
+          kode_wilayah: r.kode_wilayah,
+          city_raw: r.city_raw,
           province: r.province,
           island: r.island,
           entity_type: r.entity_type,
           rows: [],
         };
-        map.set(r.city_id, g);
+        map.set(r.kode_wilayah, g);
       }
       g.rows.push(r);
     }
@@ -80,12 +80,12 @@ export function SP2KPPage() {
       const aAnom = a.rows.some((r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
       const bAnom = b.rows.some((r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
       if (aAnom !== bAnom) return aAnom - bAnom;
-      return a.city_name.localeCompare(b.city_name);
+      return a.city_raw.localeCompare(b.city_raw);
     });
   }, [filtered]);
 
   const stats = useMemo(() => {
-    const cities = new Set(data.map((r) => r.city_id));
+    const cities = new Set(data.map((r) => r.kode_wilayah));
     const commodities = new Set(data.map((r) => r.commodity_id));
     const latestDate = data.reduce<string | null>((m, r) => (m == null || r.date_latest > m ? r.date_latest : m), null);
     const aboveHet = data.filter((r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02).length;
@@ -152,20 +152,20 @@ export function SP2KPPage() {
         )}
         {!loading && !error && cityGroups.length === 0 && (
           <div className="empty">
-            <div className="empty-title">Belum ada data SP2KP yang approved.</div>
+            <div className="empty-title">Belum ada data SP2KP.</div>
             <div className="empty-sub">
-              Klik <b>Upload SP2KP</b> di topbar untuk ingest file Tabulasi_SP2KP, lalu pastikan
-              kota sudah di-approve di Naming Queue (Phase 2).
+              Klik <b>Upload SP2KP</b> di topbar untuk ingest file Tabulasi_SP2KP (CSV/XLSX).
+              Data akan langsung tampil setelah upload — tanpa approval.
             </div>
           </div>
         )}
         {!loading && !error && cityGroups.map((g, i) => (
           <CityRow
-            key={g.city_id}
+            key={g.kode_wilayah}
             group={g}
             index={i}
-            isOpen={openCity === g.city_id}
-            onToggle={() => setOpenCity((cur) => (cur === g.city_id ? null : g.city_id))}
+            isOpen={openCity === g.kode_wilayah}
+            onToggle={() => setOpenCity((cur) => (cur === g.kode_wilayah ? null : g.kode_wilayah))}
           />
         ))}
       </div>
@@ -204,7 +204,7 @@ function Header({
         </div>
       </div>
       <div className="flex" style={{ gap: 7, marginBottom: 9 }}>
-        <Stat label="Kab/Kota approved" value={stats.cities ? String(stats.cities) : "—"} />
+        <Stat label="Kab/Kota" value={stats.cities ? String(stats.cities) : "—"} />
         <Stat label="Komoditas" value={stats.commodities ? String(stats.commodities) : "—"} />
         <Stat label="Anomali HET" value={stats.aboveHet > 0 ? String(stats.aboveHet) : "0"} accent={stats.aboveHet > 0 ? "var(--dn)" : undefined} />
         <Stat label="Data terbaru" value={stats.latestDate ? formatDateLong(stats.latestDate) : "—"} />
