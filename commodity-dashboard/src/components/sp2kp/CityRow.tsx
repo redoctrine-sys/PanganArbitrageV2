@@ -8,8 +8,8 @@ import { calcChangePct, calcVolatility, calcTrend, formatRupiah } from "@/lib/an
 import type { SP2KPLatestRow } from "@/types/sp2kp";
 
 interface CityGroup {
-  city_id: string;
-  city_name: string;
+  kode_wilayah: string;
+  city_raw: string;
   province: string;
   island: string;
   entity_type: "kota" | "kabupaten" | null;
@@ -82,7 +82,7 @@ export function CityRow({ group, index, isOpen, onToggle }: Props) {
         </span>
         <div>
           <div className="l1-name" style={{ color: hasAnomaly ? "var(--dn)" : undefined }}>
-            {group.city_name}{hasAnomaly ? " ⚠" : ""}
+            {group.city_raw}{hasAnomaly ? " ⚠" : ""}
           </div>
           <div className={`l1-sub ${hasAnomaly ? "anom" : ""}`}>
             {group.province} · {group.island} · {rows.length} komoditas

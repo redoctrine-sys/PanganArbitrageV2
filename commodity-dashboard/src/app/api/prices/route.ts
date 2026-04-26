@@ -5,9 +5,13 @@ import { daysAgoIso } from "@/lib/utils/date";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// GET /api/prices?kode_wilayah=...&commodity_id=...&days=30
+// Phase 1 SP2KP raw: filter by kode_wilayah (BPS deterministic) + commodity_id.
+// Tidak ada gating "approved" — RLS policy sudah membatasi ke source='sp2kp'
+// AND kode_wilayah/commodity_id NOT NULL.
 export async function GET(req: Request): Promise<NextResponse> {
   const { searchParams } = new URL(req.url);
-  const city_id = searchParams.get("city_id");
+  const kode_wilayah = searchParams.get("kode_wilayah");
   const commodity_id = searchParams.get("commodity_id");
   const days = Math.max(1, Math.min(365, parseInt(searchParams.get("days") ?? "30", 10)));
 
@@ -21,15 +25,13 @@ export async function GET(req: Request): Promise<NextResponse> {
 
   let query = sb
     .from("prices_raw")
-    .select("date, price, het_ha, city_id, commodity_id")
+    .select("date, price, het_ha, kode_wilayah, commodity_id")
     .eq("source", "sp2kp")
-    .not("city_id", "is", null)
-    .not("commodity_id", "is", null)
     .gte("date", daysAgoIso(days))
     .order("date", { ascending: true })
     .limit(2000);
 
-  if (city_id) query = query.eq("city_id", city_id);
+  if (kode_wilayah) query = query.eq("kode_wilayah", kode_wilayah);
   if (commodity_id) query = query.eq("commodity_id", commodity_id);
 
   const { data, error } = await query;

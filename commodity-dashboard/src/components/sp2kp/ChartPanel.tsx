@@ -26,7 +26,7 @@ export function ChartPanel({ row }: Props) {
       setErr(null);
       try {
         const params = new URLSearchParams({
-          city_id: row.city_id,
+          kode_wilayah: row.kode_wilayah,
           commodity_id: row.commodity_id,
           days: String(range),
         });
@@ -44,7 +44,7 @@ export function ChartPanel({ row }: Props) {
     }
     load();
     return () => { cancel = true; };
-  }, [row.city_id, row.commodity_id, range]);
+  }, [row.kode_wilayah, row.commodity_id, range]);
 
   const change = calcChangePct(row.price_latest, row.price_prev);
   const volatility = calcVolatility(row.max_30d, row.min_30d, row.avg_30d);
@@ -60,7 +60,7 @@ export function ChartPanel({ row }: Props) {
         <div className="flex items-start justify-between" style={{ marginBottom: 7 }}>
           <div>
             <div className="font-serif" style={{ fontSize: 12, fontWeight: 700 }}>
-              {row.city_name} — {row.commodity_name}
+              {row.city_raw} — {row.commodity_name}
             </div>
             <div
               className="font-mono"
@@ -131,7 +131,7 @@ export function ChartPanel({ row }: Props) {
       </div>
 
       <div className="ce-stats">
-        <div className="st-title">{row.city_name} · {row.commodity_name}</div>
+        <div className="st-title">{row.city_raw} · {row.commodity_name}</div>
         <div className="st-row">
           <span className="st-k">Harga hari ini</span>
           <span className="st-v" style={{ color: "var(--sp)" }}>
