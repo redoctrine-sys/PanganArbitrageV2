@@ -1,31 +1,28 @@
 # WORKBENCH — Current Task
 *Baca file ini PERTAMA setiap kali membuka project*
 
-## Status Phase 1
+## Status Phase 1 — Ready for Vercel deploy
 - [x] Step 0: Project setup + CLAUDE.md
 - [x] Step 1: DB schema + seed migrations (`supabase/migrations/001..003`)
-- [x] Step 2: `sp2kp-parser.ts`
+- [x] Step 2: `sp2kp-parser.ts` (DD/MM/YYYY + Excel serial + scale × 1000)
 - [x] Step 3: API routes (preview + ingest + prices + latest)
 - [x] Step 4: CSVUploader + preview modal
 - [x] Step 5: SP2KP page + accordion (Level 1 + Level 2)
 - [x] Step 6: ChartPanel (Recharts + HET reference line)
 - [x] Step 7: Filter bar (search + island + province)
 - [x] Step 8: Auto-seed cities (`004_auto_seed_cities.sql`, ingest route hook)
+- [x] Step 9: Server-side ingest + chunked bulk RPC (`005_bulk_insert_fn.sql`)
+- [x] Step 10: RLS policies (`006_rls_policies.sql`)
+- [x] Step 11: Vercel deploy guide + `vercel.json`
 
 ## Task aktif
-Deploy Phase 1 ke Vercel + Supabase, verifikasi end-to-end dgn real `Tabulasi_SP2KP.XLSX`.
+User setup Supabase + Vercel, run 6 migrations, deploy. Smoke test sesuai README.
 
-## Step terakhir selesai
-Auto-seed cities dari `prices_raw.kode_wilayah` (BPS) + backfill `city_id`. Setelah upload pertama,
-133 kota tampil otomatis tanpa naming agent.
-
-## Next step
-1. Setup Supabase project, copy `.env.example` → `.env.local`, isi credential.
-2. Jalankan migrations 001 → 002 → 003 → 004 di Supabase SQL editor.
-3. Boot `npm run dev`, buka `/dashboard/sp2kp`, klik "Upload SP2KP", pilih file XLSX.
-4. Verifikasi: preview dialog tampil dengan total rows / kota baru / duplikat.
-5. Klik Ingest → response mencantumkan `cities_seeded` & `rows_backfilled`.
-6. Reload page → 133 kota × 17 komoditas tampil.
+## Next step (user)
+1. Setup Supabase project, copy URL/anon/service-role.
+2. Run migrations 001 → 006 di Supabase SQL editor.
+3. Vercel: import repo, root dir = `commodity-dashboard`, set 3 env vars, Deploy.
+4. Smoke test: upload `data sp2kp.csv`, verify 133 kota × 17 komoditas dengan rupiah utuh.
 
 ## Issues / blockers
 - Tidak ada untuk Phase 1.
