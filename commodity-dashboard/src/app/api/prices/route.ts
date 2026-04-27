@@ -13,7 +13,7 @@ export async function GET(req: Request): Promise<NextResponse> {
   const { searchParams } = new URL(req.url);
   const kode_wilayah = searchParams.get("kode_wilayah");
   const commodity_id = searchParams.get("commodity_id");
-  const days = Math.max(1, Math.min(365, parseInt(searchParams.get("days") ?? "30", 10)));
+  const days = Math.max(1, Math.min(400, parseInt(searchParams.get("days") ?? "30", 10)));
 
   let sb;
   try {
@@ -29,7 +29,7 @@ export async function GET(req: Request): Promise<NextResponse> {
     .eq("source", "sp2kp")
     .gte("date", daysAgoIso(days))
     .order("date", { ascending: true })
-    .limit(2000);
+    .limit(5000);
 
   if (kode_wilayah) query = query.eq("kode_wilayah", kode_wilayah);
   if (commodity_id) query = query.eq("commodity_id", commodity_id);

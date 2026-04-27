@@ -59,3 +59,16 @@ export interface PricePoint {
   price: number;
   het_ha: number | null;
 }
+
+export interface CandleData {
+  /** Period label, e.g. "W12 Mar" or "Mar 2026" */
+  label: string;
+  /** Period start date ISO for sorting */
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  /** Number of daily observations in this period */
+  volume: number;
+}
