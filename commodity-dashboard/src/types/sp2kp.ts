@@ -24,9 +24,25 @@ export interface ParseResult extends ParseStats {
 export interface PreviewResponse extends ParseStats {
   rows_preview: ParsedRow[];
   total_parsed: number;
-  duplicates_skipped: number;
+  // Baris yang sudah ada di prices_raw (date, city_raw, commodity_raw, source).
+  // Saat ingest: row di-UPDATE bila price/het_ha berubah, di-SKIP bila sama.
+  existing_rows: number;
   rows_will_insert: number;
   unique_cities: number;
+}
+
+// Response dari /api/ingest/sp2kp setelah RPC bulk_insert_sp2kp_prices.
+// Conditional upsert membagi hasil jadi 3 kategori (lihat 005_bulk_insert_fn.sql).
+export interface IngestResponse {
+  received: number;     // total row di-parse + lolos scope filter
+  inserted: number;     // row baru (belum ada di DB)
+  updated: number;      // row ada, price/het_ha berubah → ditulis ulang
+  unchanged: number;    // row ada, nilai sama → di-skip
+  cities_seeded: number;
+  rows_backfilled: number;
+  chunks_processed: number;
+  parse_warnings: string[];
+  unresolved_commodities: string[];
 }
 
 // Phase 1: SP2KP raw row dari RPC get_sp2kp_latest. kode_wilayah + city_raw

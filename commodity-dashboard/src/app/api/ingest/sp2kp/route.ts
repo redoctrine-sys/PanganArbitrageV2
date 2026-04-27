@@ -111,6 +111,8 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   let totalInserted = 0;
+  let totalUpdated = 0;
+  let totalUnchanged = 0;
   for (let i = 0; i < chunks.length; i += CONCURRENCY) {
     const slice = chunks.slice(i, i + CONCURRENCY);
     const results = await Promise.all(
@@ -124,6 +126,7 @@ export async function POST(req: Request): Promise<NextResponse> {
           {
             error: fmtSupabaseError(error, "RPC bulk_insert_sp2kp_prices gagal"),
             inserted_so_far: totalInserted,
+            updated_so_far:  totalUpdated,
             hint:
               "Pastikan migration 005_bulk_insert_fn.sql sudah dijalankan, " +
               "dan NEXT_PUBLIC_SUPABASE_URL di Vercel benar (tanpa trailing slash).",
@@ -131,8 +134,14 @@ export async function POST(req: Request): Promise<NextResponse> {
           { status: 500 },
         );
       }
-      const payload = data as { inserted: number } | null;
-      totalInserted += payload?.inserted ?? 0;
+      const payload = data as {
+        inserted: number;
+        updated: number;
+        unchanged: number;
+      } | null;
+      totalInserted  += payload?.inserted  ?? 0;
+      totalUpdated   += payload?.updated   ?? 0;
+      totalUnchanged += payload?.unchanged ?? 0;
     }
   }
 
@@ -150,13 +159,14 @@ export async function POST(req: Request): Promise<NextResponse> {
   ];
 
   return NextResponse.json({
-    received:           parsed.rows.length,
-    inserted:           totalInserted,
-    skipped_duplicates: parsed.rows.length - totalInserted,
-    cities_seeded:      auto_seed.seeded,
-    rows_backfilled:    auto_seed.backfilled,
-    chunks_processed:   chunks.length,
-    parse_warnings:     parsed.warnings,
+    received:         parsed.rows.length,
+    inserted:         totalInserted,
+    updated:          totalUpdated,
+    unchanged:        totalUnchanged,
+    cities_seeded:    auto_seed.seeded,
+    rows_backfilled:  auto_seed.backfilled,
+    chunks_processed: chunks.length,
+    parse_warnings:   parsed.warnings,
     unresolved_commodities,
   });
 }

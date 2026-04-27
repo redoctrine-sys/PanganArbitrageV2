@@ -29,7 +29,9 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   // Tanpa Supabase: return preview offline supaya UI bisa boot di lokal tanpa env.
-  let duplicates_skipped = 0;
+  // existing_rows = baris yang sudah ada di prices_raw (akan jadi UPDATE atau
+  // SKIP saat ingest, tergantung apakah price/het_ha berubah).
+  let existing_rows = 0;
 
   try {
     const sb = getServerClient();
@@ -47,7 +49,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         const existingSet = new Set(
           existing.map((e) => `${e.date}||${e.city_raw}||${e.commodity_raw}`),
         );
-        duplicates_skipped = parsed.rows.filter((r) =>
+        existing_rows = parsed.rows.filter((r) =>
           existingSet.has(`${r.date}||${r.city_raw}||${r.commodity_raw}`),
         ).length;
       }
@@ -65,8 +67,8 @@ export async function POST(req: Request): Promise<NextResponse> {
     total_observations: parsed.total_observations,
     rows_preview: parsed.rows.slice(0, 10),
     total_parsed: parsed.rows.length,
-    duplicates_skipped,
-    rows_will_insert: Math.max(0, parsed.rows.length - duplicates_skipped),
+    existing_rows,
+    rows_will_insert: Math.max(0, parsed.rows.length - existing_rows),
     unique_cities,
     warnings: parsed.warnings,
   };

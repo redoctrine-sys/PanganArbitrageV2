@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { ParsedRow, PreviewResponse } from "@/types/sp2kp";
+import type { IngestResponse, ParsedRow, PreviewResponse } from "@/types/sp2kp";
 import { parseSP2KP } from "@/lib/csv/sp2kp-parser";
 import { formatRupiah } from "@/lib/analytics/metrics";
 import { formatDateShort } from "@/lib/utils/date";
@@ -22,6 +22,7 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<"idle" | "parsing" | "ingesting">("idle");
   const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [result, setResult] = useState<IngestResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleFile(file: File) {
@@ -57,7 +58,7 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
         dates_found: local.dates_found,
         warnings: local.warnings,
         unique_cities: new Set(local.rows.map((r: ParsedRow) => r.city_raw)).size,
-        duplicates_skipped: server?.duplicates_skipped ?? 0,
+        existing_rows:    server?.existing_rows ?? 0,
         rows_will_insert: server?.rows_will_insert ?? local.rows.length,
       };
       setPreview(merged);
@@ -87,7 +88,9 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
         setError(json?.error ?? "Gagal ingest");
         return;
       }
-      onIngestSuccess();
+      // Tampilkan ringkasan inserted/updated/unchanged dulu — user klik
+      // "Lihat data" untuk close + reload halaman.
+      setResult(json as IngestResponse);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal ingest");
     } finally {
@@ -121,7 +124,7 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
         </div>
 
         <div className="modal-bd">
-          {!preview && (
+          {!preview && !result && (
             <DropZone
               busy={busy === "parsing"}
               onPick={() => fileInputRef.current?.click()}
@@ -141,9 +144,11 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
             }}
           />
 
-          {preview && (
+          {preview && !result && (
             <PreviewBlock state={preview} dateRange={dateRange} />
           )}
+
+          {result && <ResultBlock result={result} />}
 
           {error && (
             <div
@@ -160,28 +165,36 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
         </div>
 
         <div className="modal-ft">
-          {preview && (
-            <button
-              className="btn btn-ghost"
-              onClick={() => setPreview(null)}
-              disabled={busy !== "idle"}
-            >
-              ← Pilih file lain
+          {result ? (
+            <button className="btn btn-green" onClick={onIngestSuccess}>
+              ✓ Lihat data
             </button>
-          )}
-          <button className="btn btn-ghost" onClick={onClose} disabled={busy !== "idle"}>
-            Batal
-          </button>
-          {preview && (
-            <button
-              className="btn btn-green"
-              onClick={handleIngest}
-              disabled={busy !== "idle" || preview.total_parsed === 0}
-            >
-              {busy === "ingesting"
-                ? "Mengingest..."
-                : `✓ Ingest ${preview.rows_will_insert.toLocaleString("id-ID")} rows`}
-            </button>
+          ) : (
+            <>
+              {preview && (
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setPreview(null)}
+                  disabled={busy !== "idle"}
+                >
+                  ← Pilih file lain
+                </button>
+              )}
+              <button className="btn btn-ghost" onClick={onClose} disabled={busy !== "idle"}>
+                Batal
+              </button>
+              {preview && (
+                <button
+                  className="btn btn-green"
+                  onClick={handleIngest}
+                  disabled={busy !== "idle" || preview.total_parsed === 0}
+                >
+                  {busy === "ingesting"
+                    ? "Mengingest..."
+                    : `✓ Ingest ${preview.total_parsed.toLocaleString("id-ID")} rows`}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -237,8 +250,19 @@ function PreviewBlock({ state, dateRange }: { state: PreviewState; dateRange: st
         <Stat label="Pasangan kota×komoditas" value={state.total_rows_scope.toLocaleString("id-ID")} />
         <Stat label="Tanggal" value={dateRange} />
         <Stat label="Kota unik" value={state.unique_cities.toLocaleString("id-ID")} />
-        <Stat label="Akan diinsert" value={willInsert} accent="var(--sp)" />
-        <Stat label="Duplikat di-skip" value={state.duplicates_skipped.toLocaleString("id-ID")} />
+        <Stat label="Baris baru (estimasi)" value={willInsert} accent="var(--sp)" />
+        <Stat label="Sudah ada di DB" value={state.existing_rows.toLocaleString("id-ID")} />
+      </div>
+
+      <div
+        style={{
+          background: "var(--paper3)",
+          color: "var(--ink-mid)",
+          borderRadius: 6, padding: "8px 10px", fontSize: 11, marginBottom: 10,
+        }}
+      >
+        ℹ Baris yang sudah ada akan di-<b>UPDATE</b> jika harga/HET berubah,
+        atau di-<b>SKIP</b> jika nilainya sama.
       </div>
 
 
@@ -288,6 +312,68 @@ function PreviewBlock({ state, dateRange }: { state: PreviewState; dateRange: st
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function ResultBlock({ result }: { result: IngestResponse }) {
+  return (
+    <div>
+      <div
+        style={{
+          background: "var(--sp-light)",
+          color: "var(--sp)",
+          border: "1px solid var(--sp)",
+          borderRadius: 6,
+          padding: "10px 12px",
+          fontSize: 12,
+          marginBottom: 12,
+          fontWeight: 600,
+        }}
+      >
+        ✓ Ingest selesai — {result.received.toLocaleString("id-ID")} baris diproses
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+        <Stat label="Insert (baru)"        value={result.inserted.toLocaleString("id-ID")}  accent="var(--sp)" />
+        <Stat label="Update (berubah)"     value={result.updated.toLocaleString("id-ID")}   accent="var(--warn)" />
+        <Stat label="Skip (nilai sama)"    value={result.unchanged.toLocaleString("id-ID")} />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+        <Stat label="Kota baru di-seed"     value={result.cities_seeded.toLocaleString("id-ID")} />
+        <Stat label="city_id di-backfill"   value={result.rows_backfilled.toLocaleString("id-ID")} />
+      </div>
+
+      {result.parse_warnings.length > 0 && (
+        <div
+          style={{
+            background: "var(--paper3)",
+            color: "var(--ink-mid)",
+            borderRadius: 6, padding: "8px 10px", fontSize: 11, marginBottom: 10,
+          }}
+        >
+          {result.parse_warnings.map((w, i) => <div key={i}>· {w}</div>)}
+        </div>
+      )}
+
+      {result.unresolved_commodities.length > 0 && (
+        <div
+          style={{
+            background: "var(--warn-bg)", color: "var(--warn)",
+            border: "1px solid #fde68a", borderRadius: 6,
+            padding: "8px 10px", fontSize: 11, marginBottom: 10,
+          }}
+        >
+          ⚠ {result.unresolved_commodities.length} komoditas tidak match seed:{" "}
+          <span className="font-mono">
+            {result.unresolved_commodities.slice(0, 5).join(", ")}
+            {result.unresolved_commodities.length > 5
+              ? `, +${result.unresolved_commodities.length - 5}`
+              : ""}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
