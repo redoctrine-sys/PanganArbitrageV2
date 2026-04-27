@@ -128,6 +128,9 @@ RETURNS TABLE(
   min_30d        numeric,
   obs_30d        bigint
 ) AS $$
+  -- Defensive: tolak baris dengan date > CURRENT_DATE supaya kolom rangkuman
+  -- bulanan SP2KP yang resolve ke bulan masa depan (mis. Des 2026) tidak
+  -- ter-pick sebagai date_latest meskipun parser sudah filter di sisi ingest.
   WITH ranked AS (
     SELECT
       pr.kode_wilayah, pr.city_raw, pr.commodity_id,
@@ -140,6 +143,7 @@ RETURNS TABLE(
     WHERE pr.source = 'sp2kp'
       AND pr.kode_wilayah IS NOT NULL
       AND pr.commodity_id IS NOT NULL
+      AND pr.date <= CURRENT_DATE
   ),
   latest AS (SELECT * FROM ranked WHERE rn = 1),
   prev   AS (SELECT * FROM ranked WHERE rn = 2),
@@ -154,6 +158,7 @@ RETURNS TABLE(
     WHERE pr.source = 'sp2kp'
       AND pr.kode_wilayah IS NOT NULL
       AND pr.commodity_id IS NOT NULL
+      AND pr.date <= CURRENT_DATE
       AND pr.date >= CURRENT_DATE - INTERVAL '30 days'
     GROUP BY pr.kode_wilayah, pr.commodity_id
   )

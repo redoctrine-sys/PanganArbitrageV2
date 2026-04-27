@@ -1,16 +1,16 @@
 -- ═══════════════════════════════════════
--- 003 — RPC get_sp2kp_latest()
--- Phase 1: SP2KP raw display — data ditampilkan apa adanya, tanpa gating
--- "approved" via cities table. Group key = (kode_wilayah, commodity_id).
--- province/island/entity_type di-derive dari kode_wilayah + city_raw inline.
+-- 007 — Filter future dates di get_sp2kp_latest()
 --
--- cities table TIDAK di-JOIN di sini — itu untuk Phase 2 cross-source
--- canonicalization (Komparasi tab). auto_seed_cities() tetap dipanggil saat
--- ingest untuk pre-seed Phase 2, tapi tidak blocking display Phase 1.
+-- File SP2KP berisi kolom rangkuman bulanan (serial number) yang resolve
+-- ke bulan-bulan masa depan (Mei–Des 2026). Parser TS sudah filter di
+-- ingest, tapi data lama yang sudah terlanjur masuk membuat dashboard
+-- "Data terbaru" tampil "3 Des 2026" karena RPC pick MAX(date).
+--
+-- Migrasi ini menambah filter `pr.date <= CURRENT_DATE` di RPC sebagai
+-- defensive layer — dashboard tampil tanggal aktual meskipun data kotor
+-- masih ada di prices_raw. Re-runnable (DROP IF EXISTS).
 -- ═══════════════════════════════════════
 
--- DROP dulu karena return type berubah (city_id uuid → kode_wilayah text,
--- city_name → city_raw). CREATE OR REPLACE tidak boleh ubah signature.
 DROP FUNCTION IF EXISTS get_sp2kp_latest(text, text);
 
 CREATE FUNCTION get_sp2kp_latest(
@@ -37,9 +37,6 @@ RETURNS TABLE(
   min_30d        numeric,
   obs_30d        bigint
 ) AS $$
-  -- Defensive: tolak baris dengan date > CURRENT_DATE supaya kolom rangkuman
-  -- bulanan SP2KP yang resolve ke bulan masa depan (mis. Des 2026) tidak
-  -- ter-pick sebagai date_latest meskipun parser sudah filter di sisi ingest.
   WITH ranked AS (
     SELECT
       pr.kode_wilayah, pr.city_raw, pr.commodity_id,
@@ -74,7 +71,6 @@ RETURNS TABLE(
   SELECT
     l.kode_wilayah,
     l.city_raw,
-    -- Province dari prefix 2-digit kode_wilayah (BPS standard)
     CASE substr(l.kode_wilayah, 1, 2)
       WHEN '31' THEN 'DKI Jakarta'
       WHEN '32' THEN 'Jawa Barat'
@@ -86,15 +82,12 @@ RETURNS TABLE(
       WHEN '52' THEN 'Nusa Tenggara Barat'
       ELSE NULL
     END AS province,
-    -- Island: Madura override (3526-3529 = Madura island, prov tetap Jatim);
-    -- 51 → Bali; 52 → Lombok; selain itu prefix 31-36 → Jawa
     CASE
       WHEN l.kode_wilayah IN ('3526','3527','3528','3529') THEN 'Madura'
       WHEN substr(l.kode_wilayah, 1, 2) = '51' THEN 'Bali'
       WHEN substr(l.kode_wilayah, 1, 2) = '52' THEN 'Lombok'
       ELSE 'Jawa'
     END AS island,
-    -- entity_type: prefix nama "Kota" → kota, selain itu kabupaten
     CASE WHEN l.city_raw ILIKE 'Kota%' THEN 'kota' ELSE 'kabupaten' END AS entity_type,
     cm.id, cm.name, cm.category, cm.unit,
     l.price, p.price, l.het_ha,
