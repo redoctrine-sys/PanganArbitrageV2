@@ -59,7 +59,6 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
         unique_cities: new Set(local.rows.map((r: ParsedRow) => r.city_raw)).size,
         duplicates_skipped: server?.duplicates_skipped ?? 0,
         rows_will_insert: server?.rows_will_insert ?? local.rows.length,
-        new_cities: [],
       };
       setPreview(merged);
     } catch (err) {
