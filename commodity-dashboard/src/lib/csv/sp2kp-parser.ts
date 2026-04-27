@@ -171,16 +171,34 @@ export function parseSP2KP(fileBuffer: ArrayBuffer): ParseResult {
 
   // Build date columns: terima DD/MM/YYYY string atau Excel serial (number/numeric-string).
   // Pertahankan column order utk monotonicity check (deteksi format campuran).
+  //
+  // File SP2KP menyertakan kolom rangkuman BULANAN (serial number = tanggal 1-4 tiap bulan)
+  // sekaligus kolom HARIAN (text DD/MM/YYYY). Kolom bulanan untuk bulan-bulan MASA DEPAN
+  // (mis. Des 2026) menyebabkan get_sp2kp_latest() memilih tanggal future sebagai date_latest.
+  // Tolak semua kolom dengan tanggal > hari ini sebagai single source of truth.
+  const todayIso = new Date().toISOString().slice(0, 10); // YYYY-MM-DD UTC
+  let skippedFutureDateCols = 0;
+
   const dateColumnsInFileOrder: { idx: number; dateStr: string; raw: string }[] = [];
   for (let i = 0; i < headerRaw.length; i++) {
     const iso = headerToIsoDate(headerRaw[i]);
     if (iso) {
+      if (iso > todayIso) {
+        skippedFutureDateCols++;
+        continue;
+      }
       dateColumnsInFileOrder.push({
         idx: i,
         dateStr: iso,
         raw: typeof headerRaw[i] === "string" ? (headerRaw[i] as string).trim() : String(headerRaw[i]),
       });
     }
+  }
+
+  if (skippedFutureDateCols > 0) {
+    warnings.push(
+      `${skippedFutureDateCols} kolom tanggal masa depan dilewati (kolom rangkuman bulanan SP2KP untuk bulan yang belum terjadi).`,
+    );
   }
 
   // Monotonicity check: header tanggal SP2KP selalu naik kronologis di file order.
