@@ -78,9 +78,29 @@ export function parseSP2KP(fileBuffer: ArrayBuffer): ParseResult {
   });
   if (raw.length < 2) throw new Error("File kosong atau tidak valid");
 
-  const headerRaw = raw[0] as unknown[];
+  // ── Extract raw header text directly from worksheet cells ──
+  // XLSX auto-detects date-like strings in CSV and converts them to serial
+  // numbers using US locale (M/D/Y). This causes "3/12/2026" (March 12 in
+  // DD/MM/YYYY) to be misread as December 3. We bypass this by reading the
+  // cell's formatted text (cell.w) which preserves the original CSV string.
+  const wsRange = XLSX.utils.decode_range(ws["!ref"] || "A1");
+  const headerRaw: unknown[] = [];
+  for (let col = wsRange.s.c; col <= wsRange.e.c; col++) {
+    const addr = XLSX.utils.encode_cell({ r: wsRange.s.r, c: col });
+    const cell = ws[addr] as { t?: string; v?: unknown; w?: string } | undefined;
+    if (cell) {
+      // For date cells auto-detected by XLSX: cell.t='n', cell.v=serial,
+      // cell.w=original text (e.g. "3/12/2026"). Prefer cell.w to get the
+      // original DD/MM/YYYY string. For true XLSX files where dates are
+      // natively serial numbers, cell.w will contain the Excel-formatted
+      // display string which we also parse correctly.
+      headerRaw.push(cell.w ?? cell.v ?? null);
+    } else {
+      headerRaw.push(null);
+    }
+  }
+
   // Strip whitespace dari header text — kolom 'Komoditas ' & 'HET/HA ' punya trailing space.
-  // Numeric (Excel serial) headers dipertahankan sebagai number untuk konversi tanggal.
   const headerStr = headerRaw.map((h) =>
     typeof h === "string" ? h.trim() : typeof h === "number" ? String(h) : "",
   );
