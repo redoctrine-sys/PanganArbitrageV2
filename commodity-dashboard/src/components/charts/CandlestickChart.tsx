@@ -55,7 +55,7 @@ function CandleShape(props: unknown) {
   const bodyHeight = Math.max(Math.abs(yOpen - yClose), 1);
 
   const centerX = x + width / 2;
-  const bodyWidth = Math.max(width * 0.6, 4);
+  const bodyWidth = Math.max(width * 0.7, 6);
   const bodyX = centerX - bodyWidth / 2;
 
   const color = isBull ? BULL : BEAR;
@@ -151,8 +151,8 @@ export function CandlestickChart({ candles, het, height = 200 }: Props) {
     if (het < yMin) yMin = het;
     if (het > yMax) yMax = het;
   }
-  const pad = (yMax - yMin) * 0.08;
-  yMin = Math.max(0, yMin - pad);
+  const pad = (yMax - yMin) * 0.12;
+  yMin = yMin - pad;
   yMax = yMax + pad;
 
   return (
