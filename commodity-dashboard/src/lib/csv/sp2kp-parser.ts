@@ -63,6 +63,72 @@ export function islandFromKode(kode: string): Island {
   return "Jawa";
 }
 
+/**
+ * Detect whether the buffer is a binary spreadsheet (XLSX/XLS) or a text-based
+ * format (CSV/TSV). XLSX starts with PK (ZIP), XLS starts with 0xD0CF (OLE).
+ */
+function isBinarySpreadsheet(buf: ArrayBuffer): boolean {
+  const b = new Uint8Array(buf);
+  if (b.length < 4) return false;
+  // XLSX = ZIP archive (PK\x03\x04)
+  if (b[0] === 0x50 && b[1] === 0x4b) return true;
+  // XLS = OLE2 compound file (0xD0CF11E0)
+  if (b[0] === 0xd0 && b[1] === 0xcf) return true;
+  return false;
+}
+
+/**
+ * For CSV files: read the first line as raw text and split by separator.
+ * This bypasses XLSX's date auto-detection which uses US locale (M/D/Y) and
+ * would mangle DD/MM/YYYY dates like "3/12/2026" (March 12) into Dec 3.
+ *
+ * For XLSX/XLS files: read header values from worksheet cells directly.
+ * Serial numbers in XLSX are correct (set by Excel itself).
+ */
+function extractRawHeaders(
+  fileBuffer: ArrayBuffer,
+  ws: XLSX.WorkSheet,
+): unknown[] {
+  if (!isBinarySpreadsheet(fileBuffer)) {
+    // ── CSV/TSV: read raw text ──
+    const bytes = new Uint8Array(fileBuffer);
+    let text: string;
+    // Detect BOM for encoding
+    if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+      // UTF-16 LE
+      text = new TextDecoder("utf-16le").decode(fileBuffer);
+    } else if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+      // UTF-8 BOM
+      text = new TextDecoder("utf-8").decode(fileBuffer);
+    } else {
+      text = new TextDecoder("utf-8").decode(fileBuffer);
+    }
+    // Take only the first line (header row)
+    const firstLine = text.split(/\r?\n/)[0] ?? "";
+    // Auto-detect separator: tab > semicolon > comma
+    const sep = firstLine.includes("\t")
+      ? "\t"
+      : firstLine.includes(";")
+        ? ";"
+        : ",";
+    return firstLine.split(sep).map((h) => {
+      // Strip optional CSV quoting
+      const clean = h.trim().replace(/^"|"$/g, "");
+      return clean;
+    });
+  }
+
+  // ── XLSX/XLS: read from worksheet cells ──
+  const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+  const headers: unknown[] = [];
+  for (let col = range.s.c; col <= range.e.c; col++) {
+    const addr = XLSX.utils.encode_cell({ r: range.s.r, c: col });
+    const cell = ws[addr] as { v?: unknown } | undefined;
+    headers.push(cell?.v ?? null);
+  }
+  return headers;
+}
+
 export function parseSP2KP(fileBuffer: ArrayBuffer): ParseResult {
   const warnings: string[] = [];
 
@@ -78,27 +144,14 @@ export function parseSP2KP(fileBuffer: ArrayBuffer): ParseResult {
   });
   if (raw.length < 2) throw new Error("File kosong atau tidak valid");
 
-  // ── Extract raw header text directly from worksheet cells ──
-  // XLSX auto-detects date-like strings in CSV and converts them to serial
-  // numbers using US locale (M/D/Y). This causes "3/12/2026" (March 12 in
-  // DD/MM/YYYY) to be misread as December 3. We bypass this by reading the
-  // cell's formatted text (cell.w) which preserves the original CSV string.
-  const wsRange = XLSX.utils.decode_range(ws["!ref"] || "A1");
-  const headerRaw: unknown[] = [];
-  for (let col = wsRange.s.c; col <= wsRange.e.c; col++) {
-    const addr = XLSX.utils.encode_cell({ r: wsRange.s.r, c: col });
-    const cell = ws[addr] as { t?: string; v?: unknown; w?: string } | undefined;
-    if (cell) {
-      // For date cells auto-detected by XLSX: cell.t='n', cell.v=serial,
-      // cell.w=original text (e.g. "3/12/2026"). Prefer cell.w to get the
-      // original DD/MM/YYYY string. For true XLSX files where dates are
-      // natively serial numbers, cell.w will contain the Excel-formatted
-      // display string which we also parse correctly.
-      headerRaw.push(cell.w ?? cell.v ?? null);
-    } else {
-      headerRaw.push(null);
-    }
-  }
+  // ── Extract raw header values ──
+  // For CSV files, XLSX auto-detects date-like strings (e.g. "3/12/2026") and
+  // converts them to serial numbers using US locale (M/D/Y). This causes
+  // "3/12/2026" (March 12 in DD/MM/YYYY Indonesian format) to be misread as
+  // December 3. We bypass this by reading the CSV header line as raw text.
+  // For XLSX/XLS files, date cells have correct serial numbers, so we read
+  // from the worksheet cells directly.
+  const headerRaw = extractRawHeaders(fileBuffer, ws);
 
   // Strip whitespace dari header text — kolom 'Komoditas ' & 'HET/HA ' punya trailing space.
   const headerStr = headerRaw.map((h) =>
