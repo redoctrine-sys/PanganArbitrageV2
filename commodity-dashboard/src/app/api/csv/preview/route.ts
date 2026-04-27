@@ -30,7 +30,6 @@ export async function POST(req: Request): Promise<NextResponse> {
 
   // Tanpa Supabase: return preview offline supaya UI bisa boot di lokal tanpa env.
   let duplicates_skipped = 0;
-  let new_cities: string[] = [];
 
   try {
     const sb = getServerClient();
@@ -53,15 +52,6 @@ export async function POST(req: Request): Promise<NextResponse> {
         ).length;
       }
     }
-
-    const { data: knownCities, error: cErr } = await sb
-      .from("cities")
-      .select("name_sp2kp");
-    if (!cErr) {
-      const known = new Set((knownCities ?? []).map((c) => c.name_sp2kp).filter(Boolean));
-      const unique = [...new Set(parsed.rows.map((r) => r.city_raw))];
-      new_cities = unique.filter((c) => !known.has(c));
-    }
   } catch {
     // Supabase belum di-set — fallback: hitung diff dengan DB tidak dilakukan.
   }
@@ -77,7 +67,6 @@ export async function POST(req: Request): Promise<NextResponse> {
     total_parsed: parsed.rows.length,
     duplicates_skipped,
     rows_will_insert: Math.max(0, parsed.rows.length - duplicates_skipped),
-    new_cities,
     unique_cities,
     warnings: parsed.warnings,
   };

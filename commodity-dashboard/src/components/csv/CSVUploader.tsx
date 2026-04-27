@@ -59,7 +59,7 @@ export function CSVUploader({ onClose, onIngestSuccess }: Props) {
         unique_cities: new Set(local.rows.map((r: ParsedRow) => r.city_raw)).size,
         duplicates_skipped: server?.duplicates_skipped ?? 0,
         rows_will_insert: server?.rows_will_insert ?? local.rows.length,
-        new_cities: server?.new_cities ?? [],
+        new_cities: [],
       };
       setPreview(merged);
     } catch (err) {
@@ -242,21 +242,7 @@ function PreviewBlock({ state, dateRange }: { state: PreviewState; dateRange: st
         <Stat label="Duplikat di-skip" value={state.duplicates_skipped.toLocaleString("id-ID")} />
       </div>
 
-      {state.new_cities.length > 0 && (
-        <div
-          style={{
-            background: "var(--warn-bg)", color: "var(--warn)",
-            border: "1px solid #fde68a", borderRadius: 6,
-            padding: "8px 10px", fontSize: 11, marginBottom: 10,
-          }}
-        >
-          ⚠ <b>{state.new_cities.length} kota baru</b> akan masuk antrian naming review (Phase 2):{" "}
-          <span className="font-mono">
-            {state.new_cities.slice(0, 5).join(", ")}
-            {state.new_cities.length > 5 ? `, +${state.new_cities.length - 5}` : ""}
-          </span>
-        </div>
-      )}
+
 
       {state.warnings.length > 0 && (
         <div

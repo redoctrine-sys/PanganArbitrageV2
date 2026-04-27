@@ -26,7 +26,6 @@ export interface PreviewResponse extends ParseStats {
   total_parsed: number;
   duplicates_skipped: number;
   rows_will_insert: number;
-  new_cities: string[];
   unique_cities: number;
 }
 
