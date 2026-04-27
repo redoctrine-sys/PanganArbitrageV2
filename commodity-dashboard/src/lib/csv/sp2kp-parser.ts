@@ -17,7 +17,8 @@ const SCOPE_PREFIXES = new Set([
   "31", "32", "33", "34", "35", "36", "51", "52",
 ]);
 
-const DATE_PATTERN = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+// Accept both D/M/YYYY and DD/MM/YYYY (with or without leading zeros)
+const DATE_PATTERN = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
 
 // SP2KP menyimpan harga dalam satuan RIBU (mis. cell `35` = Rp 35.000,
 // `12.813` = Rp 12.813, HET `41.5` = Rp 41.500). Konversi sekali di parser
@@ -43,7 +44,12 @@ function headerToIsoDate(header: unknown): string | null {
   if (typeof header !== "string") return null;
   const trimmed = header.trim();
   const m = DATE_PATTERN.exec(trimmed);
-  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  if (m) {
+    // Pad day & month to 2 digits for consistent YYYY-MM-DD output
+    const day   = m[1].padStart(2, "0");
+    const month = m[2].padStart(2, "0");
+    return `${m[3]}-${month}-${day}`;
+  }
   // Some exports keep serials as numeric strings.
   if (/^\d{4,6}$/.test(trimmed)) return excelSerialToIso(Number(trimmed));
   return null;
