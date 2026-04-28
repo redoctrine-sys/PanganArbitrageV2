@@ -75,17 +75,50 @@ export function CitySubRow({ row, index, isOpen, onToggle }: Props) {
   );
 }
 
-export function CitySubColHeader() {
+export type CitySubSortKey = "kota" | "harga" | "ubah" | "vol" | "vsAvg";
+export type SortDir = "asc" | "desc";
+
+export interface CitySubSort {
+  key: CitySubSortKey | null;
+  dir: SortDir;
+}
+
+interface ColHeaderProps {
+  sort: CitySubSort;
+  onSort: (key: CitySubSortKey) => void;
+}
+
+export function CitySubColHeader({ sort, onSort }: ColHeaderProps) {
   return (
     <div className="l2-colhd" style={{ gridTemplateColumns: COLS }}>
       <span></span>
-      <span>Kota</span>
-      <span>Harga</span>
-      <span>Ubah</span>
-      <span>Vol</span>
-      <span>vs Avg</span>
+      <SortHeader label="Kota"   k="kota"  sort={sort} onSort={onSort} />
+      <SortHeader label="Harga"  k="harga" sort={sort} onSort={onSort} />
+      <SortHeader label="Ubah"   k="ubah"  sort={sort} onSort={onSort} />
+      <SortHeader label="Vol"    k="vol"   sort={sort} onSort={onSort} />
+      <SortHeader label="vs Avg" k="vsAvg" sort={sort} onSort={onSort} />
       <span></span>
     </div>
+  );
+}
+
+function SortHeader({
+  label, k, sort, onSort,
+}: {
+  label: string;
+  k: CitySubSortKey;
+  sort: CitySubSort;
+  onSort: (key: CitySubSortKey) => void;
+}) {
+  const active = sort.key === k;
+  const arrow = !active ? "↕" : sort.dir === "desc" ? "↓" : "↑";
+  return (
+    <span
+      className={`sh ${active ? "active" : ""}`}
+      onClick={() => onSort(k)}
+    >
+      {label} <span style={{ fontSize: 9 }}>{arrow}</span>
+    </span>
   );
 }
 

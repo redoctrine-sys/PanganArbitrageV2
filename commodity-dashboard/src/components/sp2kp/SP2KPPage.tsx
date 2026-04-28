@@ -5,7 +5,10 @@ import { CityColHeader, CityRow, type CityGroup } from "@/components/sp2kp/CityR
 import {
   CommodityGroupColHeader,
   CommodityGroupRow,
+  sortCommodityGroups,
   type CommodityGroup,
+  type CommodityGroupSort,
+  type CommodityGroupSortKey,
 } from "@/components/sp2kp/CommodityGroupRow";
 import type { Island, SP2KPLatestRow } from "@/types/sp2kp";
 import { formatDateLong } from "@/lib/utils/date";
@@ -24,6 +27,15 @@ export function SP2KPPage() {
   const [search, setSearch] = useState("");
   const [openCity, setOpenCity] = useState<string | null>(null);
   const [openCommodity, setOpenCommodity] = useState<string | null>(null);
+  const [commoditySort, setCommoditySort] = useState<CommodityGroupSort>({ key: null, dir: "desc" });
+
+  const onCommoditySort = (key: CommodityGroupSortKey) => {
+    setCommoditySort((cur) => {
+      if (cur.key !== key) return { key, dir: "desc" };
+      if (cur.dir === "desc") return { key, dir: "asc" };
+      return { key: null, dir: "desc" };
+    });
+  };
 
   useEffect(() => {
     let cancel = false;
@@ -109,13 +121,8 @@ export function SP2KPPage() {
       }
       g.rows.push(r);
     }
-    return [...map.values()].sort((a, b) => {
-      const aAnom = a.rows.some((r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
-      const bAnom = b.rows.some((r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
-      if (aAnom !== bAnom) return aAnom - bAnom;
-      return a.commodity_name.localeCompare(b.commodity_name);
-    });
-  }, [filtered]);
+    return sortCommodityGroups([...map.values()], commoditySort);
+  }, [filtered, commoditySort]);
 
   const stats = useMemo(() => {
     const cities = new Set(data.map((r) => r.kode_wilayah));
@@ -175,7 +182,11 @@ export function SP2KPPage() {
         </div>
       </div>
 
-      {view === "city" ? <CityColHeader /> : <CommodityGroupColHeader />}
+      {view === "city" ? (
+        <CityColHeader />
+      ) : (
+        <CommodityGroupColHeader sort={commoditySort} onSort={onCommoditySort} />
+      )}
 
       <div style={{ flex: 1, overflowY: "auto" }}>
         {loading && (
