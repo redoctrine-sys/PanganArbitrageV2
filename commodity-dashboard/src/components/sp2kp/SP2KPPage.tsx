@@ -2,19 +2,28 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CityColHeader, CityRow, type CityGroup } from "@/components/sp2kp/CityRow";
+import {
+  CommodityGroupColHeader,
+  CommodityGroupRow,
+  type CommodityGroup,
+} from "@/components/sp2kp/CommodityGroupRow";
 import type { Island, SP2KPLatestRow } from "@/types/sp2kp";
 import { formatDateLong } from "@/lib/utils/date";
 
 const ISLANDS: (Island | "Semua")[] = ["Semua", "Jawa", "Madura", "Bali", "Lombok"];
 
+type View = "city" | "commodity";
+
 export function SP2KPPage() {
   const [data, setData] = useState<SP2KPLatestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<View>("city");
   const [island, setIsland] = useState<Island | "Semua">("Semua");
   const [province, setProvince] = useState<string | "Semua">("Semua");
   const [search, setSearch] = useState("");
   const [openCity, setOpenCity] = useState<string | null>(null);
+  const [openCommodity, setOpenCommodity] = useState<string | null>(null);
 
   useEffect(() => {
     let cancel = false;
@@ -84,6 +93,30 @@ export function SP2KPPage() {
     });
   }, [filtered]);
 
+  const commodityGroups = useMemo<CommodityGroup[]>(() => {
+    const map = new Map<string, CommodityGroup>();
+    for (const r of filtered) {
+      let g = map.get(r.commodity_id);
+      if (!g) {
+        g = {
+          commodity_id: r.commodity_id,
+          commodity_name: r.commodity_name,
+          category: r.category,
+          unit: r.unit,
+          rows: [],
+        };
+        map.set(r.commodity_id, g);
+      }
+      g.rows.push(r);
+    }
+    return [...map.values()].sort((a, b) => {
+      const aAnom = a.rows.some((r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
+      const bAnom = b.rows.some((r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
+      if (aAnom !== bAnom) return aAnom - bAnom;
+      return a.commodity_name.localeCompare(b.commodity_name);
+    });
+  }, [filtered]);
+
   const stats = useMemo(() => {
     const cities = new Set(data.map((r) => r.kode_wilayah));
     const commodities = new Set(data.map((r) => r.commodity_id));
@@ -94,13 +127,17 @@ export function SP2KPPage() {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <Header stats={stats} />
+      <Header stats={stats} view={view} onViewChange={setView} />
 
       <div className="fbar">
         <div className="fsearch">
           <span style={{ color: "var(--ink-dim)" }}>⌕</span>
           <input
-            placeholder="Cari kota / komoditas / provinsi..."
+            placeholder={
+              view === "city"
+                ? "Cari kota / komoditas / provinsi..."
+                : "Cari komoditas / kota..."
+            }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -132,11 +169,13 @@ export function SP2KPPage() {
           </select>
         </div>
         <div className="fhint">
-          Klik kota → komoditas · Klik komoditas → chart · HET di detail
+          {view === "city"
+            ? "Klik kota → komoditas · Klik komoditas → chart · HET di detail"
+            : "Klik komoditas → kota · Klik kota → chart · HET di detail"}
         </div>
       </div>
 
-      <CityColHeader />
+      {view === "city" ? <CityColHeader /> : <CommodityGroupColHeader />}
 
       <div style={{ flex: 1, overflowY: "auto" }}>
         {loading && (
@@ -150,7 +189,7 @@ export function SP2KPPage() {
             <div className="empty-sub">{error}</div>
           </div>
         )}
-        {!loading && !error && cityGroups.length === 0 && (
+        {!loading && !error && view === "city" && cityGroups.length === 0 && (
           <div className="empty">
             <div className="empty-title">Belum ada data SP2KP.</div>
             <div className="empty-sub">
@@ -159,13 +198,30 @@ export function SP2KPPage() {
             </div>
           </div>
         )}
-        {!loading && !error && cityGroups.map((g, i) => (
+        {!loading && !error && view === "commodity" && commodityGroups.length === 0 && (
+          <div className="empty">
+            <div className="empty-title">Belum ada data SP2KP.</div>
+            <div className="empty-sub">
+              Klik <b>Upload SP2KP</b> di topbar untuk ingest file Tabulasi_SP2KP (CSV/XLSX).
+            </div>
+          </div>
+        )}
+        {!loading && !error && view === "city" && cityGroups.map((g, i) => (
           <CityRow
             key={g.kode_wilayah}
             group={g}
             index={i}
             isOpen={openCity === g.kode_wilayah}
             onToggle={() => setOpenCity((cur) => (cur === g.kode_wilayah ? null : g.kode_wilayah))}
+          />
+        ))}
+        {!loading && !error && view === "commodity" && commodityGroups.map((g, i) => (
+          <CommodityGroupRow
+            key={g.commodity_id}
+            group={g}
+            index={i}
+            isOpen={openCommodity === g.commodity_id}
+            onToggle={() => setOpenCommodity((cur) => (cur === g.commodity_id ? null : g.commodity_id))}
           />
         ))}
       </div>
@@ -175,13 +231,17 @@ export function SP2KPPage() {
 
 function Header({
   stats,
+  view,
+  onViewChange,
 }: {
   stats: { cities: number; commodities: number; latestDate: string | null; aboveHet: number };
+  view: View;
+  onViewChange: (v: View) => void;
 }) {
   return (
     <div
       style={{
-        padding: "12px 18px 9px",
+        padding: "12px 18px 0",
         background: "#f0ece4",
         borderBottom: "2px solid var(--rule)",
         flexShrink: 0,
@@ -208,6 +268,26 @@ function Header({
         <Stat label="Komoditas" value={stats.commodities ? String(stats.commodities) : "—"} />
         <Stat label="Anomali HET" value={stats.aboveHet > 0 ? String(stats.aboveHet) : "0"} accent={stats.aboveHet > 0 ? "var(--dn)" : undefined} />
         <Stat label="Data terbaru" value={stats.latestDate ? formatDateLong(stats.latestDate) : "—"} />
+      </div>
+      <div style={{ display: "flex", gap: 3, paddingBottom: 9 }}>
+        <div
+          role="button"
+          tabIndex={0}
+          className={`stab ${view === "city" ? "active" : ""}`}
+          onClick={() => onViewChange("city")}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onViewChange("city"); }}
+        >
+          📍 By City
+        </div>
+        <div
+          role="button"
+          tabIndex={0}
+          className={`stab ${view === "commodity" ? "active" : ""}`}
+          onClick={() => onViewChange("commodity")}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onViewChange("commodity"); }}
+        >
+          🌾 By Commodity
+        </div>
       </div>
     </div>
   );
