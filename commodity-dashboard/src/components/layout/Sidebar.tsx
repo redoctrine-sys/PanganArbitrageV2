@@ -1,4 +1,11 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 export function Sidebar() {
+  const pathname = usePathname();
+
   return (
     <aside
       className="flex flex-col flex-shrink-0 overflow-y-auto"
@@ -10,7 +17,14 @@ export function Sidebar() {
       }}
     >
       <SectionLabel>Sumber Data</SectionLabel>
-      <Item active label="SP2KP" pip="var(--sp)" badge="Live" badgeStyle={{ background: "var(--sp-light)", color: "var(--sp)" }} />
+      <Item
+        href="/dashboard/sp2kp"
+        active={pathname === "/dashboard/sp2kp"}
+        label="SP2KP"
+        pip="var(--sp)"
+        badge="Live"
+        badgeStyle={{ background: "var(--sp-light)", color: "var(--sp)" }}
+      />
       <Item label="Pedagang" pip="var(--ped)" placeholder />
       <Sub label="Data Harga" placeholder />
       <Sub label="Vendor Transport" placeholder />
@@ -24,9 +38,14 @@ export function Sidebar() {
 
       <Divider />
       <SectionLabel>Admin</SectionLabel>
-      <Item label="Admin Hidden" pip="#6b7280" placeholder dim />
+      <Item label="Admin Hidden" pip="#6b7280" dim />
       <Sub label="Naming Queue" placeholder />
       <Sub label="Commodity Queue" placeholder />
+      <Sub
+        href="/dashboard/admin/cities"
+        active={pathname === "/dashboard/admin/cities"}
+        label="Kota"
+      />
       <Sub label="Ingest Log" placeholder />
 
       <div
@@ -63,27 +82,14 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function Item({
-  label, pip, badge, badgeStyle, active, placeholder, dim,
+  label, pip, badge, badgeStyle, active, placeholder, dim, href,
 }: {
   label: string; pip: string; badge?: string;
   badgeStyle?: React.CSSProperties; active?: boolean;
-  placeholder?: boolean; dim?: boolean;
+  placeholder?: boolean; dim?: boolean; href?: string;
 }) {
-  return (
-    <div
-      className="flex items-center gap-2 mb-px select-none"
-      style={{
-        padding: "6px 9px",
-        borderRadius: 6,
-        fontSize: 12,
-        color: active ? "var(--paper)" : "var(--ink-mid)",
-        background: active ? "var(--ink)" : "transparent",
-        fontWeight: active ? 500 : 400,
-        opacity: dim ? 0.7 : 1,
-        cursor: placeholder ? "not-allowed" : "pointer",
-      }}
-      title={placeholder ? "Tab ini akan tersedia di Phase 2+" : undefined}
-    >
+  const inner = (
+    <>
       <div style={{ width: 7, height: 7, borderRadius: "50%", background: pip, flexShrink: 0 }} />
       {label}
       {badge && (
@@ -97,22 +103,70 @@ function Item({
           {badge}
         </span>
       )}
+    </>
+  );
+
+  const style: React.CSSProperties = {
+    padding: "6px 9px",
+    borderRadius: 6,
+    fontSize: 12,
+    color: active ? "var(--paper)" : "var(--ink-mid)",
+    background: active ? "var(--ink)" : "transparent",
+    fontWeight: active ? 500 : 400,
+    opacity: dim ? 0.7 : 1,
+    cursor: placeholder ? "not-allowed" : "pointer",
+    textDecoration: "none",
+  };
+
+  if (href && !placeholder) {
+    return (
+      <Link href={href} className="flex items-center gap-2 mb-px select-none" style={style}>
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <div
+      className="flex items-center gap-2 mb-px select-none"
+      style={style}
+      title={placeholder ? "Tab ini akan tersedia di Phase 2+" : undefined}
+    >
+      {inner}
     </div>
   );
 }
 
-function Sub({ label, placeholder }: { label: string; placeholder?: boolean }) {
+function Sub({
+  label, placeholder, href, active,
+}: {
+  label: string; placeholder?: boolean; href?: string; active?: boolean;
+}) {
+  const style: React.CSSProperties = {
+    padding: "5px 9px 5px 26px",
+    borderRadius: 5,
+    fontSize: 11,
+    color: active ? "var(--ink)" : "var(--ink-dim)",
+    background: active ? "var(--paper)" : "transparent",
+    fontWeight: active ? 600 : 400,
+    cursor: placeholder ? "not-allowed" : "pointer",
+    marginBottom: 1,
+    textDecoration: "none",
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+  };
+
+  if (href && !placeholder) {
+    return (
+      <Link href={href} className="select-none" style={style}>
+        {label}
+      </Link>
+    );
+  }
   return (
     <div
       className="flex items-center gap-1.5 select-none"
-      style={{
-        padding: "5px 9px 5px 26px",
-        borderRadius: 5,
-        fontSize: 11,
-        color: "var(--ink-dim)",
-        cursor: placeholder ? "not-allowed" : "pointer",
-        marginBottom: 1,
-      }}
+      style={style}
     >
       {label}
     </div>
