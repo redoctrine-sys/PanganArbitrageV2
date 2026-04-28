@@ -16,7 +16,6 @@ interface Props {
   height?: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RcPayload = any;
 
 /* ── Colors ─────────────────────────────────────────── */
