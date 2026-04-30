@@ -98,8 +98,8 @@ export function SP2KPPage() {
       g.rows.push(r);
     }
     return [...map.values()].sort((a, b) => {
-      const aAnom = a.rows.some((r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
-      const bAnom = b.rows.some((r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
+      const aAnom = a.rows.some((r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
+      const bAnom = b.rows.some((r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
       if (aAnom !== bAnom) return aAnom - bAnom;
       return a.city_raw.localeCompare(b.city_raw);
     });
@@ -127,8 +127,8 @@ export function SP2KPPage() {
   const stats = useMemo(() => {
     const cities = new Set(data.map((r) => r.kode_wilayah));
     const commodities = new Set(data.map((r) => r.commodity_id));
-    const latestDate = data.reduce<string | null>((m, r) => (m == null || r.date_latest > m ? r.date_latest : m), null);
-    const aboveHet = data.filter((r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02).length;
+    const latestDate = data.reduce<string | null>((m, r) => (r.date_latest != null && (m == null || r.date_latest > m) ? r.date_latest : m), null);
+    const aboveHet = data.filter((r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * 1.02).length;
     return { cities: cities.size, commodities: commodities.size, latestDate, aboveHet };
   }, [data]);
 

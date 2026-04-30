@@ -39,18 +39,18 @@ export function CommodityGroupRow({ group, index, isOpen, onToggle }: Props) {
 
   // National-level trend proxy: collapse per-city stats to a 4-point series.
   const avg30Mean =
-    rows.reduce((s, r) => s + (r.avg_30d ?? r.price_latest), 0) / Math.max(1, rows.length);
+    rows.reduce((s, r) => s + (r.avg_30d ?? r.price_latest ?? 0), 0) / Math.max(1, rows.length);
   const min30Mean =
-    rows.reduce((s, r) => s + (r.min_30d ?? r.price_prev ?? r.price_latest), 0) /
+    rows.reduce((s, r) => s + (r.min_30d ?? r.price_prev ?? r.price_latest ?? 0), 0) /
     Math.max(1, rows.length);
   const prevMean =
-    rows.reduce((s, r) => s + (r.price_prev ?? r.price_latest), 0) / Math.max(1, rows.length);
+    rows.reduce((s, r) => s + (r.price_prev ?? r.price_latest ?? 0), 0) / Math.max(1, rows.length);
 
   const sparkSeries = [min30Mean, avg30Mean, prevMean, avgPriceLatest];
   const trend = calcTrend([avgPriceLatest, prevMean, avg30Mean]);
 
   const aboveHetCities = rows.filter(
-    (r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02,
+    (r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * 1.02,
   );
   const hasAnomaly = aboveHetCities.length > 0;
 
@@ -121,10 +121,10 @@ function sortCityRows(rows: SP2KPLatestRow[], sort: CitySubSort): SP2KPLatestRow
   const out = [...rows];
   if (sort.key == null) {
     return out.sort((a, b) => {
-      const aAnom = a.het_ha != null && a.price_latest > a.het_ha * 1.02 ? 0 : 1;
-      const bAnom = b.het_ha != null && b.price_latest > b.het_ha * 1.02 ? 0 : 1;
+      const aAnom = a.het_ha != null && a.price_latest != null && a.price_latest > a.het_ha * 1.02 ? 0 : 1;
+      const bAnom = b.het_ha != null && b.price_latest != null && b.price_latest > b.het_ha * 1.02 ? 0 : 1;
       if (aAnom !== bAnom) return aAnom - bAnom;
-      return b.price_latest - a.price_latest;
+      return (b.price_latest ?? 0) - (a.price_latest ?? 0);
     });
   }
 
@@ -143,7 +143,7 @@ function sortCityRows(rows: SP2KPLatestRow[], sort: CitySubSort): SP2KPLatestRow
       case "kota":
         return sign * a.city_raw.localeCompare(b.city_raw);
       case "harga":
-        return sign * (a.price_latest - b.price_latest);
+        return sign * ((a.price_latest ?? 0) - (b.price_latest ?? 0));
       case "ubah":
         return cmpNum(
           calcChangePct(a.price_latest, a.price_prev),
@@ -246,8 +246,8 @@ export function sortCommodityGroups(
   const out = [...groups];
   if (sort.key == null) {
     return out.sort((a, b) => {
-      const aAnom = a.rows.some((r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
-      const bAnom = b.rows.some((r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
+      const aAnom = a.rows.some((r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
+      const bAnom = b.rows.some((r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
       if (aAnom !== bAnom) return aAnom - bAnom;
       return a.commodity_name.localeCompare(b.commodity_name);
     });

@@ -22,7 +22,7 @@ export function CitySubRow({ row, index, isOpen, onToggle }: Props) {
   const change = calcChangePct(row.price_latest, row.price_prev);
   const volatility = calcVolatility(row.max_30d, row.min_30d, row.avg_30d);
   const vsAvg = calcVsAvg(row.price_latest, row.avg_30d);
-  const aboveHet = row.het_ha != null && row.price_latest > row.het_ha * 1.02;
+  const aboveHet = row.het_ha != null && row.price_latest != null && row.price_latest > row.het_ha * 1.02;
 
   return (
     <div className={`l2-block ${isOpen ? "open" : ""} ${aboveHet ? "anom" : ""}`}>
@@ -40,7 +40,7 @@ export function CitySubRow({ row, index, isOpen, onToggle }: Props) {
           <div className="l2-sub">
             {row.province} · {row.island}
             {aboveHet && row.het_ha
-              ? ` · Di atas HET ${formatPct(((row.price_latest - row.het_ha) / row.het_ha) * 100)}`
+              ? ` · Di atas HET ${formatPct((((row.price_latest ?? 0) - row.het_ha) / row.het_ha) * 100)}`
               : ""}
           </div>
         </div>
@@ -64,7 +64,7 @@ export function CitySubRow({ row, index, isOpen, onToggle }: Props) {
         {aboveHet && row.het_ha && (
           <div className="anom-bar danger">
             ⚠ <span>
-              <b>Di atas HET {formatPct(((row.price_latest - row.het_ha) / row.het_ha) * 100)}</b> —{" "}
+              <b>Di atas HET {formatPct((((row.price_latest ?? 0) - row.het_ha) / row.het_ha) * 100)}</b> —{" "}
               {formatRupiah(row.price_latest)} vs HET {formatRupiah(row.het_ha)}.
             </span>
           </div>

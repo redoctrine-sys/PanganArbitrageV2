@@ -52,12 +52,13 @@ export function CityRow({ group, index, isOpen, onToggle }: Props) {
         head.price_latest,
       ].filter((v): v is number => typeof v === "number")
     : [];
-  const trend = head
-    ? calcTrend([head.price_latest, head.price_prev ?? head.price_latest, head.avg_30d ?? head.price_latest])
-    : "flat";
+  const trend =
+    head && head.price_latest != null
+      ? calcTrend([head.price_latest, head.price_prev ?? head.price_latest, head.avg_30d ?? head.price_latest])
+      : "flat";
 
   const aboveHetCommodities = rows.filter(
-    (r) => r.het_ha != null && r.price_latest > r.het_ha * 1.02,
+    (r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * 1.02,
   );
   const hasAnomaly = aboveHetCommodities.length > 0;
 
@@ -65,8 +66,8 @@ export function CityRow({ group, index, isOpen, onToggle }: Props) {
 
   // Sort: anomalies first (above HET), then alphabetical.
   const sortedRows = [...rows].sort((a, b) => {
-    const aAnom = a.het_ha != null && a.price_latest > a.het_ha * 1.02 ? 0 : 1;
-    const bAnom = b.het_ha != null && b.price_latest > b.het_ha * 1.02 ? 0 : 1;
+    const aAnom = a.het_ha != null && a.price_latest != null && a.price_latest > a.het_ha * 1.02 ? 0 : 1;
+    const bAnom = b.het_ha != null && b.price_latest != null && b.price_latest > b.het_ha * 1.02 ? 0 : 1;
     if (aAnom !== bAnom) return aAnom - bAnom;
     return a.commodity_name.localeCompare(b.commodity_name);
   });

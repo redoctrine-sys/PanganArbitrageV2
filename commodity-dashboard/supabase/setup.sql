@@ -387,15 +387,148 @@ CREATE POLICY prices_raw_public_read_sp2kp ON prices_raw
   );
 
 
+-- ═══════════════════════════════════════
+-- 009 — get_sp2kp_latest: scope_cities × commodities
+-- Kota tanpa data SP2KP (mis. DKI Jakarta) tetap muncul sebagai placeholder.
+-- SECURITY DEFINER agar anon key dengan named parameter p_province berfungsi.
+-- ═══════════════════════════════════════
+
+DROP FUNCTION IF EXISTS get_sp2kp_latest(text, text);
+
+CREATE FUNCTION get_sp2kp_latest(
+  p_island   text DEFAULT NULL,
+  p_province text DEFAULT NULL
+)
+RETURNS TABLE(
+  kode_wilayah   text,
+  city_raw       text,
+  province       text,
+  island         text,
+  entity_type    text,
+  commodity_id   uuid,
+  commodity_name text,
+  category       text,
+  unit           text,
+  price_latest   numeric,
+  price_prev     numeric,
+  het_ha         numeric,
+  date_latest    date,
+  date_prev      date,
+  avg_30d        numeric,
+  max_30d        numeric,
+  min_30d        numeric,
+  obs_30d        bigint
+) AS $$
+  WITH ranked AS (
+    SELECT
+      pr.kode_wilayah, pr.commodity_id,
+      pr.price, pr.het_ha, pr.date,
+      ROW_NUMBER() OVER (
+        PARTITION BY pr.kode_wilayah, pr.commodity_id
+        ORDER BY pr.date DESC
+      ) AS rn
+    FROM prices_raw pr
+    WHERE pr.source = 'sp2kp'
+      AND pr.kode_wilayah IS NOT NULL
+      AND pr.commodity_id IS NOT NULL
+      AND pr.date <= CURRENT_DATE
+  ),
+  latest AS (SELECT * FROM ranked WHERE rn = 1),
+  prev   AS (SELECT * FROM ranked WHERE rn = 2),
+  stats  AS (
+    SELECT
+      pr.kode_wilayah, pr.commodity_id,
+      AVG(pr.price)   AS avg_30d,
+      MAX(pr.price)   AS max_30d,
+      MIN(pr.price)   AS min_30d,
+      COUNT(*)        AS obs_30d
+    FROM prices_raw pr
+    WHERE pr.source = 'sp2kp'
+      AND pr.kode_wilayah IS NOT NULL
+      AND pr.commodity_id IS NOT NULL
+      AND pr.date <= CURRENT_DATE
+      AND pr.date >= CURRENT_DATE - INTERVAL '30 days'
+    GROUP BY pr.kode_wilayah, pr.commodity_id
+  ),
+  scope_cities AS (
+    SELECT
+      c.kode_wilayah,
+      c.name AS city_raw,
+      CASE substr(c.kode_wilayah, 1, 2)
+        WHEN '31' THEN 'DKI Jakarta'
+        WHEN '32' THEN 'Jawa Barat'
+        WHEN '33' THEN 'Jawa Tengah'
+        WHEN '34' THEN 'DI Yogyakarta'
+        WHEN '35' THEN 'Jawa Timur'
+        WHEN '36' THEN 'Banten'
+        WHEN '51' THEN 'Bali'
+        WHEN '52' THEN 'Nusa Tenggara Barat'
+        ELSE NULL
+      END AS province,
+      CASE
+        WHEN c.kode_wilayah IN ('3526','3527','3528','3529') THEN 'Madura'
+        WHEN substr(c.kode_wilayah, 1, 2) = '51' THEN 'Bali'
+        WHEN substr(c.kode_wilayah, 1, 2) = '52' THEN 'Lombok'
+        ELSE 'Jawa'
+      END AS island,
+      CASE WHEN c.name ILIKE 'Kota%' THEN 'kota' ELSE 'kabupaten' END AS entity_type
+    FROM cities c
+    WHERE c.kode_wilayah IS NOT NULL
+      AND substr(c.kode_wilayah, 1, 2) IN ('31','32','33','34','35','36','51','52')
+  )
+  SELECT
+    sc.kode_wilayah,
+    sc.city_raw,
+    sc.province,
+    sc.island,
+    sc.entity_type,
+    cm.id, cm.name, cm.category, cm.unit,
+    l.price, p.price, l.het_ha,
+    l.date, p.date,
+    s.avg_30d, s.max_30d, s.min_30d, COALESCE(s.obs_30d, 0)
+  FROM scope_cities sc
+  CROSS JOIN (SELECT * FROM commodities WHERE is_sp2kp = true) cm
+  LEFT JOIN latest l ON l.kode_wilayah = sc.kode_wilayah AND l.commodity_id = cm.id
+  LEFT JOIN prev   p ON p.kode_wilayah  = sc.kode_wilayah AND p.commodity_id  = cm.id
+  LEFT JOIN stats  s ON s.kode_wilayah  = sc.kode_wilayah AND s.commodity_id  = cm.id
+  WHERE
+    (p_island IS NULL OR sc.island = p_island)
+    AND (p_province IS NULL OR sc.province = p_province);
+$$ LANGUAGE SQL STABLE SECURITY DEFINER;
+
+NOTIFY pgrst, 'reload schema';
+
+
+-- ═══════════════════════════════════════
+-- 010 — Hard-seed 6 kota administrasi DKI Jakarta
+-- Tanpa ini, Jakarta tidak muncul di grid karena CSV SP2KP biasanya
+-- tidak punya data harga Jakarta → tidak ter-seed via auto_seed_cities().
+-- ═══════════════════════════════════════
+
+INSERT INTO cities (name, name_sp2kp, kode_wilayah, province, island, entity_type)
+VALUES
+  ('Kab. Adm. Kepulauan Seribu', 'Kab. Adm. Kepulauan Seribu', '3101', 'DKI Jakarta', 'Jawa', 'kabupaten'),
+  ('Kota Adm. Jakarta Selatan',  'Kota Adm. Jakarta Selatan',  '3171', 'DKI Jakarta', 'Jawa', 'kota'),
+  ('Kota Adm. Jakarta Timur',    'Kota Adm. Jakarta Timur',    '3172', 'DKI Jakarta', 'Jawa', 'kota'),
+  ('Kota Adm. Jakarta Pusat',    'Kota Adm. Jakarta Pusat',    '3173', 'DKI Jakarta', 'Jawa', 'kota'),
+  ('Kota Adm. Jakarta Barat',    'Kota Adm. Jakarta Barat',    '3174', 'DKI Jakarta', 'Jawa', 'kota'),
+  ('Kota Adm. Jakarta Utara',    'Kota Adm. Jakarta Utara',    '3175', 'DKI Jakarta', 'Jawa', 'kota')
+ON CONFLICT (kode_wilayah) DO NOTHING;
+
+SELECT auto_seed_cities();
+
+NOTIFY pgrst, 'reload schema';
+
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- ✓ Setup selesai. Verifikasi cepat:
 --
 --   SELECT count(*) FROM commodities WHERE is_sp2kp = true;       -- harus 17
---   SELECT count(*) FROM cities;                                    -- 0 sampai upload pertama
+--   SELECT count(*) FROM cities;                                    -- minimal 6 (Jakarta)
 --   SELECT count(*) FROM prices_raw;                                -- 0 sampai upload pertama
 --
 -- Test RPC tersedia:
---   SELECT * FROM get_sp2kp_latest() LIMIT 1;                       -- empty result OK
+--   SELECT * FROM get_sp2kp_latest(NULL, 'DKI Jakarta');            -- 6×17=102 rows (null prices OK)
 --   SELECT auto_seed_cities();                                       -- {"seeded": 0, "backfilled": 0}
 --   SELECT bulk_insert_sp2kp_prices('[]'::jsonb);                    -- {"inserted": 0}
 -- ═══════════════════════════════════════════════════════════════════════════

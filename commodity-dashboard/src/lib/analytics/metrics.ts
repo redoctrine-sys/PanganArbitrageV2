@@ -1,5 +1,5 @@
-export function calcChangePct(latest: number, prev: number | null | undefined): number | null {
-  if (prev == null || prev === 0) return null;
+export function calcChangePct(latest: number | null, prev: number | null | undefined): number | null {
+  if (latest == null || prev == null || prev === 0) return null;
   return ((latest - prev) / prev) * 100;
 }
 
@@ -12,8 +12,8 @@ export function calcVolatility(
   return ((max - min) / avg) * 100;
 }
 
-export function calcVsAvg(price: number, avg: number | null | undefined): number | null {
-  if (avg == null || avg === 0) return null;
+export function calcVsAvg(price: number | null, avg: number | null | undefined): number | null {
+  if (price == null || avg == null || avg === 0) return null;
   return ((price - avg) / avg) * 100;
 }
 

@@ -142,7 +142,9 @@ export function ChartPanel({ row }: Props) {
   const vsAvg = calcVsAvg(row.price_latest, row.avg_30d);
 
   const hetDelta =
-    row.het_ha != null ? ((row.price_latest - row.het_ha) / row.het_ha) * 100 : null;
+    row.het_ha != null && row.price_latest != null
+      ? ((row.price_latest - row.het_ha) / row.het_ha) * 100
+      : null;
   const aboveHet = hetDelta != null && hetDelta > 0;
 
   return (

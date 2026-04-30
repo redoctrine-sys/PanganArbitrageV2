@@ -29,7 +29,7 @@ export function AdminCitiesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/cities");
+      const res = await fetch(`/api/cities?t=${Date.now()}`, { cache: "no-store" });
       const json = await res.json();
       if (json.error) setError(json.error);
       setData((json.data ?? []) as City[]);
@@ -70,21 +70,18 @@ export function AdminCitiesPage() {
 
   async function saveCity(patch: Partial<City>) {
     if (!editing) return;
-    try {
-      const res = await fetch(`/api/cities/${editing.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Gagal menyimpan");
-      // Patch in-place so the table refreshes without a full re-fetch.
-      setData((cur) => cur.map((c) => (c.id === editing.id ? { ...c, ...json.data } : c)));
-      setEditing(null);
-      setToast({ kind: "ok", msg: `${json.data.name} tersimpan` });
-    } catch (e) {
-      setToast({ kind: "err", msg: e instanceof Error ? e.message : "Gagal menyimpan" });
-    }
+    const res = await fetch(`/api/cities/${editing.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error ?? "Gagal menyimpan");
+    // Immediately reflect server-confirmed values so the table updates before reload completes.
+    setData((prev) => prev.map((c) => (c.id === editing.id ? { ...c, ...json.data } : c)));
+    setEditing(null);
+    setToast({ kind: "ok", msg: `${json.data.name} tersimpan · lat ${json.data.lat ?? "—"} lng ${json.data.lng ?? "—"}` });
+    reload();
   }
 
   return (
@@ -274,13 +271,15 @@ function EditModal({
     setBusy(true);
     try {
       await onSave({ name: trimmedName, lat, lng });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Gagal menyimpan");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={busy ? undefined : onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
         <div className="modal-hd">
           <div>

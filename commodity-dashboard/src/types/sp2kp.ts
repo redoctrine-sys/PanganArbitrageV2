@@ -58,10 +58,13 @@ export interface SP2KPLatestRow {
   commodity_name: string;
   category: "bumbu" | "pokok" | "protein" | null;
   unit: string;
-  price_latest: number;
+  // price_latest / date_latest nullable: kota dalam scope (prefix 31-36/51/52)
+  // yang belum punya data SP2KP — mis. 6 kota DKI Jakarta — tetap muncul di
+  // grid sebagai placeholder. Lihat migration 009.
+  price_latest: number | null;
   price_prev: number | null;
   het_ha: number | null;
-  date_latest: string;
+  date_latest: string | null;
   date_prev: string | null;
   avg_30d: number | null;
   max_30d: number | null;

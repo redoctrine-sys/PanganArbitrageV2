@@ -24,5 +24,11 @@ export async function GET(): Promise<NextResponse> {
   if (error) {
     return NextResponse.json({ error: error.message, data: [] }, { status: 500 });
   }
-  return NextResponse.json({ data: data ?? [] });
+  return NextResponse.json({ data: data ?? [] }, {
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      "Pragma": "no-cache",
+      "Surrogate-Control": "no-store",
+    },
+  });
 }
