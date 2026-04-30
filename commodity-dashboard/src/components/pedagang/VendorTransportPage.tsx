@@ -208,7 +208,7 @@ export function VendorTransportPage() {
         {!loading && !error && filtered.length === 0 && (
           <div className="empty">
             <div className="empty-title">Belum ada vendor.</div>
-            <div className="empty-sub">Klik "+ Tambah Vendor" untuk menambahkan vendor transportasi.</div>
+            <div className="empty-sub">Klik &ldquo;+ Tambah Vendor&rdquo; untuk menambahkan vendor transportasi.</div>
           </div>
         )}
         {!loading && !error && filtered.length > 0 && (
