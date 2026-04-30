@@ -41,9 +41,18 @@ export function Sidebar() {
       <Divider />
       <SectionLabel>Analitik</SectionLabel>
       <Item label="Komparasi" pip="var(--comp)" placeholder />
-      <Item label="Arbitrase" pip="var(--arb)" placeholder />
+      <Item
+        href="/dashboard/arbitrase"
+        active={pathname.startsWith("/dashboard/arbitrase")}
+        label="Arbitrase"
+        pip="var(--arb)"
+      />
       <Sub label="AI Suggestion" placeholder />
-      <Sub label="Manual Kalkulator" placeholder />
+      <Sub
+        href="/dashboard/arbitrase"
+        active={pathname === "/dashboard/arbitrase"}
+        label="Manual Kalkulator"
+      />
 
       <Divider />
       <SectionLabel>Admin</SectionLabel>
