@@ -25,9 +25,18 @@ export function Sidebar() {
         badge="Live"
         badgeStyle={{ background: "var(--sp-light)", color: "var(--sp)" }}
       />
-      <Item label="Pedagang" pip="var(--ped)" placeholder />
+      <Item
+        href="/dashboard/pedagang"
+        active={pathname.startsWith("/dashboard/pedagang")}
+        label="Pedagang"
+        pip="var(--ped)"
+      />
       <Sub label="Data Harga" placeholder />
-      <Sub label="Vendor Transport" placeholder />
+      <Sub
+        href="/dashboard/pedagang"
+        active={pathname === "/dashboard/pedagang"}
+        label="Vendor Transport"
+      />
 
       <Divider />
       <SectionLabel>Analitik</SectionLabel>
@@ -60,9 +69,11 @@ export function Sidebar() {
           lineHeight: 1.8,
         }}
       >
-        <b style={{ color: "var(--ink-mid)" }}>Phase 1</b>
+        <b style={{ color: "var(--ink-mid)" }}>SP2KP</b> aktif
         <br />
-        Tab SP2KP only — tab lain tersedia di Phase 2+.
+        <b style={{ color: "var(--ink-mid)" }}>Transport</b> aktif
+        <br />
+        Komparasi · Arbitrase · Pedagang data → Phase 2+.
       </div>
     </aside>
   );
