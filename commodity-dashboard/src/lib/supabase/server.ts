@@ -30,7 +30,10 @@ const service = cleanKey(process.env.SUPABASE_SERVICE_ROLE_KEY);
 export function getServerClient(): SupabaseClient {
   if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL belum di-set");
   if (!anon) throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY belum di-set");
-  return createClient(url, anon, { auth: { persistSession: false } });
+  return createClient(url, anon, {
+    auth: { persistSession: false },
+    global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }) },
+  });
 }
 
 export function getServiceClient(): SupabaseClient {

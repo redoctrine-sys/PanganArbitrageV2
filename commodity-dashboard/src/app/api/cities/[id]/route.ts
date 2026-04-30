@@ -1,8 +1,28 @@
 import { NextResponse } from "next/server";
-import { getServiceClient } from "@/lib/supabase/server";
+import { getServerClient, getServiceClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export async function GET(
+  _req: Request,
+  { params }: { params: { id: string } },
+): Promise<NextResponse> {
+  const id = params.id;
+  if (!id) return NextResponse.json({ error: "id wajib" }, { status: 400 });
+  let sb;
+  try { sb = getServerClient(); } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Supabase error" }, { status: 500 });
+  }
+  const { data, error } = await sb
+    .from("cities")
+    .select("id, kode_wilayah, name, lat, lng")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "not found" }, { status: 404 });
+  return NextResponse.json({ data }, { headers: { "Cache-Control": "no-store" } });
+}
 
 interface PatchBody {
   name?: string | null;

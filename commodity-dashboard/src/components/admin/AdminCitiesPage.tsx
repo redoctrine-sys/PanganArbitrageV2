@@ -70,14 +70,24 @@ export function AdminCitiesPage() {
 
   async function saveCity(patch: Partial<City>) {
     if (!editing) return;
-    const res = await fetch(`/api/cities/${editing.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`/api/cities/${editing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Network error";
+      setToast({ kind: "err", msg });
+      throw e;
+    }
     const json = await res.json();
-    if (!res.ok) throw new Error(json.error ?? "Gagal menyimpan");
-    // Immediately reflect server-confirmed values so the table updates before reload completes.
+    if (!res.ok) {
+      const msg = json.error ?? `HTTP ${res.status}`;
+      setToast({ kind: "err", msg });
+      throw new Error(msg);
+    }
     setData((prev) => prev.map((c) => (c.id === editing.id ? { ...c, ...json.data } : c)));
     setEditing(null);
     setToast({ kind: "ok", msg: `${json.data.name} tersimpan · lat ${json.data.lat ?? "—"} lng ${json.data.lng ?? "—"}` });
