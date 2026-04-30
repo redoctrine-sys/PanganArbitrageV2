@@ -4,6 +4,12 @@ import { getServiceClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const SELECT_COLS =
+  "id, name, moda, pricing_type, price, capacity_kg, coverage, contact, notes, base_fare_rp, base_km";
+
+const validModa = ["truk", "pickup", "kapal", "motor", "mobil", "lainnya"];
+const validPricing = ["per_km", "flat_per_trip"];
+
 export async function PATCH(
   req: Request,
   { params }: { params: { id: string } },
@@ -17,8 +23,6 @@ export async function PATCH(
   }
 
   const update: Record<string, unknown> = {};
-  const validModa = ["truk", "pickup", "kapal", "motor", "lainnya"];
-  const validPricing = ["per_km", "flat_per_trip"];
 
   if (body.name !== undefined) {
     const n = String(body.name).trim();
@@ -53,6 +57,12 @@ export async function PATCH(
   if (body.notes !== undefined) {
     update.notes = body.notes ? String(body.notes).trim() || null : null;
   }
+  if (body.base_fare_rp !== undefined) {
+    update.base_fare_rp = body.base_fare_rp != null ? Number(body.base_fare_rp) : null;
+  }
+  if (body.base_km !== undefined) {
+    update.base_km = body.base_km != null ? Number(body.base_km) : null;
+  }
 
   if (Object.keys(update).length === 0)
     return NextResponse.json({ error: "Tidak ada field yang diubah" }, { status: 400 });
@@ -68,7 +78,7 @@ export async function PATCH(
     .from("transport_vendors")
     .update(update)
     .eq("id", id)
-    .select("id, name, moda, pricing_type, price, capacity_kg, coverage, contact, notes")
+    .select(SELECT_COLS)
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

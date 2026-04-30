@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Moda = "truk" | "pickup" | "kapal" | "motor" | "lainnya";
+type Moda = "truk" | "pickup" | "kapal" | "motor" | "mobil" | "lainnya";
 type PricingType = "per_km" | "flat_per_trip";
 
 interface Vendor {
@@ -15,6 +15,8 @@ interface Vendor {
   coverage: string | null;
   contact: string | null;
   notes: string | null;
+  base_fare_rp: number | null;
+  base_km: number | null;
 }
 
 const MODA_LABELS: Record<Moda, string> = {
@@ -22,6 +24,7 @@ const MODA_LABELS: Record<Moda, string> = {
   pickup: "🛻 Pickup",
   kapal: "⛴ Kapal",
   motor: "🏍 Motor",
+  mobil: "🚗 Mobil",
   lainnya: "📦 Lainnya",
 };
 
@@ -30,14 +33,18 @@ const MODA_PILL: Record<Moda, string> = {
   pickup: "pill-lo",
   kapal: "pill-sp",
   motor: "pill-warn",
+  mobil: "pill-hi",
   lainnya: "pill-neu",
 };
 
-const MODA_FILTERS = ["Semua", "Truk", "Pickup", "Kapal", "Motor", "Lainnya"] as const;
+const MODA_FILTERS = ["Semua", "Truk", "Pickup", "Kapal", "Motor", "Mobil", "Lainnya"] as const;
+
+function fmtRp(n: number) {
+  return `Rp ${n.toLocaleString("id-ID")}`;
+}
 
 function formatPrice(v: Vendor) {
-  const rp = v.price.toLocaleString("id-ID");
-  return v.pricing_type === "per_km" ? `Rp ${rp}/km` : `Rp ${rp}`;
+  return v.pricing_type === "per_km" ? `${fmtRp(v.price)}/km` : fmtRp(v.price);
 }
 
 function formatPricingType(t: PricingType) {
@@ -85,7 +92,8 @@ export function VendorTransportPage() {
       return (
         v.name.toLowerCase().includes(q) ||
         (v.coverage ?? "").toLowerCase().includes(q) ||
-        (v.contact ?? "").toLowerCase().includes(q)
+        (v.contact ?? "").toLowerCase().includes(q) ||
+        (v.notes ?? "").toLowerCase().includes(q)
       );
     });
   }, [data, search, modaFilter]);
@@ -138,11 +146,41 @@ export function VendorTransportPage() {
     setToast({ kind: "ok", msg: `${v.name} dihapus` });
   }
 
-  const stats = useMemo(() => ({
-    total: data.length,
-    perKm: data.filter((v) => v.pricing_type === "per_km").length,
-    flat: data.filter((v) => v.pricing_type === "flat_per_trip").length,
-  }), [data]);
+  const stats = useMemo(() => {
+    const perKm = data.filter((v) => v.pricing_type === "per_km");
+    const flat = data.filter((v) => v.pricing_type === "flat_per_trip");
+
+    const cheapestPerKm = perKm.length > 0
+      ? perKm.reduce((min, v) => (v.price < min.price ? v : min), perKm[0])
+      : null;
+
+    const cheapestFlat = flat.length > 0
+      ? flat.reduce((min, v) => (v.price < min.price ? v : min), flat[0])
+      : null;
+
+    const maxCap = data.reduce<number | null>((acc, v) => {
+      if (v.capacity_kg == null) return acc;
+      return acc == null || v.capacity_kg > acc ? v.capacity_kg : acc;
+    }, null);
+
+    const modaCounts = data.reduce<Partial<Record<Moda, number>>>((acc, v) => {
+      acc[v.moda] = (acc[v.moda] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    const kapal = data.filter((v) => v.moda === "kapal");
+
+    return {
+      total: data.length,
+      perKm: perKm.length,
+      flat: flat.length,
+      cheapestPerKm,
+      cheapestFlat,
+      maxCap,
+      modaCounts,
+      kapalCount: kapal.length,
+    };
+  }, [data]);
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -157,11 +195,48 @@ export function VendorTransportPage() {
             </div>
           </div>
         </div>
-        <div className="flex" style={{ gap: 7 }}>
+
+        {/* Metrics row */}
+        <div className="flex" style={{ gap: 7, flexWrap: "wrap" }}>
           <Stat label="Total Vendor" value={stats.total ? String(stats.total) : "—"} />
           <Stat label="Per-km" value={stats.perKm ? String(stats.perKm) : "—"} />
           <Stat label="Flat/Trip" value={stats.flat ? String(stats.flat) : "—"} />
+          <Stat label="⛴ Kapal/Feri" value={stats.kapalCount ? String(stats.kapalCount) : "—"} />
+          <Stat
+            label="Termurah/km"
+            value={stats.cheapestPerKm ? `${fmtRp(stats.cheapestPerKm.price)}/km` : "—"}
+            sub={stats.cheapestPerKm?.name}
+          />
+          <Stat
+            label="Termurah Flat"
+            value={stats.cheapestFlat ? fmtRp(stats.cheapestFlat.price) : "—"}
+            sub={stats.cheapestFlat?.name}
+          />
+          <Stat
+            label="Max Kapasitas"
+            value={stats.maxCap != null ? `${stats.maxCap.toLocaleString("id-ID")} kg` : "—"}
+          />
         </div>
+
+        {/* Moda breakdown pills */}
+        {stats.total > 0 && (
+          <div className="flex" style={{ gap: 5, marginTop: 7, flexWrap: "wrap" }}>
+            {(Object.entries(stats.modaCounts) as [Moda, number][])
+              .sort((a, b) => b[1] - a[1])
+              .map(([m, n]) => (
+                <span
+                  key={m}
+                  className={`pill ${MODA_PILL[m] ?? "pill-neu"}`}
+                  style={{ fontSize: 9, cursor: "pointer" }}
+                  onClick={() => setModaFilter(
+                    (m.charAt(0).toUpperCase() + m.slice(1)) as (typeof MODA_FILTERS)[number]
+                  )}
+                >
+                  {MODA_LABELS[m]} · {n}
+                </span>
+              ))}
+          </div>
+        )}
       </div>
 
       {/* Filter bar */}
@@ -169,7 +244,7 @@ export function VendorTransportPage() {
         <div className="fsearch">
           <span style={{ color: "var(--ink-dim)" }}>⌕</span>
           <input
-            placeholder="Cari vendor / cakupan..."
+            placeholder="Cari vendor / cakupan / catatan..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -216,12 +291,12 @@ export function VendorTransportPage() {
             <colgroup>
               <col style={{ width: 36 }} />
               <col />
-              <col style={{ width: 100 }} />
-              <col style={{ width: 80 }} />
+              <col style={{ width: 95 }} />
+              <col style={{ width: 75 }} />
+              <col style={{ width: 155 }} />
+              <col style={{ width: 95 }} />
               <col style={{ width: 130 }} />
               <col style={{ width: 100 }} />
-              <col style={{ width: 130 }} />
-              <col style={{ width: 110 }} />
               <col style={{ width: 80 }} />
             </colgroup>
             <thead>
@@ -229,7 +304,7 @@ export function VendorTransportPage() {
                 <th>#</th>
                 <th>Nama Vendor</th>
                 <th>Moda</th>
-                <th>Tipe Harga</th>
+                <th>Tipe</th>
                 <th>Harga</th>
                 <th>Kapasitas</th>
                 <th>Cakupan</th>
@@ -243,17 +318,34 @@ export function VendorTransportPage() {
                   <td className="mono" style={{ color: "var(--ink-dim)" }}>
                     {String(i + 1).padStart(2, "0")}
                   </td>
-                  <td style={{ fontWeight: 500 }}>{v.name}</td>
+                  <td style={{ fontWeight: 500 }}>
+                    {v.name}
+                    {v.notes && (
+                      <div
+                        className="mono"
+                        style={{ fontSize: 9, color: "var(--ink-dim)", marginTop: 2, lineHeight: 1.4 }}
+                        title={v.notes}
+                      >
+                        {v.notes.length > 55 ? v.notes.slice(0, 55) + "…" : v.notes}
+                      </div>
+                    )}
+                  </td>
                   <td>
-                    <span className={`pill ${MODA_PILL[v.moda]}`} style={{ fontSize: 9 }}>
-                      {MODA_LABELS[v.moda]}
+                    <span className={`pill ${MODA_PILL[v.moda] ?? "pill-neu"}`} style={{ fontSize: 9 }}>
+                      {MODA_LABELS[v.moda] ?? v.moda}
                     </span>
                   </td>
-                  <td className="mono" style={{ fontSize: 11 }}>
+                  <td className="mono" style={{ fontSize: 10 }}>
                     {formatPricingType(v.pricing_type)}
                   </td>
                   <td className="mono" style={{ fontWeight: 600, color: "var(--ped)" }}>
                     {formatPrice(v)}
+                    {v.base_fare_rp != null && (
+                      <div style={{ fontWeight: 400, fontSize: 9, color: "var(--ink-dim)", marginTop: 2 }}>
+                        Dasar {fmtRp(v.base_fare_rp)}
+                        {v.base_km != null ? ` / ${v.base_km} km` : ""}
+                      </div>
+                    )}
                   </td>
                   <td className="mono" style={{ fontSize: 11 }}>
                     {v.capacity_kg != null ? `${v.capacity_kg.toLocaleString("id-ID")} kg` : "—"}
@@ -305,11 +397,16 @@ export function VendorTransportPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="sc" style={{ maxWidth: 160 }}>
+    <div className="sc" style={{ maxWidth: 180 }}>
       <div className="sc-l">{label}</div>
       <div className="sc-v">{value}</div>
+      {sub && (
+        <div className="font-mono" style={{ fontSize: 8, color: "var(--ink-dim)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {sub}
+        </div>
+      )}
     </div>
   );
 }
@@ -328,6 +425,8 @@ function VendorModal({
   const [pricingType, setPricingType] = useState<PricingType>(initial?.pricing_type ?? "per_km");
   const [priceStr, setPriceStr] = useState(initial?.price != null ? String(initial.price) : "");
   const [capStr, setCapStr] = useState(initial?.capacity_kg != null ? String(initial.capacity_kg) : "");
+  const [baseFareStr, setBaseFareStr] = useState(initial?.base_fare_rp != null ? String(initial.base_fare_rp) : "");
+  const [baseKmStr, setBaseKmStr] = useState(initial?.base_km != null ? String(initial.base_km) : "");
   const [coverage, setCoverage] = useState(initial?.coverage ?? "");
   const [contact, setContact] = useState(initial?.contact ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
@@ -342,6 +441,10 @@ function VendorModal({
     if (!Number.isFinite(price) || price < 0) { setErr("Harga harus angka positif"); return; }
     const capacity_kg = capStr.trim() ? Number(capStr) : null;
     if (capStr.trim() && !Number.isFinite(capacity_kg as number)) { setErr("Kapasitas harus angka"); return; }
+    const base_fare_rp = baseFareStr.trim() ? Number(baseFareStr) : null;
+    if (baseFareStr.trim() && !Number.isFinite(base_fare_rp as number)) { setErr("Tarif dasar harus angka"); return; }
+    const base_km = baseKmStr.trim() ? Number(baseKmStr) : null;
+    if (baseKmStr.trim() && !Number.isFinite(base_km as number)) { setErr("Jarak dasar harus angka"); return; }
 
     setBusy(true);
     try {
@@ -351,6 +454,8 @@ function VendorModal({
         pricing_type: pricingType,
         price,
         capacity_kg,
+        base_fare_rp,
+        base_km,
         coverage: coverage.trim() || null,
         contact: contact.trim() || null,
         notes: notes.trim() || null,
@@ -400,6 +505,7 @@ function VendorModal({
                   <option value="pickup">🛻 Pickup</option>
                   <option value="kapal">⛴ Kapal</option>
                   <option value="motor">🏍 Motor</option>
+                  <option value="mobil">🚗 Mobil</option>
                   <option value="lainnya">📦 Lainnya</option>
                 </select>
               </Field>
@@ -419,7 +525,7 @@ function VendorModal({
                   value={priceStr}
                   onChange={(e) => setPriceStr(e.target.value)}
                   disabled={busy}
-                  placeholder={pricingType === "per_km" ? "1200" : "2500000"}
+                  placeholder={pricingType === "per_km" ? "2000" : "2500000"}
                   style={{ ...iStyle, fontFamily: "var(--font-mono)" }}
                 />
               </Field>
@@ -435,6 +541,34 @@ function VendorModal({
                 />
               </Field>
             </div>
+
+            {pricingType === "per_km" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <Field label="Tarif Dasar (Rp)">
+                  <input
+                    type="number"
+                    min={0}
+                    value={baseFareStr}
+                    onChange={(e) => setBaseFareStr(e.target.value)}
+                    disabled={busy}
+                    placeholder="8000"
+                    style={{ ...iStyle, fontFamily: "var(--font-mono)" }}
+                  />
+                </Field>
+                <Field label="Jarak Dasar (Km)">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    value={baseKmStr}
+                    onChange={(e) => setBaseKmStr(e.target.value)}
+                    disabled={busy}
+                    placeholder="3"
+                    style={{ ...iStyle, fontFamily: "var(--font-mono)" }}
+                  />
+                </Field>
+              </div>
+            )}
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <Field label="Cakupan Wilayah">
@@ -465,7 +599,7 @@ function VendorModal({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 disabled={busy}
-                placeholder="Info tambahan..."
+                placeholder="Info tambahan, kondisi tarif, dll."
                 style={iStyle}
               />
             </Field>

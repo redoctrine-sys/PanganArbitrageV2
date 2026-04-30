@@ -4,6 +4,9 @@ import { getServerClient, getServiceClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const SELECT_COLS =
+  "id, name, moda, pricing_type, price, capacity_kg, coverage, contact, notes, base_fare_rp, base_km";
+
 export async function GET(): Promise<NextResponse> {
   let sb;
   try { sb = getServerClient(); } catch (err) {
@@ -11,7 +14,7 @@ export async function GET(): Promise<NextResponse> {
   }
   const { data, error } = await sb
     .from("transport_vendors")
-    .select("id, name, moda, pricing_type, price, capacity_kg, coverage, contact, notes")
+    .select(SELECT_COLS)
     .order("created_at", { ascending: true });
   if (error) return NextResponse.json({ error: error.message, data: [] }, { status: 500 });
   return NextResponse.json({ data: data ?? [] }, {
@@ -25,12 +28,12 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "JSON body tidak valid" }, { status: 400 });
   }
 
-  const { name, moda, pricing_type, price, capacity_kg, coverage, contact, notes } = body;
+  const { name, moda, pricing_type, price, capacity_kg, coverage, contact, notes, base_fare_rp, base_km } = body;
 
   if (!name || typeof name !== "string" || !(name as string).trim()) {
     return NextResponse.json({ error: "name wajib diisi" }, { status: 400 });
   }
-  const validModa = ["truk", "pickup", "kapal", "motor", "lainnya"];
+  const validModa = ["truk", "pickup", "kapal", "motor", "mobil", "lainnya"];
   if (!validModa.includes(moda as string)) {
     return NextResponse.json({ error: "moda tidak valid" }, { status: 400 });
   }
@@ -57,12 +60,14 @@ export async function POST(req: Request): Promise<NextResponse> {
     coverage: coverage ? String(coverage).trim() || null : null,
     contact: contact ? String(contact).trim() || null : null,
     notes: notes ? String(notes).trim() || null : null,
+    base_fare_rp: base_fare_rp != null ? Number(base_fare_rp) : null,
+    base_km: base_km != null ? Number(base_km) : null,
   };
 
   const { data, error } = await sb
     .from("transport_vendors")
     .insert(insert)
-    .select("id, name, moda, pricing_type, price, capacity_kg, coverage, contact, notes")
+    .select(SELECT_COLS)
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
