@@ -60,6 +60,7 @@ export function VendorTransportPage() {
   const [editing, setEditing] = useState<Vendor | null>(null);
   const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+  const [viewing, setViewing] = useState<Vendor | null>(null);
 
   async function reload() {
     setLoading(true);
@@ -119,6 +120,7 @@ export function VendorTransportPage() {
     }
     if (id) {
       setData((prev) => prev.map((v) => (v.id === id ? { ...v, ...json.data } : v)));
+      setViewing((prev) => (prev?.id === id ? { ...prev, ...(json.data as Vendor) } : prev));
     } else {
       setData((prev) => [...prev, json.data as Vendor]);
     }
@@ -143,6 +145,7 @@ export function VendorTransportPage() {
       return;
     }
     setData((prev) => prev.filter((x) => x.id !== v.id));
+    setViewing((prev) => (prev?.id === v.id ? null : prev));
     setToast({ kind: "ok", msg: `${v.name} dihapus` });
   }
 
@@ -271,7 +274,8 @@ export function VendorTransportPage() {
         </button>
       </div>
 
-      {/* Table */}
+      {/* Table + Detail Panel */}
+      <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
       <div style={{ flex: 1, overflowY: "auto" }}>
         {loading && <div className="empty"><div className="empty-title">Memuat...</div></div>}
         {!loading && error && (
@@ -314,7 +318,11 @@ export function VendorTransportPage() {
             </thead>
             <tbody>
               {filtered.map((v, i) => (
-                <tr key={v.id}>
+                <tr
+                  key={v.id}
+                  style={{ cursor: "pointer", background: viewing?.id === v.id ? "var(--paper3)" : undefined }}
+                  onClick={() => setViewing((prev) => prev?.id === v.id ? null : v)}
+                >
                   <td className="mono" style={{ color: "var(--ink-dim)" }}>
                     {String(i + 1).padStart(2, "0")}
                   </td>
@@ -358,7 +366,7 @@ export function VendorTransportPage() {
                         type="button"
                         className="btn btn-ghost"
                         style={{ padding: "3px 9px", fontSize: 10 }}
-                        onClick={() => setEditing(v)}
+                        onClick={(e) => { e.stopPropagation(); setEditing(v); }}
                       >
                         Edit
                       </button>
@@ -366,7 +374,7 @@ export function VendorTransportPage() {
                         type="button"
                         className="btn"
                         style={{ padding: "3px 7px", fontSize: 10, background: "var(--dn-bg)", color: "var(--dn)", border: "1px solid #fecaca" }}
-                        onClick={() => deleteVendor(v)}
+                        onClick={(e) => { e.stopPropagation(); deleteVendor(v); }}
                       >
                         ✕
                       </button>
@@ -377,6 +385,15 @@ export function VendorTransportPage() {
             </tbody>
           </table>
         )}
+      </div>
+      {viewing && (
+        <VendorDetailPanel
+          vendor={viewing}
+          onClose={() => setViewing(null)}
+          onEdit={() => setEditing(viewing)}
+          onDelete={() => deleteVendor(viewing)}
+        />
+      )}
       </div>
 
       {/* Add/Edit modal */}
@@ -635,6 +652,235 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   );
 }
+
+function VendorDetailPanel({
+  vendor,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  vendor: Vendor;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [jarakStr, setJarakStr] = useState("");
+
+  const costCalc = useMemo(() => {
+    if (vendor.pricing_type !== "per_km") return null;
+    const km = parseFloat(jarakStr);
+    if (!Number.isFinite(km) || km <= 0) return null;
+
+    let cost: number;
+    let breakdown: string;
+
+    if (vendor.base_fare_rp != null && vendor.base_km != null) {
+      if (km <= vendor.base_km) {
+        cost = vendor.base_fare_rp;
+        breakdown = `≤ ${vendor.base_km} km → tarif minimum berlaku`;
+      } else {
+        const extra = km - vendor.base_km;
+        cost = vendor.base_fare_rp + extra * vendor.price;
+        breakdown = `${fmtRp(vendor.base_fare_rp)} + ${extra.toLocaleString("id-ID", { maximumFractionDigits: 1 })} km × ${fmtRp(vendor.price)}/km`;
+      }
+    } else {
+      cost = km * vendor.price;
+      breakdown = `${km.toLocaleString("id-ID")} km × ${fmtRp(vendor.price)}/km`;
+    }
+
+    const costPerKg = vendor.capacity_kg ? Math.round(cost / vendor.capacity_kg) : null;
+    return { cost: Math.round(cost), breakdown, costPerKg };
+  }, [vendor, jarakStr]);
+
+  return (
+    <div style={{
+      width: 278,
+      flexShrink: 0,
+      borderLeft: "2px solid var(--rule)",
+      background: "var(--paper)",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+    }}>
+      {/* Panel header */}
+      <div style={{ padding: "11px 14px 10px", borderBottom: "1px solid var(--rule)", background: "#f0ece4", flexShrink: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+          <span className={`pill ${MODA_PILL[vendor.moda] ?? "pill-neu"}`} style={{ fontSize: 9 }}>
+            {MODA_LABELS[vendor.moda] ?? vendor.moda}
+          </span>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ padding: "2px 7px", fontSize: 11 }}
+            onClick={onClose}
+          >
+            ✕
+          </button>
+        </div>
+        <div className="font-serif" style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>
+          {vendor.name}
+        </div>
+      </div>
+
+      {/* Scrollable body */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 13 }}>
+
+        {/* Harga */}
+        <DetailSection label="Harga">
+          <div className="mono" style={{ fontSize: 15, fontWeight: 700, color: "var(--ped)" }}>
+            {formatPrice(vendor)}
+          </div>
+          <div className="mono" style={{ fontSize: 10, color: "var(--ink-dim)", marginTop: 1 }}>
+            {vendor.pricing_type === "per_km" ? "Per kilometer" : "Flat per trip"}
+          </div>
+          {vendor.base_fare_rp != null && (
+            <div style={{ marginTop: 7, padding: "7px 9px", background: "var(--paper3)", borderRadius: 6 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".7px", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 3 }}>
+                Tarif Dasar
+              </div>
+              <div className="mono" style={{ fontSize: 12 }}>
+                {fmtRp(vendor.base_fare_rp)}
+                {vendor.base_km != null && (
+                  <span style={{ color: "var(--ink-dim)", fontWeight: 400 }}>
+                    {" "}/ {vendor.base_km} km pertama
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </DetailSection>
+
+        {/* Kapasitas */}
+        {vendor.capacity_kg != null && (
+          <DetailSection label="Kapasitas">
+            <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>
+              {vendor.capacity_kg.toLocaleString("id-ID")} kg
+            </span>
+          </DetailSection>
+        )}
+
+        {/* Flat cost/kg */}
+        {vendor.pricing_type === "flat_per_trip" && vendor.capacity_kg != null && (
+          <DetailSection label="Estimasi Cost/kg (muatan penuh)">
+            <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--ped)" }}>
+              {fmtRp(Math.round(vendor.price / vendor.capacity_kg))}/kg
+            </span>
+            <div style={{ fontSize: 9, color: "var(--ink-dim)", marginTop: 2 }}>
+              {fmtRp(vendor.price)} ÷ {vendor.capacity_kg.toLocaleString("id-ID")} kg
+            </div>
+          </DetailSection>
+        )}
+
+        {/* Cakupan */}
+        {vendor.coverage && (
+          <DetailSection label="Cakupan Wilayah">
+            <span style={{ fontSize: 12 }}>{vendor.coverage}</span>
+          </DetailSection>
+        )}
+
+        {/* Kontak */}
+        {vendor.contact && (
+          <DetailSection label="Kontak">
+            <span style={{ fontSize: 12 }}>{vendor.contact}</span>
+          </DetailSection>
+        )}
+
+        {/* Catatan */}
+        {vendor.notes && (
+          <DetailSection label="Catatan">
+            <span style={{ fontSize: 11, color: "var(--ink-mid)", lineHeight: 1.6 }}>
+              {vendor.notes}
+            </span>
+          </DetailSection>
+        )}
+
+        {/* Cost Calculator (per_km only) */}
+        {vendor.pricing_type === "per_km" && (
+          <div style={{ padding: "10px 11px", background: "var(--paper3)", borderRadius: 8, border: "1px solid var(--rule)" }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".7px", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 8 }}>
+              Estimasi Biaya
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="number"
+                min={0}
+                step="1"
+                value={jarakStr}
+                onChange={(e) => setJarakStr(e.target.value)}
+                placeholder="Jarak km..."
+                style={{ ...panelInputStyle, flex: 1 }}
+              />
+              <span className="mono" style={{ fontSize: 10, color: "var(--ink-dim)", flexShrink: 0 }}>km</span>
+            </div>
+            {costCalc ? (
+              <div style={{ marginTop: 9 }}>
+                <div style={{ fontSize: 9, color: "var(--ink-dim)", marginBottom: 4, lineHeight: 1.5 }}>
+                  {costCalc.breakdown}
+                </div>
+                <div className="mono" style={{ fontSize: 17, fontWeight: 700, color: "var(--ped)" }}>
+                  {fmtRp(costCalc.cost)}
+                </div>
+                {costCalc.costPerKg != null && (
+                  <div className="mono" style={{ fontSize: 10, color: "var(--ink-dim)", marginTop: 2 }}>
+                    ≈ {fmtRp(costCalc.costPerKg)}/kg{" "}
+                    <span style={{ fontFamily: "var(--font-sans)" }}>
+                      (muatan penuh {vendor.capacity_kg?.toLocaleString("id-ID")} kg)
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              jarakStr && <div style={{ fontSize: 10, color: "var(--ink-dim)", marginTop: 6 }}>Masukkan jarak valid</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div style={{ padding: "10px 14px", borderTop: "1px solid var(--rule)", display: "flex", gap: 6, flexShrink: 0 }}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          style={{ flex: 1, fontSize: 11, padding: "5px" }}
+          onClick={onEdit}
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          className="btn"
+          style={{ flex: 1, fontSize: 11, padding: "5px", background: "var(--dn-bg)", color: "var(--dn)", border: "1px solid #fecaca" }}
+          onClick={onDelete}
+        >
+          Hapus
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DetailSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".7px", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: 4 }}>
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+const panelInputStyle: React.CSSProperties = {
+  padding: "5px 8px",
+  borderRadius: 6,
+  border: "1px solid var(--rule)",
+  background: "var(--paper)",
+  fontSize: 11,
+  color: "var(--ink)",
+  outline: "none",
+  fontFamily: "var(--font-mono)",
+  width: "100%",
+};
 
 const iStyle: React.CSSProperties = {
   padding: "6px 10px",
