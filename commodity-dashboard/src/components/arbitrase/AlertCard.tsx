@@ -24,6 +24,8 @@ interface Alert {
   transport_cost?: number;
   volume_kg?: number;
   vendor_name?: string;
+  distance_km?: number;
+  transport_detail?: string;
   // AI fields
   insights?: string[];
   recommended_actions?: string[];
@@ -186,6 +188,11 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
                   label={`Biaya Transport${alert.vendor_name ? ` (${alert.vendor_name})` : ""}`}
                   value={alert.transport_cost != null ? `− ${fmtRp(alert.transport_cost)}` : "—"}
                 />
+                {alert.transport_detail && (
+                  <div className="text-[9px] font-mono text-ink-dim mt-[2px] leading-[1.4] pl-1">
+                    {alert.transport_detail}
+                  </div>
+                )}
                 <CalcRow
                   label="NET PROFIT"
                   value={netProfit != null ? fmtRp(netProfit) : "—"}

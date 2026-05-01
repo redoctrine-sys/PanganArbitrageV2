@@ -53,6 +53,8 @@ export interface ArbitrageOpportunity {
   transport_cost: number;
   profit_estimate: number;
   vendor_name: string | null;
+  distance_km: number;
+  transport_detail: string;
 }
 
 export interface GeminiAnalysis {

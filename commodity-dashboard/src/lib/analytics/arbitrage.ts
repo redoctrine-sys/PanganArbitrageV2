@@ -72,6 +72,26 @@ function calculateDistanceKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function buildTransportDetail(vendor: Vendor, distanceKm: number, trips: number): string {
+  const km  = Math.round(distanceKm);
+  const cap = vendor.capacity_kg ? vendor.capacity_kg.toLocaleString("id-ID") : "?";
+  const tripStr = `${trips} trip (${cap} kg)`;
+  const fmtRp = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
+
+  if (vendor.pricing_type === "flat_per_trip") {
+    return `Jarak ${km} km | ${tripStr} | Flat ${fmtRp(vendor.price)}/trip`;
+  }
+  if (vendor.base_fare_rp != null && vendor.base_km != null) {
+    if (distanceKm <= vendor.base_km) {
+      return `Jarak ${km} km | ${tripStr} | Base ${fmtRp(vendor.base_fare_rp)} (≤${vendor.base_km} km)`;
+    }
+    const extra    = distanceKm - vendor.base_km;
+    const lanjutan = extra * vendor.price;
+    return `Jarak ${km} km | ${tripStr} | Base ${fmtRp(vendor.base_fare_rp)} + ${Math.round(extra)} km×${fmtRp(vendor.price)} = ${fmtRp(lanjutan)}`;
+  }
+  return `Jarak ${km} km | ${tripStr} | ${fmtRp(vendor.price)}/km`;
+}
+
 function estimateTransportCost(
   vendors: Vendor[],
   volumeKg: number,
@@ -79,30 +99,46 @@ function estimateTransportCost(
   fromLon: number | null,
   toLat: number | null,
   toLon: number | null,
-): { cost: number; vendor_name: string | null } {
-  if (vendors.length === 0) return { cost: 0, vendor_name: null };
-
+): { cost: number; vendor_name: string | null; distance_km: number; transport_detail: string } {
   const distanceKm = calculateDistanceKm(fromLat, fromLon, toLat, toLon);
+
+  if (vendors.length === 0) {
+    return { cost: 0, vendor_name: null, distance_km: distanceKm, transport_detail: `Jarak ${Math.round(distanceKm)} km | Tidak ada vendor` };
+  }
+
   let bestCost = Infinity;
   let bestVendor: Vendor | null = null;
+  let bestTrips = 1;
 
   for (const v of vendors) {
     if (!v.capacity_kg || v.capacity_kg <= 0) continue;
     const trips = Math.ceil(volumeKg / v.capacity_kg);
     const totalCost = calcTransport(v, distanceKm) * trips;
     if (totalCost < bestCost) {
-      bestCost = totalCost;
+      bestCost   = totalCost;
       bestVendor = v;
+      bestTrips  = trips;
     }
   }
 
   // Fallback: no vendor has capacity_kg — use first vendor, 1 trip
   if (!bestVendor) {
     const fallback = vendors[0];
-    return { cost: calcTransport(fallback, distanceKm), vendor_name: fallback.name };
+    const cost     = calcTransport(fallback, distanceKm);
+    return {
+      cost,
+      vendor_name:      fallback.name,
+      distance_km:      distanceKm,
+      transport_detail: buildTransportDetail(fallback, distanceKm, 1),
+    };
   }
 
-  return { cost: bestCost, vendor_name: bestVendor.name };
+  return {
+    cost:             bestCost,
+    vendor_name:      bestVendor.name,
+    distance_km:      distanceKm,
+    transport_detail: buildTransportDetail(bestVendor, distanceKm, bestTrips),
+  };
 }
 
 interface RawCandidate {
@@ -111,6 +147,8 @@ interface RawCandidate {
   profit: number;
   transportCost: number;
   vendor_name: string | null;
+  distance_km: number;
+  transport_detail: string;
   cheapest: PricePoint;
   expensive: PricePoint;
 }
@@ -155,7 +193,7 @@ export function findArbitrage(
 
         const spread = expensive.price - cheapest.price;
         const spreadPct = spread / cheapest.price;
-        const { cost: transportCost, vendor_name } = estimateTransportCost(
+        const { cost: transportCost, vendor_name, distance_km, transport_detail } = estimateTransportCost(
           vendors, volumeKg,
           cheapest.lat, cheapest.lng,
           expensive.lat, expensive.lng,
@@ -183,10 +221,12 @@ export function findArbitrage(
             transport_cost: transportCost,
             profit_estimate: profit,
             vendor_name,
+            distance_km,
+            transport_detail,
           });
         } else if (spread > 0) {
           // Candidate for fallback (best-effort)
-          fallback.push({ spread, spreadPct, profit, transportCost, vendor_name, cheapest, expensive });
+          fallback.push({ spread, spreadPct, profit, transportCost, vendor_name, distance_km, transport_detail, cheapest, expensive });
         }
       }
     }
@@ -224,6 +264,8 @@ export function findArbitrage(
           transport_cost: c.transportCost,
           profit_estimate: c.profit,
           vendor_name: c.vendor_name,
+          distance_km: c.distance_km,
+          transport_detail: c.transport_detail,
         });
       });
   }

@@ -173,6 +173,7 @@ export async function POST(): Promise<NextResponse> {
         price_spread: o.price_spread, spread_percent: o.spread_percent,
         volume_kg: o.volume_kg, transport_cost: o.transport_cost,
         profit_estimate: o.profit_estimate, vendor_name: o.vendor_name,
+        distance_km: o.distance_km, transport_detail: o.transport_detail,
         insights:            geminiUsed ? geminiResult.insights            : null,
         recommended_actions: geminiUsed ? geminiResult.recommended_actions : null,
         risk_factors:        geminiUsed ? geminiResult.risk_factors        : null,
