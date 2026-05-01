@@ -94,8 +94,9 @@ export function PriceLineChart({ points, het, avg30, height = 200 }: Props) {
           dataKey="price"
           stroke="var(--sp)"
           strokeWidth={2}
-          dot={{ r: 2.5, fill: "var(--sp)" }}
-          activeDot={{ r: 4 }}
+          connectNulls={true}
+          dot={{ r: 2.5, fill: "white", stroke: "var(--sp)", strokeWidth: 2 }}
+          activeDot={{ r: 4, fill: "var(--sp)" }}
           isAnimationActive={false}
         />
       </LineChart>
