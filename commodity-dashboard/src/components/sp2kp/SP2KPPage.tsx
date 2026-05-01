@@ -11,12 +11,11 @@ import {
   type CommodityGroupSortKey,
 } from "@/components/sp2kp/CommodityGroupRow";
 import type { Island, SP2KPLatestRow } from "@/types/sp2kp";
-import { formatDateLong } from "@/lib/utils/date";
 import { HET_ANOMALY_THRESHOLD } from "@/lib/constants";
+import { SP2KPHeader, type View } from "@/components/sp2kp/SP2KPHeader";
+
 
 const ISLANDS: (Island | "Semua")[] = ["Semua", "Jawa", "Madura", "Bali", "Lombok"];
-
-type View = "city" | "commodity";
 
 export function SP2KPPage() {
   const [data, setData] = useState<SP2KPLatestRow[]>([]);
@@ -135,7 +134,7 @@ export function SP2KPPage() {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <Header stats={stats} view={view} onViewChange={setView} />
+      <SP2KPHeader stats={stats} view={view} onViewChange={setView} />
 
       <div className="fbar">
         <div className="fsearch">
@@ -235,63 +234,4 @@ export function SP2KPPage() {
   );
 }
 
-function Header({
-  stats,
-  view,
-  onViewChange,
-}: {
-  stats: { cities: number; commodities: number; latestDate: string | null; aboveHet: number };
-  view: View;
-  onViewChange: (v: View) => void;
-}) {
-  return (
-    <div className="px-[18px] pt-3 pb-0 bg-[#f0ece4] border-b-2 border-rule shrink-0">
-      <div className="flex items-center gap-[9px] mb-[9px]">
-        <div className="w-1 h-[22px] rounded-[3px] bg-sp shrink-0" />
-        <div>
-          <div className="font-serif text-[15px] font-bold">
-            SP2KP — Sistem Pemantauan Pasar &amp; Kebutuhan Pokok
-          </div>
-          <div className="font-mono text-[10px] text-ink-dim">
-            Kemendag · Upload CSV/XLSX ad hoc · Sumber data primer · HET/HA tersedia sebagai detail
-          </div>
-        </div>
-      </div>
-      <div className="flex gap-[7px] mb-[9px]">
-        <Stat label="Kab/Kota" value={stats.cities ? String(stats.cities) : "—"} />
-        <Stat label="Komoditas" value={stats.commodities ? String(stats.commodities) : "—"} />
-        <Stat label="Anomali HET" value={stats.aboveHet > 0 ? String(stats.aboveHet) : "0"} accentClass={stats.aboveHet > 0 ? "text-dn" : undefined} />
-        <Stat label="Data terbaru" value={stats.latestDate ? formatDateLong(stats.latestDate) : "—"} />
-      </div>
-      <div className="flex gap-[3px] pb-[9px]">
-        <div
-          role="button"
-          tabIndex={0}
-          className={`stab${view === "city" ? " active" : ""}`}
-          onClick={() => onViewChange("city")}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onViewChange("city"); }}
-        >
-          📍 By City
-        </div>
-        <div
-          role="button"
-          tabIndex={0}
-          className={`stab${view === "commodity" ? " active" : ""}`}
-          onClick={() => onViewChange("commodity")}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onViewChange("commodity"); }}
-        >
-          🌾 By Commodity
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function Stat({ label, value, accentClass }: { label: string; value: string; accentClass?: string }) {
-  return (
-    <div className="sc">
-      <div className="sc-l">{label}</div>
-      <div className={`sc-v${accentClass ? " " + accentClass : ""}`}>{value}</div>
-    </div>
-  );
-}

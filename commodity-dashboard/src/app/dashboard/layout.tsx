@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { CSVUploader } from "@/components/csv/CSVUploader";
+import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
+
 
 export default function DashboardLayout({
   children,
@@ -18,7 +20,9 @@ export default function DashboardLayout({
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
       {uploadOpen && (
