@@ -20,15 +20,15 @@ export function RouteTable({ routes, onDelete }: Props) {
   }
 
   return (
-    <div style={{ border: "1px solid var(--rule)", borderRadius: 10, overflow: "hidden" }}>
-      <table className="preview-table" style={{ margin: 0 }}>
+    <div className="border border-rule rounded-[10px] overflow-hidden">
+      <table className="preview-table m-0">
         <thead>
           <tr>
             <th>Dari</th>
             <th>Ke</th>
             <th>Kendaraan</th>
-            <th style={{ textAlign: "right" }}>Biaya/kg</th>
-            <th style={{ textAlign: "right" }}>Jarak (km)</th>
+            <th className="text-right">Biaya/kg</th>
+            <th className="text-right">Jarak (km)</th>
             <th>Catatan</th>
             <th></th>
           </tr>
@@ -36,23 +36,22 @@ export function RouteTable({ routes, onDelete }: Props) {
         <tbody>
           {routes.map((r) => (
             <tr key={r.id}>
-              <td style={{ fontWeight: 500 }}>{r.fromCity}</td>
-              <td style={{ fontWeight: 500 }}>{r.toCity}</td>
+              <td className="font-medium">{r.fromCity}</td>
+              <td className="font-medium">{r.toCity}</td>
               <td>
                 <span className="pill pill-neu">{VEHICLE_LABELS[r.vehicleType]}</span>
               </td>
-              <td className="mono" style={{ textAlign: "right", color: "var(--ink)" }}>
+              <td className="mono text-right text-ink">
                 {formatRupiah(r.costPerKg)}
               </td>
-              <td className="mono" style={{ textAlign: "right", color: "var(--ink-dim)" }}>
+              <td className="mono text-right text-ink-dim">
                 {r.distanceKm ?? "—"}
               </td>
-              <td style={{ color: "var(--ink-dim)", fontSize: 11 }}>{r.notes || "—"}</td>
+              <td className="text-ink-dim text-[11px]">{r.notes || "—"}</td>
               <td>
                 <button
                   type="button"
-                  className="btn btn-ghost"
-                  style={{ fontSize: 11, padding: "3px 8px" }}
+                  className="btn btn-ghost text-[11px] py-[3px] px-2"
                   onClick={() => onDelete(r.id)}
                 >
                   Hapus

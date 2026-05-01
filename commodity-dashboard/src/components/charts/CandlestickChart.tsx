@@ -143,26 +143,15 @@ function CandleTooltip({ active, payload }: {
   const color = c.isBull ? BULL : BEAR;
 
   return (
-    <div
-      style={{
-        background: "white",
-        border: "1px solid var(--rule)",
-        borderRadius: 6,
-        padding: "8px 10px",
-        fontSize: 11,
-        fontFamily: "var(--font-mono)",
-        lineHeight: 1.6,
-        boxShadow: "0 2px 8px rgba(0,0,0,.08)",
-      }}
-    >
-      <div style={{ fontWeight: 700, marginBottom: 3, color }}>
+    <div className="bg-white border border-rule rounded-[6px] px-[10px] py-2 text-[11px] font-mono leading-[1.6] shadow-[0_2px_8px_rgba(0,0,0,.08)]">
+      <div className="font-bold mb-[3px]" style={{ color }}>
         {c.label}
       </div>
       <div>O: {formatRupiah(c.open)}</div>
       <div style={{ color: BULL }}>H: {formatRupiah(c.high)}</div>
       <div style={{ color: BEAR }}>L: {formatRupiah(c.low)}</div>
-      <div style={{ fontWeight: 600, color }}>C: {formatRupiah(c.close)}</div>
-      <div style={{ color: "#8a8580", fontSize: 9, marginTop: 2 }}>
+      <div className="font-semibold" style={{ color }}>C: {formatRupiah(c.close)}</div>
+      <div className="text-ink-dim text-[9px] mt-[2px]">
         {c.volume} hari data
       </div>
     </div>
@@ -177,10 +166,8 @@ export function CandlestickChart({ candles, het, height = 200 }: Props) {
   if (candles.length === 0) {
     return (
       <div
-        style={{
-          height, display: "flex", alignItems: "center", justifyContent: "center",
-          color: "var(--ink-dim)", fontSize: 12, fontFamily: "var(--font-mono)",
-        }}
+        className="flex items-center justify-center text-ink-dim text-[12px] font-mono"
+        style={{ height }}
       >
         Belum cukup data untuk candlestick.
       </div>

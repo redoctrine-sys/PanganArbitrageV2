@@ -24,15 +24,9 @@ export function Topbar({ onUploadClick }: TopbarProps) {
   }, []);
 
   return (
-    <div
-      className="flex items-center px-4 flex-shrink-0 relative"
-      style={{ background: "var(--ink)", height: 50, zIndex: 500 }}
-    >
-      <div
-        className="font-serif font-bold mr-5 whitespace-nowrap"
-        style={{ color: "#f5f1ea", fontSize: 16 }}
-      >
-        Pangan<span className="italic" style={{ color: "#6ee7a0" }}>Arbitrage</span>
+    <div className="flex items-center px-4 shrink-0 relative bg-ink h-[50px] z-[500]">
+      <div className="font-serif font-bold mr-5 whitespace-nowrap text-[16px] text-[#f5f1ea]">
+        Pangan<span className="italic text-[#6ee7a0]">Arbitrage</span>
       </div>
       <div className="flex flex-1 gap-px overflow-hidden">
         <TabNav active label="SP2KP" pip="#6ee7a0" badge="Harian" />
@@ -41,23 +35,14 @@ export function Topbar({ onUploadClick }: TopbarProps) {
         <TabNav label="Arbitrase" pip="#fb923c" placeholder />
         <TabNav label="Admin" pip="#6b7280" placeholder />
       </div>
-      <div className="flex items-center gap-2.5 flex-shrink-0 ml-auto">
-        <div
-          className="font-mono"
-          style={{ fontSize: 10, color: "rgba(245,241,234,.5)" }}
-        >
+      <div className="flex items-center gap-2.5 shrink-0 ml-auto">
+        <div className="font-mono text-[10px] text-[rgba(245,241,234,.5)]">
           {time}
         </div>
         <button
           type="button"
           onClick={onUploadClick}
-          className="btn"
-          style={{
-            background: "var(--sp)",
-            color: "var(--sp-light)",
-            padding: "6px 12px",
-            fontSize: 11,
-          }}
+          className="btn bg-sp text-sp-light px-3 py-[6px] text-[11px]"
         >
           ↑ Upload SP2KP
         </button>
@@ -81,38 +66,20 @@ function TabNav({
 }) {
   return (
     <div
-      className="flex items-center gap-1.5 px-3 py-1 rounded-md whitespace-nowrap flex-shrink-0"
-      style={{
-        fontSize: 11.5,
-        fontWeight: 500,
-        color: active ? "#f5f1ea" : "rgba(245,241,234,.38)",
-        background: active ? "rgba(245,241,234,.12)" : "transparent",
-        opacity: placeholder ? 0.5 : 1,
-        cursor: placeholder ? "not-allowed" : "pointer",
-      }}
+      className={`flex items-center gap-1.5 px-3 py-1 rounded-md whitespace-nowrap shrink-0 text-[11.5px] font-medium ${
+        active
+          ? "text-[#f5f1ea] bg-[rgba(245,241,234,.12)]"
+          : "text-[rgba(245,241,234,.38)]"
+      } ${placeholder ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       title={placeholder ? "Tab ini akan tersedia di Phase 2+" : undefined}
     >
       <div
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: pip,
-          flexShrink: 0,
-        }}
+        className="w-1.5 h-1.5 rounded-full shrink-0"
+        style={{ background: pip }}
       />
       {label}
       {badge && (
-        <span
-          className="font-mono"
-          style={{
-            fontSize: 9,
-            padding: "1px 5px",
-            borderRadius: 10,
-            background: "rgba(245,241,234,.1)",
-            color: "rgba(245,241,234,.55)",
-          }}
-        >
+        <span className="font-mono text-[9px] px-[5px] py-px rounded-[10px] bg-[rgba(245,241,234,.1)] text-[rgba(245,241,234,.55)]">
           {badge}
         </span>
       )}

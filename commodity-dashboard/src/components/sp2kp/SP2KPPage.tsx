@@ -139,7 +139,7 @@ export function SP2KPPage() {
 
       <div className="fbar">
         <div className="fsearch">
-          <span style={{ color: "var(--ink-dim)" }}>⌕</span>
+          <span className="text-ink-dim">⌕</span>
           <input
             placeholder={
               view === "city"
@@ -154,24 +154,18 @@ export function SP2KPPage() {
           <button
             key={i}
             type="button"
-            className={`fbtn ${island === i ? "on" : ""}`}
+            className={`fbtn${island === i ? " on" : ""}`}
             onClick={() => { setIsland(i); setProvince("Semua"); }}
           >
             {i}
           </button>
         ))}
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ fontSize: 10, color: "var(--ink-dim)", fontFamily: "var(--font-mono)" }}>
-            Provinsi:
-          </span>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-ink-dim font-mono">Provinsi:</span>
           <select
             value={province}
             onChange={(e) => setProvince(e.target.value)}
-            style={{
-              padding: "4px 8px", borderRadius: 6,
-              border: "1px solid var(--rule)", background: "var(--paper)",
-              fontSize: 11, color: "var(--ink-mid)", outline: "none",
-            }}
+            className="px-2 py-1 rounded-[6px] border border-rule bg-paper text-[11px] text-ink-mid outline-none"
           >
             {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -189,7 +183,7 @@ export function SP2KPPage() {
         <CommodityGroupColHeader sort={commoditySort} onSort={onCommoditySort} />
       )}
 
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      <div className="flex-1 overflow-y-auto">
         {loading && (
           <div className="empty">
             <div className="empty-title">Memuat data SP2KP...</div>
@@ -197,7 +191,7 @@ export function SP2KPPage() {
         )}
         {!loading && error && (
           <div className="empty">
-            <div className="empty-title" style={{ color: "var(--dn)" }}>Gagal memuat</div>
+            <div className="empty-title text-dn">Gagal memuat</div>
             <div className="empty-sub">{error}</div>
           </div>
         )}
@@ -251,41 +245,29 @@ function Header({
   onViewChange: (v: View) => void;
 }) {
   return (
-    <div
-      style={{
-        padding: "12px 18px 0",
-        background: "#f0ece4",
-        borderBottom: "2px solid var(--rule)",
-        flexShrink: 0,
-      }}
-    >
-      <div className="flex items-center" style={{ gap: 9, marginBottom: 9 }}>
-        <div
-          style={{ width: 4, height: 22, borderRadius: 3, background: "var(--sp)", flexShrink: 0 }}
-        />
+    <div className="px-[18px] pt-3 pb-0 bg-[#f0ece4] border-b-2 border-rule shrink-0">
+      <div className="flex items-center gap-[9px] mb-[9px]">
+        <div className="w-1 h-[22px] rounded-[3px] bg-sp shrink-0" />
         <div>
-          <div className="font-serif" style={{ fontSize: 15, fontWeight: 700 }}>
+          <div className="font-serif text-[15px] font-bold">
             SP2KP — Sistem Pemantauan Pasar &amp; Kebutuhan Pokok
           </div>
-          <div
-            className="font-mono"
-            style={{ fontSize: 10, color: "var(--ink-dim)" }}
-          >
+          <div className="font-mono text-[10px] text-ink-dim">
             Kemendag · Upload CSV/XLSX ad hoc · Sumber data primer · HET/HA tersedia sebagai detail
           </div>
         </div>
       </div>
-      <div className="flex" style={{ gap: 7, marginBottom: 9 }}>
+      <div className="flex gap-[7px] mb-[9px]">
         <Stat label="Kab/Kota" value={stats.cities ? String(stats.cities) : "—"} />
         <Stat label="Komoditas" value={stats.commodities ? String(stats.commodities) : "—"} />
-        <Stat label="Anomali HET" value={stats.aboveHet > 0 ? String(stats.aboveHet) : "0"} accent={stats.aboveHet > 0 ? "var(--dn)" : undefined} />
+        <Stat label="Anomali HET" value={stats.aboveHet > 0 ? String(stats.aboveHet) : "0"} accentClass={stats.aboveHet > 0 ? "text-dn" : undefined} />
         <Stat label="Data terbaru" value={stats.latestDate ? formatDateLong(stats.latestDate) : "—"} />
       </div>
-      <div style={{ display: "flex", gap: 3, paddingBottom: 9 }}>
+      <div className="flex gap-[3px] pb-[9px]">
         <div
           role="button"
           tabIndex={0}
-          className={`stab ${view === "city" ? "active" : ""}`}
+          className={`stab${view === "city" ? " active" : ""}`}
           onClick={() => onViewChange("city")}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onViewChange("city"); }}
         >
@@ -294,7 +276,7 @@ function Header({
         <div
           role="button"
           tabIndex={0}
-          className={`stab ${view === "commodity" ? "active" : ""}`}
+          className={`stab${view === "commodity" ? " active" : ""}`}
           onClick={() => onViewChange("commodity")}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onViewChange("commodity"); }}
         >
@@ -305,11 +287,11 @@ function Header({
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+function Stat({ label, value, accentClass }: { label: string; value: string; accentClass?: string }) {
   return (
     <div className="sc">
       <div className="sc-l">{label}</div>
-      <div className="sc-v" style={accent ? { color: accent } : undefined}>{value}</div>
+      <div className={`sc-v${accentClass ? " " + accentClass : ""}`}>{value}</div>
     </div>
   );
 }

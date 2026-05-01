@@ -26,14 +26,11 @@ export function CommodityRow({ row, index, isOpen, onToggle }: Props) {
   return (
     <div className={`l2-block ${isOpen ? "open" : ""} ${aboveHet ? "anom" : ""}`}>
       <div className="l2-row" style={{ gridTemplateColumns: COLS }} onClick={onToggle}>
-        <span
-          className="font-mono"
-          style={{ fontSize: 9, color: "var(--ink-dim)", paddingLeft: 12 }}
-        >
+        <span className="font-mono text-[9px] text-ink-dim pl-3">
           {String(index + 1).padStart(2, "0")}
         </span>
         <div>
-          <div className="l2-name" style={{ color: aboveHet ? "var(--dn)" : undefined }}>
+          <div className={`l2-name ${aboveHet ? "text-dn" : ""}`}>
             {row.commodity_name}{aboveHet ? " ⚠" : ""}
           </div>
           <div className="l2-sub">
@@ -43,7 +40,7 @@ export function CommodityRow({ row, index, isOpen, onToggle }: Props) {
               : ""}
           </div>
         </div>
-        <div className="l2-price" style={{ color: aboveHet ? "var(--dn)" : "var(--up)" }}>
+        <div className={`l2-price ${aboveHet ? "text-dn" : "text-up"}`}>
           {formatRupiah(row.price_latest)}
         </div>
         <div><ChangePill value={change} /></div>

@@ -73,14 +73,11 @@ export function CommodityGroupRow({ group, index, isOpen, onToggle }: Props) {
   return (
     <div className={`l1-block ${isOpen ? "open" : ""} ${hasAnomaly ? "anom" : ""}`}>
       <div className="l1-row" style={{ gridTemplateColumns: COLS }} onClick={onToggle}>
-        <span
-          className="font-mono"
-          style={{ fontSize: 10, color: "var(--ink-dim)" }}
-        >
+        <span className="font-mono text-[10px] text-ink-dim">
           {String(index + 1).padStart(2, "0")}
         </span>
         <div>
-          <div className="l1-name" style={{ color: hasAnomaly ? "var(--dn)" : undefined }}>
+          <div className={`l1-name ${hasAnomaly ? "text-dn" : ""}`}>
             {group.commodity_name}{hasAnomaly ? " ⚠" : ""}
           </div>
           <div className={`l1-sub ${hasAnomaly ? "anom" : ""}`}>
@@ -88,7 +85,7 @@ export function CommodityGroupRow({ group, index, isOpen, onToggle }: Props) {
             {hasAnomaly ? ` · ${aboveHetCities.length} di atas HET` : ""}
           </div>
         </div>
-        <div className="l1-price" style={{ color: hasAnomaly ? "var(--dn)" : "var(--sp)" }}>
+        <div className={`l1-price ${hasAnomaly ? "text-dn" : "text-sp"}`}>
           {formatRupiah(avgPriceLatest)}
         </div>
         <div><ChangePill value={avgChange} /></div>
@@ -207,7 +204,7 @@ function GroupSortHeader({
       className={`sh ${active ? "active" : ""}`}
       onClick={() => onSort(k)}
     >
-      {label} <span style={{ fontSize: 9 }}>{arrow}</span>
+      {label} <span className="text-[9px]">{arrow}</span>
     </span>
   );
 }

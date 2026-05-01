@@ -150,42 +150,26 @@ export function ChartPanel({ row }: Props) {
   return (
     <div className="ce-grid">
       <div className="ce-chart">
-        <div className="flex items-start justify-between" style={{ marginBottom: 7 }}>
+        <div className="flex items-start justify-between mb-[7px]">
           <div>
-            <div className="font-serif" style={{ fontSize: 12, fontWeight: 700 }}>
+            <div className="font-serif text-[12px] font-bold">
               {row.city_raw} — {row.commodity_name}
             </div>
-            <div
-              className="font-mono"
-              style={{ fontSize: 9, color: "var(--ink-dim)", marginTop: 2 }}
-            >
+            <div className="font-mono text-[9px] text-ink-dim mt-[2px]">
               SP2KP · {config.subtitle} · Garis merah putus = HET
             </div>
           </div>
-          <div
-            style={{
-              display: "flex", gap: 1, padding: 2,
-              background: "var(--paper2)", border: "1px solid var(--rule)",
-              borderRadius: 5,
-            }}
-          >
+          <div className="flex gap-[1px] p-[2px] bg-paper-2 border border-rule rounded-[5px]">
             {(["D", "W", "M"] as const).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => setMode(m)}
-                className="font-mono"
-                style={{
-                  padding: "3px 8px",
-                  borderRadius: 4,
-                  fontSize: 10,
-                  fontWeight: 500,
-                  background: mode === m ? "white" : "transparent",
-                  color: mode === m ? "var(--ink)" : "var(--ink-dim)",
-                  boxShadow: mode === m ? "0 1px 3px rgba(0,0,0,.08)" : "none",
-                  cursor: "pointer",
-                  border: "none",
-                }}
+                className={`font-mono px-2 py-[3px] rounded-[4px] text-[10px] font-medium cursor-pointer border-none ${
+                  mode === m
+                    ? "bg-white text-ink shadow-[0_1px_3px_rgba(0,0,0,.08)]"
+                    : "bg-transparent text-ink-dim"
+                }`}
               >
                 {m}
               </button>
@@ -194,23 +178,11 @@ export function ChartPanel({ row }: Props) {
         </div>
 
         {loading ? (
-          <div
-            className="font-mono"
-            style={{
-              height: 200, display: "flex", alignItems: "center",
-              justifyContent: "center", fontSize: 11, color: "var(--ink-dim)",
-            }}
-          >
+          <div className="font-mono h-[200px] flex items-center justify-center text-[11px] text-ink-dim">
             Memuat...
           </div>
         ) : err ? (
-          <div
-            className="font-mono"
-            style={{
-              height: 200, display: "flex", alignItems: "center",
-              justifyContent: "center", fontSize: 11, color: "var(--dn)",
-            }}
-          >
+          <div className="font-mono h-[200px] flex items-center justify-center text-[11px] text-dn">
             {err}
           </div>
         ) : mode === "D" ? (
@@ -233,7 +205,7 @@ export function ChartPanel({ row }: Props) {
         <div className="st-title">{row.city_raw} · {row.commodity_name}</div>
         <div className="st-row">
           <span className="st-k">Harga hari ini</span>
-          <span className="st-v" style={{ color: "var(--sp)" }}>
+          <span className="st-v text-sp">
             {formatRupiah(row.price_latest)}
           </span>
         </div>
@@ -265,13 +237,13 @@ export function ChartPanel({ row }: Props) {
         </div>
         <div className="st-row">
           <span className="st-k">HET (SP2KP)</span>
-          <span className="st-v" style={{ color: row.het_ha == null ? "var(--ink-dim)" : "var(--ink)" }}>
+          <span className={`st-v ${row.het_ha == null ? "text-ink-dim" : "text-ink"}`}>
             {row.het_ha == null ? (
-              <span style={{ fontSize: 10 }}>— tidak tersedia</span>
+              <span className="text-[10px]">— tidak tersedia</span>
             ) : (
               <>
                 {formatRupiah(row.het_ha)}{" "}
-                <span style={{ fontSize: 9, color: aboveHet ? "var(--dn)" : "var(--lo)" }}>
+                <span className={`text-[9px] ${aboveHet ? "text-dn" : "text-lo"}`}>
                   {aboveHet ? `↑ +${hetDelta?.toFixed(1)}%` : `✓ di bawah`}
                 </span>
               </>

@@ -76,14 +76,11 @@ export function CityRow({ group, index, isOpen, onToggle }: Props) {
   return (
     <div className={`l1-block ${isOpen ? "open" : ""} ${hasAnomaly ? "anom" : ""}`}>
       <div className="l1-row" style={{ gridTemplateColumns: COLS }} onClick={onToggle}>
-        <span
-          className="font-mono"
-          style={{ fontSize: 10, color: "var(--ink-dim)" }}
-        >
+        <span className="font-mono text-[10px] text-ink-dim">
           {String(index + 1).padStart(2, "0")}
         </span>
         <div>
-          <div className="l1-name" style={{ color: hasAnomaly ? "var(--dn)" : undefined }}>
+          <div className={`l1-name ${hasAnomaly ? "text-dn" : ""}`}>
             {group.city_raw}{hasAnomaly ? " ⚠" : ""}
           </div>
           <div className={`l1-sub ${hasAnomaly ? "anom" : ""}`}>
@@ -93,7 +90,7 @@ export function CityRow({ group, index, isOpen, onToggle }: Props) {
               : ""}
           </div>
         </div>
-        <div className="l1-price" style={{ color: hasAnomaly ? "var(--dn)" : "var(--sp)" }}>
+        <div className={`l1-price ${hasAnomaly ? "text-dn" : "text-sp"}`}>
           {formatRupiah(avgPriceLatest)}
         </div>
         <div><ChangePill value={avgChange} /></div>

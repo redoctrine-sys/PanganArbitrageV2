@@ -11,36 +11,17 @@ export function CostBreakdown({ result }: Props) {
   const vol = result.volumeKg;
 
   return (
-    <div
-      style={{
-        border: "1px solid var(--rule)",
-        borderRadius: 10,
-        overflow: "hidden",
-        background: "var(--paper)",
-      }}
-    >
-      <div
-        style={{
-          padding: "10px 16px",
-          background: "var(--paper3)",
-          borderBottom: "1px solid var(--rule)",
-          fontSize: 9,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: "0.9px",
-          color: "var(--ink-dim)",
-          fontFamily: "var(--font-mono)",
-        }}
-      >
+    <div className="border border-rule rounded-[10px] overflow-hidden bg-paper">
+      <div className="px-4 py-[10px] bg-paper-3 border-b border-rule text-[9px] font-bold uppercase tracking-[0.9px] text-ink-dim font-mono">
         Rincian Biaya
       </div>
 
-      <table className="preview-table" style={{ margin: 0 }}>
+      <table className="preview-table m-0">
         <thead>
           <tr>
             <th>Item</th>
-            <th style={{ textAlign: "right" }}>Per kg</th>
-            <th style={{ textAlign: "right" }}>{`Total (${vol.toLocaleString("id-ID")} kg)`}</th>
+            <th className="text-right">Per kg</th>
+            <th className="text-right">{`Total (${vol.toLocaleString("id-ID")} kg)`}</th>
           </tr>
         </thead>
         <tbody>
@@ -56,38 +37,28 @@ export function CostBreakdown({ result }: Props) {
             label="Harga jual"
             perUnit={result.priceDest}
             total={result.priceDest * vol}
-            color="var(--up)"
+            colorClass="text-up"
           />
           <Row
             label="Keuntungan bersih"
             perUnit={result.netProfitPerUnit}
             total={result.totalProfit}
             bold
-            color={result.isProfitable ? "var(--up)" : "var(--dn)"}
+            colorClass={result.isProfitable ? "text-up" : "text-dn"}
           />
         </tbody>
       </table>
 
-      <div
-        style={{
-          padding: "10px 16px",
-          background: "var(--paper2)",
-          borderTop: "1px solid var(--rule)",
-          display: "flex",
-          gap: 20,
-          fontSize: 11,
-          fontFamily: "var(--font-mono)",
-        }}
-      >
-        <span style={{ color: "var(--ink-dim)" }}>
+      <div className="px-4 py-[10px] bg-paper-2 border-t border-rule flex gap-[20px] text-[11px] font-mono">
+        <span className="text-ink-dim">
           Selisih harga:{" "}
-          <b style={{ color: result.priceDiff > 0 ? "var(--up)" : "var(--dn)" }}>
+          <b className={result.priceDiff > 0 ? "text-up" : "text-dn"}>
             {formatRupiah(result.priceDiff)}/kg
           </b>
         </span>
-        <span style={{ color: "var(--ink-dim)" }}>
+        <span className="text-ink-dim">
           Break-even transport:{" "}
-          <b style={{ color: "var(--ink)" }}>
+          <b className="text-ink">
             {formatRupiah(result.priceDiff > 0 ? result.priceDiff : 0)}/kg
           </b>
         </span>
@@ -97,25 +68,20 @@ export function CostBreakdown({ result }: Props) {
 }
 
 function Row({
-  label, perUnit, total, bold, color,
+  label, perUnit, total, bold, colorClass,
 }: {
   label: string;
   perUnit: number;
   total: number;
   bold?: boolean;
-  color?: string;
+  colorClass?: string;
 }) {
-  const style: React.CSSProperties = {
-    fontFamily: "var(--font-mono)",
-    fontWeight: bold ? 700 : 400,
-    color: color ?? "var(--ink)",
-    textAlign: "right",
-  };
+  const cls = `font-mono ${bold ? "font-bold" : "font-normal"} ${colorClass ?? "text-ink"} text-right`;
   return (
     <tr>
-      <td style={{ fontWeight: bold ? 700 : 400, color: color ?? "var(--ink)" }}>{label}</td>
-      <td style={style}>{formatRupiah(perUnit)}</td>
-      <td style={style}>{formatRupiah(total)}</td>
+      <td className={`${bold ? "font-bold" : "font-normal"} ${colorClass ?? "text-ink"}`}>{label}</td>
+      <td className={cls}>{formatRupiah(perUnit)}</td>
+      <td className={cls}>{formatRupiah(total)}</td>
     </tr>
   );
 }

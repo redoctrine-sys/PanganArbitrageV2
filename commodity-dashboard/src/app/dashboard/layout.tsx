@@ -13,11 +13,11 @@ export default function DashboardLayout({
   const [uploadOpen, setUploadOpen] = useState(false);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+    <div className="flex flex-col h-screen overflow-hidden">
       <Topbar onUploadClick={() => setUploadOpen(true)} />
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
+        <main className="flex-1 flex flex-col overflow-hidden min-w-0">
           {children}
         </main>
       </div>

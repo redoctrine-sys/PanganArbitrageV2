@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -8,13 +8,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex flex-col flex-shrink-0 overflow-y-auto"
-      style={{
-        width: 186,
-        background: "#f0ece4",
-        borderRight: "1px solid var(--rule)",
-        padding: "10px 7px",
-      }}
+      className="flex flex-col shrink-0 overflow-y-auto w-[186px] bg-[#f0ece4] border-r border-rule p-[10px_7px]"
     >
       <SectionLabel>Sumber Data</SectionLabel>
       <Item
@@ -23,7 +17,7 @@ export function Sidebar() {
         label="SP2KP"
         pip="var(--sp)"
         badge="Live"
-        badgeStyle={{ background: "var(--sp-light)", color: "var(--sp)" }}
+        badgeClassName="bg-sp-light text-sp"
       />
       <Item
         href="/dashboard/pedagang"
@@ -66,23 +60,12 @@ export function Sidebar() {
       />
       <Sub label="Ingest Log" placeholder />
 
-      <div
-        className="mt-auto p-2.5 font-mono"
-        style={{
-          marginTop: "auto",
-          background: "var(--paper)",
-          borderRadius: 7,
-          border: "1px solid var(--rule)",
-          fontSize: 10,
-          color: "var(--ink-dim)",
-          lineHeight: 1.8,
-        }}
-      >
-        <b style={{ color: "var(--ink-mid)" }}>SP2KP</b> aktif
+      <div className="mt-auto p-2.5 font-mono bg-paper rounded-[7px] border border-rule text-[10px] text-ink-dim leading-[1.8]">
+        <b className="text-ink-mid">SP2KP</b> aktif
         <br />
-        <b style={{ color: "var(--ink-mid)" }}>Transport</b> aktif
+        <b className="text-ink-mid">Transport</b> aktif
         <br />
-        Komparasi Â· Arbitrase Â· Pedagang data â†’ Phase 2+.
+        Komparasi · Arbitrase · Pedagang data → Phase 2+.
       </div>
     </aside>
   );
@@ -90,65 +73,43 @@ export function Sidebar() {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        fontSize: 9, fontWeight: 700, letterSpacing: "1.6px",
-        textTransform: "uppercase", color: "var(--ink-dim)", padding: "7px 8px 4px",
-      }}
-    >
+    <div className="text-[9px] font-bold tracking-[1.6px] uppercase text-ink-dim px-2 pt-[7px] pb-1">
       {children}
     </div>
   );
 }
 
 function Item({
-  label, pip, badge, badgeStyle, active, placeholder, dim, href,
+  label, pip, badge, badgeClassName, active, placeholder, dim, href,
 }: {
   label: string; pip: string; badge?: string;
-  badgeStyle?: React.CSSProperties; active?: boolean;
+  badgeClassName?: string; active?: boolean;
   placeholder?: boolean; dim?: boolean; href?: string;
 }) {
+  const baseClass = `flex items-center gap-2 mb-px select-none px-[9px] py-[6px] rounded-[6px] text-[12px] no-underline transition-colors duration-100
+    ${active ? "text-paper bg-ink font-medium" : "text-ink-mid bg-transparent font-normal"}
+    ${dim ? "opacity-70" : ""}
+    ${placeholder ? "cursor-not-allowed" : "cursor-pointer"}`;
+
   const inner = (
     <>
+      {/* pip dot — color is dynamic from prop, must stay as inline style */}
       <div style={{ width: 7, height: 7, borderRadius: "50%", background: pip, flexShrink: 0 }} />
       {label}
       {badge && (
-        <span
-          className="ml-auto font-mono"
-          style={{
-            fontSize: 9, padding: "1px 5px", borderRadius: 5,
-            ...badgeStyle,
-          }}
-        >
+        <span className={`ml-auto font-mono text-[9px] px-[5px] py-px rounded-[5px] ${badgeClassName ?? ""}`}>
           {badge}
         </span>
       )}
     </>
   );
 
-  const style: React.CSSProperties = {
-    padding: "6px 9px",
-    borderRadius: 6,
-    fontSize: 12,
-    color: active ? "var(--paper)" : "var(--ink-mid)",
-    background: active ? "var(--ink)" : "transparent",
-    fontWeight: active ? 500 : 400,
-    opacity: dim ? 0.7 : 1,
-    cursor: placeholder ? "not-allowed" : "pointer",
-    textDecoration: "none",
-  };
-
   if (href && !placeholder) {
-    return (
-      <Link href={href} className="flex items-center gap-2 mb-px select-none" style={style}>
-        {inner}
-      </Link>
-    );
+    return <Link href={href} className={baseClass}>{inner}</Link>;
   }
   return (
     <div
-      className="flex items-center gap-2 mb-px select-none"
-      style={style}
+      className={baseClass}
       title={placeholder ? "Tab ini akan tersedia di Phase 2+" : undefined}
     >
       {inner}
@@ -161,46 +122,20 @@ function Sub({
 }: {
   label: string; placeholder?: boolean; href?: string; active?: boolean;
 }) {
-  const style: React.CSSProperties = {
-    padding: "5px 9px 5px 26px",
-    borderRadius: 5,
-    fontSize: 11,
-    color: active ? "var(--ink)" : "var(--ink-dim)",
-    background: active ? "var(--paper)" : "transparent",
-    fontWeight: active ? 600 : 400,
-    cursor: placeholder ? "not-allowed" : "pointer",
-    marginBottom: 1,
-    textDecoration: "none",
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-  };
+  const baseClass = `select-none flex items-center gap-[6px] pl-[26px] pr-[9px] py-[5px] rounded-[5px] text-[11px] mb-px no-underline
+    ${active ? "text-ink bg-paper font-semibold" : "text-ink-dim bg-transparent font-normal"}
+    ${placeholder ? "cursor-not-allowed" : "cursor-pointer"}`;
 
   if (href && !placeholder) {
-    return (
-      <Link href={href} className="select-none" style={style}>
-        {label}
-      </Link>
-    );
+    return <Link href={href} className={baseClass}>{label}</Link>;
   }
   return (
-    <div
-      className="flex items-center gap-1.5 select-none"
-      style={style}
-    >
+    <div className={baseClass} title={placeholder ? "Tab ini akan tersedia di Phase 2+" : undefined}>
       {label}
     </div>
   );
 }
 
 function Divider() {
-  return (
-    <hr
-      style={{
-        border: "none",
-        borderTop: "1px solid var(--rule)",
-        margin: "6px 0",
-      }}
-    />
-  );
+  return <hr className="border-none border-t border-rule my-[6px]" />;
 }

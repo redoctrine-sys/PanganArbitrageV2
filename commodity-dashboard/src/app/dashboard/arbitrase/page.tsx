@@ -12,37 +12,25 @@ export default function ArbitrasePage() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Header */}
-      <div
-        style={{
-          padding: "12px 18px 9px",
-          background: "#f0ece4",
-          borderBottom: "2px solid var(--rule)",
-          flexShrink: 0,
-        }}
-      >
-        <div className="flex items-center" style={{ gap: 9, marginBottom: 4 }}>
-          <div
-            style={{ width: 4, height: 22, borderRadius: 3, background: "var(--arb)", flexShrink: 0 }}
-          />
+      <div className="px-[18px] pt-3 pb-[9px] bg-[#f0ece4] border-b-2 border-rule shrink-0">
+        <div className="flex items-center gap-[9px] mb-1">
+          <div className="w-1 h-[22px] rounded-[3px] bg-arb shrink-0" />
           <div>
-            <div className="font-serif" style={{ fontSize: 15, fontWeight: 700 }}>
+            <div className="font-serif text-[15px] font-bold">
               Arbitrase — Manual Kalkulator
             </div>
-            <div className="font-mono" style={{ fontSize: 10, color: "var(--ink-dim)" }}>
+            <div className="font-mono text-[10px] text-ink-dim">
               Hitung potensi keuntungan arbitrase antar kota · Data harga dari SP2KP
             </div>
           </div>
-          <span
-            className="pill"
-            style={{ marginLeft: "auto", background: "var(--hi-bg)", color: "var(--arb)", fontSize: 9 }}
-          >
+          <span className="pill ml-auto bg-hi-bg text-arb text-[9px]">
             Phase 2
           </span>
         </div>
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className="flex-1 overflow-y-auto px-[18px] py-4 flex flex-col gap-[14px]">
         {loading && (
           <div className="empty">
             <div className="empty-title">Memuat data harga SP2KP...</div>
@@ -63,7 +51,7 @@ export default function ArbitrasePage() {
             />
 
             {!result && (
-              <div className="empty" style={{ padding: "40px 20px" }}>
+              <div className="empty py-10 px-5">
                 <div className="empty-title">Pilih komoditas dan dua kota untuk kalkulasi</div>
                 <div className="empty-sub">
                   Kalkulator akan otomatis menghitung potensi keuntungan berdasarkan harga SP2KP terkini.

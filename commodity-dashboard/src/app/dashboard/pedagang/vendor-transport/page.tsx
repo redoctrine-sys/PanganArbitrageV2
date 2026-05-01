@@ -11,38 +11,25 @@ export default function VendorTransportPage() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Header */}
-      <div
-        style={{
-          padding: "12px 18px 9px",
-          background: "#f0ece4",
-          borderBottom: "2px solid var(--rule)",
-          flexShrink: 0,
-        }}
-      >
-        <div className="flex items-center" style={{ gap: 9, marginBottom: 4 }}>
-          <div
-            style={{ width: 4, height: 22, borderRadius: 3, background: "var(--ped)", flexShrink: 0 }}
-          />
+      <div className="px-[18px] pt-3 pb-[9px] bg-[#f0ece4] border-b-2 border-rule shrink-0">
+        <div className="flex items-center gap-[9px] mb-1">
+          <div className="w-1 h-[22px] rounded-[3px] bg-ped shrink-0" />
           <div>
-            <div className="font-serif" style={{ fontSize: 15, fontWeight: 700 }}>
+            <div className="font-serif text-[15px] font-bold">
               Vendor Transport
             </div>
-            <div className="font-mono" style={{ fontSize: 10, color: "var(--ink-dim)" }}>
+            <div className="font-mono text-[10px] text-ink-dim">
               Data biaya angkut antar kota · Pedagang &amp; mitra logistik
             </div>
           </div>
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-            <span
-              className="pill"
-              style={{ background: "#dbeafe", color: "var(--ped)", fontSize: 9 }}
-            >
+          <div className="ml-auto flex gap-2 items-center">
+            <span className="pill bg-ped-light text-ped text-[9px]">
               Phase 2 — In-memory
             </span>
             {!showForm && (
               <button
                 type="button"
-                className="btn btn-green"
-                style={{ background: "var(--ped)", fontSize: 11 }}
+                className="btn btn-green bg-ped text-[11px]"
                 onClick={() => setShowForm(true)}
               >
                 + Tambah Rute
@@ -53,7 +40,7 @@ export default function VendorTransportPage() {
       </div>
 
       {/* Phase 2 notice */}
-      <div className="anom-bar info" style={{ margin: 0, borderRadius: 0, borderBottom: "1px solid var(--rule)", borderTop: "none", borderLeft: "none", borderRight: "none" }}>
+      <div className="anom-bar info m-0 rounded-none border-t-0 border-l-0 border-r-0 border-b border-rule">
         <span>
           Data rute tersimpan di browser sesi ini saja.{" "}
           <b>Phase 2</b>: rute akan persisted ke Supabase + dipakai Arbitrase Kalkulator secara otomatis.
@@ -61,7 +48,7 @@ export default function VendorTransportPage() {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className="flex-1 overflow-y-auto px-[18px] py-4 flex flex-col gap-[14px]">
         {showForm && (
           <AddRouteForm
             form={form}

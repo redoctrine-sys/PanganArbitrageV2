@@ -9,16 +9,8 @@ const VEHICLE_OPTIONS = [
   { value: "kontainer", label: "Kontainer" },
 ];
 
-const INPUT_STYLE: React.CSSProperties = {
-  padding: "6px 9px",
-  borderRadius: 6,
-  border: "1px solid var(--rule)",
-  background: "var(--paper)",
-  fontSize: 12,
-  color: "var(--ink)",
-  outline: "none",
-  width: "100%",
-};
+const INPUT_CLASS =
+  "w-full px-[9px] py-[6px] rounded-[6px] border border-rule bg-paper text-[12px] text-ink outline-none";
 
 interface Props {
   form: AddRouteFormState;
@@ -31,22 +23,15 @@ export function AddRouteForm({ form, onPatch, onSubmit, onCancel }: Props) {
   const isValid = form.fromCity.trim() && form.toCity.trim() && Number(form.costPerKg) > 0;
 
   return (
-    <div
-      style={{
-        background: "var(--paper2)",
-        border: "1px solid var(--rule)",
-        borderRadius: 10,
-        padding: "16px 18px",
-      }}
-    >
-      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-mid)", marginBottom: 14 }}>
+    <div className="bg-paper-2 border border-rule rounded-[10px] px-[18px] py-4">
+      <div className="text-[11px] font-semibold text-ink-mid mb-[14px]">
         Tambah Rute Transport
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+      <div className="grid grid-cols-4 gap-[12px] mb-3">
         <Field label="Kota Asal">
           <input
-            style={INPUT_STYLE}
+            className={INPUT_CLASS}
             placeholder="mis. Jakarta Pusat"
             value={form.fromCity}
             onChange={(e) => onPatch({ fromCity: e.target.value })}
@@ -54,7 +39,7 @@ export function AddRouteForm({ form, onPatch, onSubmit, onCancel }: Props) {
         </Field>
         <Field label="Kota Tujuan">
           <input
-            style={INPUT_STYLE}
+            className={INPUT_CLASS}
             placeholder="mis. Kab. Bogor"
             value={form.toCity}
             onChange={(e) => onPatch({ toCity: e.target.value })}
@@ -62,7 +47,7 @@ export function AddRouteForm({ form, onPatch, onSubmit, onCancel }: Props) {
         </Field>
         <Field label="Kendaraan">
           <select
-            style={INPUT_STYLE}
+            className={INPUT_CLASS}
             value={form.vehicleType}
             onChange={(e) => onPatch({ vehicleType: e.target.value as AddRouteFormState["vehicleType"] })}
           >
@@ -74,7 +59,7 @@ export function AddRouteForm({ form, onPatch, onSubmit, onCancel }: Props) {
         <Field label="Biaya/kg (Rp)">
           <input
             type="number"
-            style={{ ...INPUT_STYLE, fontFamily: "var(--font-mono)" }}
+            className={`${INPUT_CLASS} font-mono`}
             placeholder="mis. 500"
             value={form.costPerKg}
             min={0}
@@ -83,11 +68,11 @@ export function AddRouteForm({ form, onPatch, onSubmit, onCancel }: Props) {
         </Field>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 14 }}>
+      <div className="grid grid-cols-[1fr_2fr] gap-[12px] mb-[14px]">
         <Field label="Jarak (km, opsional)">
           <input
             type="number"
-            style={{ ...INPUT_STYLE, fontFamily: "var(--font-mono)" }}
+            className={`${INPUT_CLASS} font-mono`}
             placeholder="mis. 60"
             value={form.distanceKm}
             min={0}
@@ -96,7 +81,7 @@ export function AddRouteForm({ form, onPatch, onSubmit, onCancel }: Props) {
         </Field>
         <Field label="Catatan">
           <input
-            style={INPUT_STYLE}
+            className={INPUT_CLASS}
             placeholder="mis. via Tol Jagorawi, armada 1 ton"
             value={form.notes}
             onChange={(e) => onPatch({ notes: e.target.value })}
@@ -104,7 +89,7 @@ export function AddRouteForm({ form, onPatch, onSubmit, onCancel }: Props) {
         </Field>
       </div>
 
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      <div className="flex gap-2 justify-end">
         <button type="button" className="btn btn-ghost" onClick={onCancel}>Batal</button>
         <button
           type="button"
@@ -122,12 +107,7 @@ export function AddRouteForm({ form, onPatch, onSubmit, onCancel }: Props) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div
-        style={{
-          fontSize: 9, fontWeight: 700, textTransform: "uppercase" as const,
-          letterSpacing: "0.9px", color: "var(--ink-dim)", fontFamily: "var(--font-mono)", marginBottom: 5,
-        }}
-      >
+      <div className="text-[9px] font-bold uppercase tracking-[0.9px] text-ink-dim font-mono mb-[5px]">
         {label}
       </div>
       {children}

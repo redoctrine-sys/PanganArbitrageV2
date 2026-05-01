@@ -19,10 +19,8 @@ export function PriceLineChart({ points, het, avg30, height = 200 }: Props) {
   if (points.length === 0) {
     return (
       <div
-        style={{
-          height, display: "flex", alignItems: "center", justifyContent: "center",
-          color: "var(--ink-dim)", fontSize: 12, fontFamily: "var(--font-mono)",
-        }}
+        className="flex items-center justify-center text-ink-dim text-[12px] font-mono"
+        style={{ height }}
       >
         Belum ada data harga harian.
       </div>
