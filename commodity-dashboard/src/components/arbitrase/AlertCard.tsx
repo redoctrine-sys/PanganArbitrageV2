@@ -3,6 +3,15 @@
 import { useState } from "react";
 import { fmtRp } from "@/components/arbitrase/arbitrase.types";
 
+interface TransportOption {
+  vendor_name: string;
+  capacity_kg: number;
+  cost: number;
+  profit: number;
+  roi: number;
+  breakdown: string;
+}
+
 interface Alert {
   id: string;
   type: "anomaly" | "arbitrage";
@@ -70,6 +79,16 @@ function CalcRow({ label, value, highlight, dimmed, borderTop }: {
   );
 }
 
+function parseTransportOptions(raw: string | undefined): TransportOption[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const isAnomaly   = alert.type === "anomaly";
@@ -96,6 +115,10 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
     ? (netProfit / modalBeli) * 100 : null;
 
   const hetSelisih = alert.price != null && alert.het_ha != null ? alert.price - alert.het_ha : null;
+
+  // Parse transport options (JSON array stored in transport_detail)
+  const transportOptions = parseTransportOptions(alert.transport_detail);
+  const bestOption = transportOptions[0] ?? null;
 
   return (
     <div
@@ -146,8 +169,13 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
               <Row label="Transport"   value={alert.transport_cost != null ? fmtRp(alert.transport_cost) : "—"} />
               <Row label="Volume"      value={`${vol.toLocaleString()} kg`} />
               <Row label="Est. Profit" value={
-                <span className={alert.profit_estimate != null && alert.profit_estimate >= 0 ? "text-up font-bold" : "text-dn font-bold"}>
-                  {alert.profit_estimate != null ? fmtRp(alert.profit_estimate) : "—"}
+                <span className="flex items-center gap-1">
+                  <span className={alert.profit_estimate != null && alert.profit_estimate >= 0 ? "text-up font-bold" : "text-dn font-bold"}>
+                    {alert.profit_estimate != null ? fmtRp(alert.profit_estimate) : "—"}
+                  </span>
+                  {bestOption != null && (
+                    <span className="text-up text-[9px]">({bestOption.roi.toFixed(1)}% ROI)</span>
+                  )}
                 </span>
               } />
             </div>
@@ -188,11 +216,40 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
                   label={`Biaya Transport${alert.vendor_name ? ` (${alert.vendor_name})` : ""}`}
                   value={alert.transport_cost != null ? `− ${fmtRp(alert.transport_cost)}` : "—"}
                 />
-                {alert.transport_detail && (
-                  <div className="text-[10px] text-ink-dim mt-1 border-l-2 border-rule pl-2 whitespace-pre-wrap font-mono">
-                    {alert.transport_detail}
+
+                {/* Transport options accordion */}
+                {transportOptions.length > 0 && (
+                  <div className="mt-[6px] mb-[4px] flex flex-col gap-[3px]">
+                    {transportOptions.map((opt, idx) => (
+                      <details
+                        key={idx}
+                        className="text-[10px] rounded border border-rule overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <summary className="cursor-pointer font-mono px-2 py-[4px] bg-paper-2 hover:bg-rule select-none flex items-center gap-1">
+                          <span className="text-ink-dim shrink-0">Opsi {idx + 1}:</span>
+                          <span className="font-semibold text-ink flex-1">{opt.vendor_name} ({opt.capacity_kg.toLocaleString()}kg)</span>
+                          <span className="text-ink shrink-0">{fmtRp(opt.cost)}</span>
+                          <span className={`shrink-0 ml-1 font-bold ${opt.roi >= 0 ? "text-up" : "text-dn"}`}>
+                            {opt.roi.toFixed(1)}% ROI
+                          </span>
+                        </summary>
+                        <div className="px-3 py-[6px] bg-white font-mono flex flex-col gap-[3px]">
+                          <div className="text-ink-dim">{opt.breakdown}</div>
+                          <div className="flex justify-between pt-[3px] border-t border-rule mt-[2px]">
+                            <span className="text-ink-mid">Net Profit ({opt.capacity_kg.toLocaleString()} kg)</span>
+                            <span className={`font-semibold ${opt.profit >= 0 ? "text-up" : "text-dn"}`}>{fmtRp(opt.profit)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-ink-mid">ROI</span>
+                            <span className={`font-semibold ${opt.roi >= 0 ? "text-up" : "text-dn"}`}>{opt.roi.toFixed(2)}%</span>
+                          </div>
+                        </div>
+                      </details>
+                    ))}
                   </div>
                 )}
+
                 <CalcRow
                   label="NET PROFIT"
                   value={netProfit != null ? fmtRp(netProfit) : "—"}
@@ -239,7 +296,7 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
             </div>
           )}
 
-          {/* ── AI Insights (full, arbitrage only) ── */}
+          {/* ── AI Insights ── */}
           {isArbitrage && alert.insights && alert.insights.length > 0 && (
             <div>
               <div className="font-mono text-[9px] font-bold text-ink-dim uppercase tracking-[0.7px] mb-[6px]">🤖 AI Insight</div>

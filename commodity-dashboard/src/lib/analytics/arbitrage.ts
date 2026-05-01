@@ -7,13 +7,6 @@ import type { AnomalyAlert, ArbitrageOpportunity, PricePoint, Vendor } from "@/l
 
 // ─── Layer 1a: Anomaly Detection ─────────────────────────────────────────────
 
-/**
- * Detect prices above HET threshold.
- * Severity:
- *   high   > HET + 20%
- *   medium > HET + 10%
- *   low    > HET + 2% (HET_ANOMALY_THRESHOLD)
- */
 export function detectAnomalies(points: PricePoint[]): AnomalyAlert[] {
   const alerts: AnomalyAlert[] = [];
 
@@ -21,7 +14,7 @@ export function detectAnomalies(points: PricePoint[]): AnomalyAlert[] {
     if (p.het_ha == null || p.price <= 0) continue;
 
     const excess = (p.price - p.het_ha) / p.het_ha;
-    if (excess <= HET_ANOMALY_THRESHOLD - 1) continue; // below threshold
+    if (excess <= HET_ANOMALY_THRESHOLD - 1) continue;
 
     const severity: AnomalyAlert["severity"] =
       excess > 0.20 ? "high" : excess > 0.10 ? "medium" : "low";
@@ -39,7 +32,6 @@ export function detectAnomalies(points: PricePoint[]): AnomalyAlert[] {
     });
   }
 
-  // Sort: highest excess first
   return alerts.sort((a, b) => b.excess_percent - a.excess_percent);
 }
 
@@ -72,15 +64,13 @@ function calculateDistanceKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ASDP tariffs per golongan kendaraan
-// Ketapang-Gilimanuk (Jawa↔Bali) dan Padangbai-Lembar (Bali↔Lombok)
 type Golongan = "II" | "IVB" | "VB" | "VIB";
 
 const ASDP_KG: Record<Golongan, number> = {
-  "II":   31_600,   // Motor
-  "IVB":  193_200,  // Pickup / < 2000 kg
-  "VB":   353_400,  // Truk Engkel / < 5000 kg
-  "VIB":  572_000,  // Truk Besar / >= 5000 kg
+  "II":   31_600,
+  "IVB":  193_200,
+  "VB":   353_400,
+  "VIB":  572_000,
 };
 
 const ASDP_PL: Record<Golongan, number> = {
@@ -111,7 +101,18 @@ function getFerryFare(islandA: string, islandB: string, gol: Golongan): number {
   }
 }
 
-function buildTransportDetail(
+// Per-vendor transport option stored as JSON in transport_detail column
+export interface TransportOption {
+  vendor_name: string;
+  capacity_kg: number;
+  cost: number;
+  profit: number;
+  roi: number;
+  breakdown: string;
+}
+
+// Concise single-line breakdown string stored inside each TransportOption
+function buildBreakdown(
   vendor: Vendor,
   distanceKm: number,
   ferryFare: number,
@@ -119,36 +120,28 @@ function buildTransportDetail(
   toIsland: string,
 ): string {
   const km  = Math.round(distanceKm);
-  const gol = getGolongan(vendor);
   const fmt = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
-
-  const lines: string[] = [];
-  lines.push(`Jarak ${km} km | 1 trip (Gol ${gol})`);
+  const parts: string[] = [`Jarak ${km} km`];
 
   if (vendor.pricing_type === "flat_per_trip") {
-    lines.push(`Flat: ${fmt(vendor.price)}`);
+    parts.push(`Flat ${fmt(vendor.price)}`);
   } else if (vendor.base_fare_rp != null && vendor.base_km != null) {
     if (distanceKm <= vendor.base_km) {
-      lines.push(`Base (≤${vendor.base_km} km): ${fmt(vendor.base_fare_rp)}`);
+      parts.push(`Base ${fmt(vendor.base_fare_rp)} (≤${vendor.base_km} km)`);
     } else {
-      const lanjutanKm  = distanceKm - vendor.base_km;
-      const lanjutanRp  = lanjutanKm * vendor.price;
-      lines.push(`Base (${vendor.base_km} km): ${fmt(vendor.base_fare_rp)}`);
-      lines.push(`Lanjutan (${Math.round(lanjutanKm)} km × ${fmt(vendor.price)}/km): ${fmt(lanjutanRp)}`);
+      const lanjutanRp = (distanceKm - vendor.base_km) * vendor.price;
+      parts.push(`Base ${fmt(vendor.base_fare_rp)} + Lanjutan ${fmt(lanjutanRp)}`);
     }
   } else {
-    lines.push(`${fmt(vendor.price)}/km × ${km} km: ${fmt(vendor.price * distanceKm)}`);
+    parts.push(`${km} km × ${fmt(vendor.price)}/km = ${fmt(vendor.price * distanceKm)}`);
   }
 
   if (ferryFare > 0) {
-    const routeLabel = fromIsland !== toIsland ? `${fromIsland}↔${toIsland}` : "";
-    lines.push(`Feri (${routeLabel}): ${fmt(ferryFare)}`);
+    const route = fromIsland !== toIsland ? `${fromIsland}↔${toIsland}` : "";
+    parts.push(`Feri${route ? ` (${route})` : ""} ${fmt(ferryFare)}`);
   }
 
-  const totalPerTrip = calcTransport(vendor, distanceKm) + ferryFare;
-  lines.push(`Total Transport: ${fmt(totalPerTrip)}`);
-
-  return lines.join("\n");
+  return parts.join(" | ");
 }
 
 function estimateTransportCost(
@@ -159,69 +152,86 @@ function estimateTransportCost(
   toLon: number | null,
   fromIsland: string,
   toIsland: string,
+  priceBuy: number,
+  priceSell: number,
 ): { cost: number; vendor_name: string | null; volume_kg: number; distance_km: number; transport_detail: string } {
   const distanceKm = calculateDistanceKm(fromLat, fromLon, toLat, toLon);
   const fmt = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
 
   if (vendors.length === 0) {
-    const gol      = "VB" as Golongan;
+    const gol       = "VB" as Golongan;
     const ferryFare = getFerryFare(fromIsland, toIsland, gol);
+    const option: TransportOption = {
+      vendor_name: "Tidak ada vendor",
+      capacity_kg: 0,
+      cost:        ferryFare,
+      profit:      0,
+      roi:         0,
+      breakdown:   `Jarak ${Math.round(distanceKm)} km${ferryFare > 0 ? ` | Feri: ${fmt(ferryFare)}` : ""}`,
+    };
     return {
-      cost: ferryFare,
-      vendor_name: null,
-      volume_kg: 0,
-      distance_km: distanceKm,
-      transport_detail: `Jarak ${Math.round(distanceKm)} km | Tidak ada vendor${ferryFare > 0 ? ` | Feri: ${fmt(ferryFare)}` : ""}`,
+      cost:             ferryFare,
+      vendor_name:      null,
+      volume_kg:        0,
+      distance_km:      distanceKm,
+      transport_detail: JSON.stringify([option]),
     };
   }
 
-  // Collect all valid vendors — 1 full trip each (volume = vendor.capacity_kg)
-  const options: { vendor: Vendor; cost: number; ferryFare: number }[] = [];
+  // Evaluate each valid vendor: 1 full trip (volume = capacity_kg)
+  const options: TransportOption[] = [];
   for (const v of vendors) {
     if (!v.capacity_kg || v.capacity_kg <= 0) continue;
-    const gol       = getGolongan(v);
-    const ferryFare = getFerryFare(fromIsland, toIsland, gol);
-    const cost      = calcTransport(v, distanceKm) + ferryFare;
-    options.push({ vendor: v, cost, ferryFare });
+    const gol        = getGolongan(v);
+    const ferryFare  = getFerryFare(fromIsland, toIsland, gol);
+    const cost       = calcTransport(v, distanceKm) + ferryFare;
+    const volume_kg  = v.capacity_kg;
+    const profit     = (priceSell - priceBuy) * volume_kg - cost;
+    const modalBeli  = priceBuy * volume_kg;
+    const roi        = modalBeli > 0 ? (profit / modalBeli) * 100 : 0;
+    const breakdown  = buildBreakdown(v, distanceKm, ferryFare, fromIsland, toIsland);
+    options.push({ vendor_name: v.name, capacity_kg: volume_kg, cost, profit, roi, breakdown });
   }
 
   // Fallback: no vendor has capacity_kg
   if (options.length === 0) {
-    const fallback  = vendors[0];
-    const gol       = getGolongan(fallback);
-    const ferryFare = getFerryFare(fromIsland, toIsland, gol);
-    const cost      = calcTransport(fallback, distanceKm) + ferryFare;
+    const fallback   = vendors[0];
+    const gol        = getGolongan(fallback);
+    const ferryFare  = getFerryFare(fromIsland, toIsland, gol);
+    const cost       = calcTransport(fallback, distanceKm) + ferryFare;
+    const volume_kg  = fallback.capacity_kg ?? 0;
+    const profit     = (priceSell - priceBuy) * volume_kg - cost;
+    const modalBeli  = priceBuy * volume_kg;
+    const roi        = modalBeli > 0 ? (profit / modalBeli) * 100 : 0;
+    const option: TransportOption = {
+      vendor_name: fallback.name,
+      capacity_kg: volume_kg,
+      cost,
+      profit,
+      roi,
+      breakdown: buildBreakdown(fallback, distanceKm, ferryFare, fromIsland, toIsland),
+    };
     return {
       cost,
       vendor_name:      fallback.name,
-      volume_kg:        fallback.capacity_kg ?? 0,
+      volume_kg,
       distance_km:      distanceKm,
-      transport_detail: buildTransportDetail(fallback, distanceKm, ferryFare, fromIsland, toIsland),
+      transport_detail: JSON.stringify([option]),
     };
   }
 
-  // Sort cheapest first
-  options.sort((a, b) => a.cost - b.cost);
+  // Sort by ROI desc — highest return on capital first
+  options.sort((a, b) => b.roi - a.roi);
 
-  const best = options[0];
-  const top3 = options.slice(0, 3);
-
-  // Summary lines for top-3 options
-  const summaryLines = top3.map((opt, idx) =>
-    `Opsi ${idx + 1} (${opt.vendor.name} - ${opt.vendor.capacity_kg}kg): ${fmt(opt.cost)}`
-  );
-
-  // Detailed breakdown for best (cheapest) option
-  const detailLines = buildTransportDetail(best.vendor, distanceKm, best.ferryFare, fromIsland, toIsland);
-
-  const transport_detail = [...summaryLines, "", detailLines].join("\n");
+  const top4 = options.slice(0, 4);
+  const best = top4[0];
 
   return {
-    cost:         best.cost,
-    vendor_name:  best.vendor.name,
-    volume_kg:    best.vendor.capacity_kg!,
-    distance_km:  distanceKm,
-    transport_detail,
+    cost:             best.cost,
+    vendor_name:      best.vendor_name,
+    volume_kg:        best.capacity_kg,
+    distance_km:      distanceKm,
+    transport_detail: JSON.stringify(top4),
   };
 }
 
@@ -244,10 +254,9 @@ interface RawCandidate {
  * Strategy (tiered):
  *   1. Collect ALL cross-city pairs per commodity
  *   2. Return pairs that pass MIN_SPREAD_PERCENT + MIN_PROFIT_THRESHOLD → "low/medium/high"
- *   3. If total results < TOP_N_FALLBACK, backfill with best remaining pairs
- *      marked as "low" severity (margin tipis, tetap dicatat)
+ *   3. If total results < TOP_N_FALLBACK, backfill with best remaining pairs (severity "low")
  *
- * Volume: uses vendor.capacity_kg (1 full trip) — NOT a fixed hardcoded value.
+ * Volume and vendor selection: best ROI per route, using vendor.capacity_kg (1 full trip).
  */
 export function findArbitrage(
   points: PricePoint[],
@@ -257,7 +266,6 @@ export function findArbitrage(
   const passed: ArbitrageOpportunity[] = [];
   const fallback: RawCandidate[] = [];
 
-  // Group by commodity
   const byCommodity = new Map<string, PricePoint[]>();
   for (const p of points) {
     if (p.price <= 0) continue;
@@ -279,11 +287,13 @@ export function findArbitrage(
 
         const spread    = expensive.price - cheapest.price;
         const spreadPct = spread / cheapest.price;
+
         const { cost: transportCost, vendor_name, volume_kg, distance_km, transport_detail } = estimateTransportCost(
           vendors,
           cheapest.latitude,  cheapest.longitude,
           expensive.latitude, expensive.longitude,
           cheapest.island,    expensive.island,
+          cheapest.price,     expensive.price,
         );
         const profit = expensive.price * volume_kg - cheapest.price * volume_kg - transportCost;
 
@@ -318,10 +328,8 @@ export function findArbitrage(
     }
   }
 
-  // Sort passed by profit desc
   passed.sort((a, b) => b.profit_estimate - a.profit_estimate);
 
-  // Backfill from best candidates if we don't have enough
   if (passed.length < TOP_N_FALLBACK) {
     const need  = TOP_N_FALLBACK - passed.length;
     const dedup = new Set(passed.map((p) => `${p.commodity_id}:${p.city_from}:${p.city_to}`));
