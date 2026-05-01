@@ -56,17 +56,40 @@ function calcTransport(vendor: Vendor, km: number): number {
   return km * vendor.price;
 }
 
-function estimateTransportCost(vendors: Vendor[], volumeKg: number): { cost: number; vendor_name: string | null } {
+function calculateDistanceKm(
+  lat1: number | null, lon1: number | null,
+  lat2: number | null, lon2: number | null
+): number {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return 200;
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function estimateTransportCost(
+  vendors: Vendor[],
+  volumeKg: number,
+  fromLat: number | null,
+  fromLon: number | null,
+  toLat: number | null,
+  toLon: number | null,
+): { cost: number; vendor_name: string | null } {
   if (vendors.length === 0) return { cost: 0, vendor_name: null };
 
-  const DEFAULT_KM = 200;
+  const distanceKm = calculateDistanceKm(fromLat, fromLon, toLat, toLon);
   let bestCost = Infinity;
   let bestVendor: Vendor | null = null;
 
   for (const v of vendors) {
     if (!v.capacity_kg || v.capacity_kg <= 0) continue;
     const trips = Math.ceil(volumeKg / v.capacity_kg);
-    const totalCost = calcTransport(v, DEFAULT_KM) * trips;
+    const totalCost = calcTransport(v, distanceKm) * trips;
     if (totalCost < bestCost) {
       bestCost = totalCost;
       bestVendor = v;
@@ -76,7 +99,7 @@ function estimateTransportCost(vendors: Vendor[], volumeKg: number): { cost: num
   // Fallback: no vendor has capacity_kg — use first vendor, 1 trip
   if (!bestVendor) {
     const fallback = vendors[0];
-    return { cost: calcTransport(fallback, DEFAULT_KM), vendor_name: fallback.name };
+    return { cost: calcTransport(fallback, distanceKm), vendor_name: fallback.name };
   }
 
   return { cost: bestCost, vendor_name: bestVendor.name };
@@ -132,7 +155,11 @@ export function findArbitrage(
 
         const spread = expensive.price - cheapest.price;
         const spreadPct = spread / cheapest.price;
-        const { cost: transportCost, vendor_name } = estimateTransportCost(vendors, volumeKg);
+        const { cost: transportCost, vendor_name } = estimateTransportCost(
+          vendors, volumeKg,
+          cheapest.latitude, cheapest.longitude,
+          expensive.latitude, expensive.longitude,
+        );
         const profit = expensive.price * volumeKg - cheapest.price * volumeKg - transportCost;
 
         const meetsThreshold = spreadPct >= MIN_SPREAD_PERCENT && profit >= MIN_PROFIT_THRESHOLD;

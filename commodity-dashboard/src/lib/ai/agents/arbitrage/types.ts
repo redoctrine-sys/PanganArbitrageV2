@@ -11,6 +11,8 @@ export interface PricePoint {
   date: string;
   province: string;
   island: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface Vendor {

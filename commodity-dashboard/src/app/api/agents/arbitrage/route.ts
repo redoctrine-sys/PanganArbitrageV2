@@ -120,10 +120,12 @@ export async function POST(): Promise<NextResponse> {
         commodity_id:   String(r.commodity_id ?? ""),
         commodity_name: String(r.commodity_name ?? ""),
         price:          Number(r.price_latest),
-        het_ha:         r.het_ha != null ? Number(r.het_ha) : null,
+        het_ha:         r.het_ha   != null ? Number(r.het_ha)   : null,
         date:           String(r.date_latest ?? ""),
         province:       String(r.province ?? ""),
         island:         String(r.island ?? ""),
+        latitude:       r.latitude  != null ? Number(r.latitude)  : null,
+        longitude:      r.longitude != null ? Number(r.longitude) : null,
       }));
 
     console.log(`[Arbitrage] run=${run_id} points=${points.length} vendors=${vendors.length}`);
