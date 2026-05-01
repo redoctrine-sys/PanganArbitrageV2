@@ -18,24 +18,26 @@ interface RunResult {
   error?: string;
 }
 
+interface Counts { arbitrage: number; anomaly: number; total: number }
+
 export function AlertCenter() {
   const [alerts, setAlerts]         = useState<Alert[]>([]);
+  const [counts, setCounts]         = useState<Counts>({ arbitrage: 0, anomaly: 0, total: 0 });
   const [loading, setLoading]       = useState(true);
   const [running, setRunning]       = useState(false);
   const [lastRun, setLastRun]       = useState<string | null>(null);
   const [runInfo, setRunInfo]       = useState<RunResult | null>(null);
   const [apiError, setApiError]     = useState<string | null>(null);
-  // Default "all" so alerts are immediately visible
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [filterSev, setFilterSev]   = useState<FilterSeverity>("all");
 
-  // Load alerts via API GET (uses server-side cleanUrl)
   const loadAlerts = useCallback(async () => {
     setLoading(true);
     try {
       const res  = await fetch("/api/agents/arbitrage", { cache: "no-store" });
-      const json = await res.json() as { data?: Alert[]; db_error?: string };
+      const json = await res.json() as { data?: Alert[]; counts?: Counts };
       setAlerts((json.data ?? []) as Alert[]);
+      if (json.counts) setCounts(json.counts);
     } catch {
       setAlerts([]);
     }
@@ -55,7 +57,6 @@ export function AlertCenter() {
 
       if (!res.ok || json.error) {
         setApiError(json.error ?? `HTTP ${res.status}`);
-        // Even on DB error, show in-memory results from API response
         const fromApi: Alert[] = [
           ...((json.anomalies ?? []) as Alert[]),
           ...((json.opportunities ?? []) as Alert[]),
@@ -67,12 +68,16 @@ export function AlertCenter() {
       setLastRun(json.timestamp ?? new Date().toISOString());
 
       if (json.db_error) {
-        // DB insert failed — show in-memory
         const fromApi: Alert[] = [
-          ...((json.anomalies ?? []) as Alert[]),
           ...((json.opportunities ?? []) as Alert[]),
+          ...((json.anomalies ?? []) as Alert[]),
         ].map((a) => ({ ...a, is_read: false, created_at: json.timestamp ?? "" }));
         setAlerts(fromApi);
+        setCounts({
+          arbitrage: json.opportunities?.length ?? 0,
+          anomaly: json.anomalies?.length ?? 0,
+          total: fromApi.length,
+        });
       } else {
         await loadAlerts();
       }
@@ -84,17 +89,20 @@ export function AlertCenter() {
   }
 
   async function markRead(id: string) {
-    try {
-      await fetch(`/api/agents/arbitrage?id=${id}`, { method: "PATCH" });
-    } catch {}
+    try { await fetch(`/api/agents/arbitrage?id=${id}`, { method: "PATCH" }); } catch {}
     setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, is_read: true } : a));
   }
 
+  // Client-side filter
   const filtered = alerts.filter((a) => {
     if (filterType !== "all" && a.type !== filterType) return false;
     if (filterSev  !== "all" && a.severity !== filterSev)  return false;
     return true;
   });
+
+  // Split into sections for display
+  const arbAlerts  = filtered.filter((a) => a.type === "arbitrage");
+  const anomAlerts = filtered.filter((a) => a.type === "anomaly");
 
   const unread = alerts.filter((a) => !a.is_read).length;
 
@@ -107,7 +115,11 @@ export function AlertCenter() {
           <button key={t} type="button"
             className={`fbtn${filterType === t ? " on" : ""}`}
             onClick={() => setFilterType(t)}>
-            {t === "all" ? "Semua" : t === "anomaly" ? "⚠ Anomali" : "📈 Arbitrase"}
+            {t === "all"
+              ? `Semua (${counts.total})`
+              : t === "anomaly"
+                ? `⚠ Anomali (${counts.anomaly})`
+                : `💰 Arbitrase (${counts.arbitrage})`}
           </button>
         ))}
         <div className="w-px h-[14px] bg-rule mx-1" />
@@ -140,7 +152,6 @@ export function AlertCenter() {
             {runInfo?.total_inserted != null && <span className="opacity-70">· {runInfo.total_inserted} alerts disimpan</span>}
             {runInfo?.gemini_used && <span className="opacity-70">· 🤖 Gemini aktif</span>}
             {runInfo?.db_error && <span className="text-[#78350f]">· ⚠ DB: {runInfo.db_error}</span>}
-            {runInfo?.warning && <span className="opacity-70">· {runInfo.warning}</span>}
           </div>
         )}
         {apiError && (
@@ -150,36 +161,9 @@ export function AlertCenter() {
         )}
       </div>
 
-      {/* Metrics strip after run */}
-      {runInfo && !apiError && (
-        <div className="mx-[18px] mt-[6px] px-3 py-[6px] bg-paper-2 border border-rule rounded-lg shrink-0 flex gap-4 flex-wrap items-center">
-          <span className="font-mono text-[9px] text-ink-dim uppercase tracking-[0.8px]">Hasil Analisis</span>
-          <Metric label="Anomali HET"       value={String(runInfo.anomalies?.length ?? 0)} />
-          <Metric label="Peluang Arbitrase" value={String(runInfo.opportunities?.length ?? 0)} />
-          <Metric label="Total tampil"      value={String(alerts.length)} />
-          {filterSev !== "all" && (
-            <span className="font-mono text-[9px] text-ink-dim">· filter: {filterSev}</span>
-          )}
-        </div>
-      )}
-
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-[12px_18px]">
         {loading && <div className="empty"><div className="empty-title">Memuat alerts...</div></div>}
-
-        {!loading && filtered.length === 0 && alerts.length > 0 && (
-          <div className="empty py-8">
-            <div className="text-[22px] mb-2">🔍</div>
-            <div className="empty-title">Tidak ada alert dengan filter ini</div>
-            <div className="empty-sub">
-              Ada <b>{alerts.length}</b> alert tersimpan — coba ubah filter severity ke <b>Semua</b>.
-            </div>
-            <button type="button" className="btn btn-ghost mt-3 text-[11px]"
-              onClick={() => { setFilterType("all"); setFilterSev("all"); }}>
-              Reset Filter
-            </button>
-          </div>
-        )}
 
         {!loading && alerts.length === 0 && (
           <div className="empty">
@@ -191,27 +175,60 @@ export function AlertCenter() {
           </div>
         )}
 
-        {!loading && filtered.length > 0 && (
-          <div className="flex flex-col gap-[8px]">
-            {filtered.map((a, i) => (
-              <AlertCard
-                key={a.id ?? `${a.type}-${a.commodity_name}-${i}`}
-                alert={a}
-                onRead={markRead}
-              />
-            ))}
+        {!loading && filtered.length === 0 && alerts.length > 0 && (
+          <div className="empty py-8">
+            <div className="text-[22px] mb-2">🔍</div>
+            <div className="empty-title">Tidak ada alert dengan filter ini</div>
+            <div className="empty-sub">
+              Ada <b>{alerts.length}</b> alert tersimpan — coba ubah filter.
+            </div>
+            <button type="button" className="btn btn-ghost mt-3 text-[11px]"
+              onClick={() => { setFilterType("all"); setFilterSev("all"); }}>
+              Reset Filter
+            </button>
+          </div>
+        )}
+
+        {/* === ARBITRAGE SECTION (shown first — this is what user cares about) === */}
+        {!loading && arbAlerts.length > 0 && (
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-[8px]">
+              <span className="text-[13px]">💰</span>
+              <div className="font-serif text-[13px] font-bold">Peluang Arbitrase</div>
+              <span className="font-mono text-[10px] text-ink-dim">{arbAlerts.length} peluang</span>
+            </div>
+            <div className="flex flex-col gap-[8px]">
+              {arbAlerts.map((a, i) => (
+                <AlertCard
+                  key={a.id ?? `arb-${a.commodity_name}-${i}`}
+                  alert={a}
+                  onRead={markRead}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* === ANOMALY SECTION === */}
+        {!loading && anomAlerts.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-[8px]">
+              <span className="text-[13px]">⚠</span>
+              <div className="font-serif text-[13px] font-bold">Anomali Harga (HET)</div>
+              <span className="font-mono text-[10px] text-ink-dim">{anomAlerts.length} anomali</span>
+            </div>
+            <div className="flex flex-col gap-[8px]">
+              {anomAlerts.map((a, i) => (
+                <AlertCard
+                  key={a.id ?? `anom-${a.commodity_name}-${i}`}
+                  alert={a}
+                  onRead={markRead}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-[5px]">
-      <span className="font-mono text-[9px] text-ink-dim">{label}:</span>
-      <span className="font-mono text-[11px] font-bold text-ink">{value}</span>
     </div>
   );
 }

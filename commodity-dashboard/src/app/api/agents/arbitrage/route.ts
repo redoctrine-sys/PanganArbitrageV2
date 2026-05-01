@@ -1,7 +1,8 @@
-// GET /api/agents/arbitrage — fetch alerts dari DB (uses server client with cleanUrl)
+// GET /api/agents/arbitrage — fetch alerts dari DB
+//   Fetches arbitrage + anomaly SEPARATELY to ensure both types always appear.
 // POST /api/agents/arbitrage — run arbitrage analysis
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerClient, getServiceClient } from "@/lib/supabase/server";
 import { detectAnomalies, findArbitrage } from "@/lib/analytics/arbitrage";
 import { analyzeWithGemini } from "@/lib/ai/agents/arbitrage/gemini-agent";
@@ -11,25 +12,59 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // ── GET: fetch stored alerts ─────────────────────────────────────────────────
-export async function GET(): Promise<NextResponse> {
+// Fix: separate queries for anomaly and arbitrage to avoid LIMIT truncation.
+// Previously LIMIT 100 returned 100 anomalies and 0 arbitrage opportunities.
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  const { searchParams } = new URL(req.url);
+  const typeFilter     = searchParams.get("type") || "all";
+  const severityFilter = searchParams.get("severity") || "all";
+
   let reader;
   try { reader = getServerClient(); }
   catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Supabase error", data: [] });
   }
 
-  const { data, error } = await reader
-    .from("arbitrage_alerts")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(100);
+  try {
+    // Fetch arbitrage opportunities (max 50) and anomalies (max 50) separately
+    // so arbitrage is never truncated by anomaly volume.
+    const [arbRes, anomRes] = await Promise.all([
+      reader.from("arbitrage_alerts")
+        .select("*")
+        .eq("type", "arbitrage")
+        .order("created_at", { ascending: false })
+        .limit(50),
+      reader.from("arbitrage_alerts")
+        .select("*")
+        .eq("type", "anomaly")
+        .order("created_at", { ascending: false })
+        .limit(50),
+    ]);
 
-  if (error) {
-    // Table might not exist yet (migration 014 not run)
-    return NextResponse.json({ data: [], db_error: error.message });
+    // Merge: arbitrage first, then anomalies
+    const allAlerts = [
+      ...(arbRes.data ?? []),
+      ...(anomRes.data ?? []),
+    ];
+
+    // Apply client-requested filters
+    const filtered = allAlerts.filter((a) => {
+      if (typeFilter !== "all" && a.type !== typeFilter) return false;
+      if (severityFilter !== "all" && a.severity !== severityFilter) return false;
+      return true;
+    });
+
+    const arbCount  = allAlerts.filter((a) => a.type === "arbitrage").length;
+    const anomCount = allAlerts.filter((a) => a.type === "anomaly").length;
+
+    return NextResponse.json({
+      data: filtered,
+      counts: { arbitrage: arbCount, anomaly: anomCount, total: allAlerts.length },
+    });
+
+  } catch {
+    return NextResponse.json({ data: [], db_error: "Table may not exist" });
   }
-
-  return NextResponse.json({ data: data ?? [] });
 }
 
 // ── POST: run analysis ───────────────────────────────────────────────────────
@@ -106,13 +141,18 @@ export async function POST(): Promise<NextResponse> {
 
     console.log(`[Arbitrage] anomalies=${anomalies.length} opportunities=${opportunities.length}`);
 
+    // Gemini insight: ONLY for arbitrage opportunities (not anomalies)
+    // Anomalies are self-explanatory (price > HET).
     const geminiResult = await analyzeWithGemini(anomalies, opportunities);
     const geminiUsed   = geminiResult.ai_confidence > 0;
 
+    // Delete previous run alerts to prevent accumulation
+    await writer.from("arbitrage_alerts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
     const alertRows = [
-      // Anomaly rows: no Gemini insights (HET breach is self-explanatory)
+      // Anomaly rows: NO Gemini insights (HET anomaly is self-explanatory)
       ...anomalies.map((a) => ({
-        run_id, type: "anomaly", severity: a.severity,
+        run_id, type: "anomaly" as const, severity: a.severity,
         commodity_id: a.commodity_id, commodity_name: a.commodity_name,
         city_name: a.city_name, price: a.price, het_ha: a.het_ha,
         excess_percent: a.excess_percent,
@@ -124,18 +164,18 @@ export async function POST(): Promise<NextResponse> {
       })),
       // Arbitrage rows: attach Gemini insights
       ...opportunities.map((o) => ({
-        run_id, type: "arbitrage", severity: o.severity,
+        run_id, type: "arbitrage" as const, severity: o.severity,
         commodity_id: o.commodity_id, commodity_name: o.commodity_name,
         city_from: o.city_from, city_to: o.city_to,
         price_buy: o.price_buy, price_sell: o.price_sell,
         price_spread: o.price_spread, spread_percent: o.spread_percent,
         volume_kg: o.volume_kg, transport_cost: o.transport_cost,
         profit_estimate: o.profit_estimate, vendor_name: o.vendor_name,
-        insights: geminiUsed ? geminiResult.insights : null,
+        insights:            geminiUsed ? geminiResult.insights            : null,
         recommended_actions: geminiUsed ? geminiResult.recommended_actions : null,
-        risk_factors: geminiUsed ? geminiResult.risk_factors : null,
-        ai_signal: geminiUsed ? geminiResult.ai_signal : null,
-        ai_confidence: geminiUsed ? geminiResult.ai_confidence : null,
+        risk_factors:        geminiUsed ? geminiResult.risk_factors        : null,
+        ai_signal:           geminiUsed ? geminiResult.ai_signal           : null,
+        ai_confidence:       geminiUsed ? geminiResult.ai_confidence       : null,
       })),
     ];
 
