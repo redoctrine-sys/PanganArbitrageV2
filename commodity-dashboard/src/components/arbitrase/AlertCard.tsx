@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { fmtRp } from "@/components/arbitrase/arbitrase.types";
 
 interface Alert {
@@ -55,23 +56,49 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string) => void }) {
-  const isAnomaly    = alert.type === "anomaly";
-  const isArbitrage  = alert.type === "arbitrage";
+function CalcRow({ label, value, highlight, dimmed, borderTop }: {
+  label: string; value: React.ReactNode;
+  highlight?: boolean; dimmed?: boolean; borderTop?: boolean;
+}) {
+  return (
+    <div className={`flex justify-between text-[10px] font-mono py-[3px] ${borderTop ? "border-t border-rule mt-[2px] pt-[5px]" : ""}`}>
+      <span className={dimmed ? "text-ink-dim" : "text-ink-mid"}>{label}</span>
+      <span className={`font-semibold ${highlight ? "text-up text-[11px]" : dimmed ? "text-ink-dim" : "text-ink"}`}>{value}</span>
+    </div>
+  );
+}
 
-  // Visual distinction: arbitrage = green left border, anomaly = red left border
+export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const isAnomaly   = alert.type === "anomaly";
+  const isArbitrage = alert.type === "arbitrage";
+
   const borderColor = isArbitrage ? "border-l-[#16a34a]" : "border-l-dn";
   const borderCls   = alert.is_read
     ? "border-rule"
     : `border-l-[3px] ${borderColor} border-rule`;
+  const headerBg    = isArbitrage ? "bg-[#f0fdf4]" : "bg-paper-2";
 
-  // Header background: subtle green tint for arbitrage
-  const headerBg = isArbitrage ? "bg-[#f0fdf4]" : "bg-paper-2";
+  function handleClick() {
+    setExpanded((v) => !v);
+    if (!alert.is_read) onRead(alert.id);
+  }
+
+  // Derived calculations for detail panel
+  const vol        = alert.volume_kg ?? 1000;
+  const modalBeli  = alert.price_buy  != null ? alert.price_buy  * vol : null;
+  const hasilJual  = alert.price_sell != null ? alert.price_sell * vol : null;
+  const grossProfit= modalBeli != null && hasilJual != null ? hasilJual - modalBeli : null;
+  const netProfit  = grossProfit != null && alert.transport_cost != null ? grossProfit - alert.transport_cost : null;
+  const roi        = netProfit != null && modalBeli != null && modalBeli > 0
+    ? (netProfit / modalBeli) * 100 : null;
+
+  const hetSelisih = alert.price != null && alert.het_ha != null ? alert.price - alert.het_ha : null;
 
   return (
     <div
       className={`bg-white border rounded-lg overflow-hidden cursor-pointer transition-opacity ${borderCls} ${alert.is_read ? "opacity-70" : ""}`}
-      onClick={() => !alert.is_read && onRead(alert.id)}
+      onClick={handleClick}
     >
       {/* Header */}
       <div className={`flex items-center gap-2 px-3 py-[9px] ${headerBg} border-b border-rule`}>
@@ -89,33 +116,33 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
           </span>
         )}
         {!alert.is_read && <span className="w-2 h-2 rounded-full bg-dn shrink-0" />}
+        <span className="text-[9px] text-ink-dim font-mono ml-1">{expanded ? "▲" : "▼"}</span>
       </div>
 
-      {/* Body */}
+      {/* Summary body — always visible */}
       <div className="px-3 py-[9px]">
         {isAnomaly && (
           <div className="grid grid-cols-2 gap-x-4">
-            <Row label="Kota"       value={alert.city_name ?? "—"} />
-            <Row label="Harga"      value={alert.price != null ? fmtRp(alert.price) : "—"} />
-            <Row label="HET"        value={alert.het_ha != null ? fmtRp(alert.het_ha) : "—"} />
+            <Row label="Kota"        value={alert.city_name ?? "—"} />
+            <Row label="Harga"       value={alert.price != null ? fmtRp(alert.price) : "—"} />
+            <Row label="HET"         value={alert.het_ha != null ? fmtRp(alert.het_ha) : "—"} />
             <Row label="Di atas HET" value={<span className="text-dn">+{alert.excess_percent?.toFixed(1)}%</span>} />
           </div>
         )}
 
         {isArbitrage && (
           <>
-            {/* Route */}
             <div className="flex items-center gap-2 mb-[6px] text-[11px]">
               <span className="font-mono font-semibold text-ink">{alert.city_from ?? "—"}</span>
               <span className="text-ink-dim">→</span>
               <span className="font-mono font-semibold text-ink">{alert.city_to ?? "—"}</span>
             </div>
             <div className="grid grid-cols-2 gap-x-4">
-              <Row label="Harga Beli"  value={alert.price_buy != null ? fmtRp(alert.price_buy) : "—"} />
+              <Row label="Harga Beli"  value={alert.price_buy  != null ? fmtRp(alert.price_buy)  : "—"} />
               <Row label="Harga Jual"  value={alert.price_sell != null ? fmtRp(alert.price_sell) : "—"} />
               <Row label="Spread"      value={<span className="text-up">{alert.spread_percent?.toFixed(1)}%</span>} />
               <Row label="Transport"   value={alert.transport_cost != null ? fmtRp(alert.transport_cost) : "—"} />
-              <Row label="Volume"      value={alert.volume_kg != null ? `${alert.volume_kg.toLocaleString()} kg` : "—"} />
+              <Row label="Volume"      value={`${vol.toLocaleString()} kg`} />
               <Row label="Est. Profit" value={
                 <span className={alert.profit_estimate != null && alert.profit_estimate >= 0 ? "text-up font-bold" : "text-dn font-bold"}>
                   {alert.profit_estimate != null ? fmtRp(alert.profit_estimate) : "—"}
@@ -123,43 +150,129 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
               } />
             </div>
             {alert.vendor_name && (
-              <div className="text-[9px] font-mono text-ink-dim mt-1">
-                🚛 Via: {alert.vendor_name}
-              </div>
+              <div className="text-[9px] font-mono text-ink-dim mt-1">🚛 Via: {alert.vendor_name}</div>
             )}
           </>
         )}
-
-        {/* AI Insights — only for arbitrage */}
-        {isArbitrage && alert.insights && alert.insights.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-rule">
-            <div className="font-mono text-[9px] text-ink-dim mb-1">🤖 AI Insight</div>
-            {alert.insights.slice(0, 3).map((s, i) => (
-              <div key={i} className="text-[10px] text-ink-mid leading-[1.4]">· {s}</div>
-            ))}
-          </div>
-        )}
-
-        {/* Recommended actions */}
-        {isArbitrage && alert.recommended_actions && alert.recommended_actions.length > 0 && (
-          <div className="mt-1">
-            <div className="font-mono text-[9px] text-ink-dim mb-1">📋 Rekomendasi</div>
-            {alert.recommended_actions.slice(0, 2).map((s, i) => (
-              <div key={i} className="text-[10px] text-ink-mid leading-[1.4]">→ {s}</div>
-            ))}
-          </div>
-        )}
-
-        {/* Risk factors */}
-        {isArbitrage && alert.risk_factors && alert.risk_factors.length > 0 && (
-          <div className="mt-1">
-            <div className="font-mono text-[9px] text-ink-dim mb-1">⚠ Risiko</div>
-            {alert.risk_factors.slice(0, 2).map((s, i) => (
-              <div key={i} className="text-[10px] text-ink-mid leading-[1.4]">! {s}</div>
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Detail panel — visible when expanded */}
+      {expanded && (
+        <div className="border-t border-rule bg-[#fafaf9] px-3 py-[10px] flex flex-col gap-3">
+
+          {/* ── Arbitrage calculation breakdown ── */}
+          {isArbitrage && (
+            <div>
+              <div className="font-mono text-[9px] font-bold text-ink-dim uppercase tracking-[0.7px] mb-[6px]">
+                📊 Rincian Perhitungan
+              </div>
+              <div className="bg-white border border-rule rounded-md px-3 py-[8px]">
+                <CalcRow
+                  label={`Modal Beli (${vol.toLocaleString()} kg × ${alert.price_buy != null ? fmtRp(alert.price_buy) : "—"})`}
+                  value={modalBeli != null ? fmtRp(modalBeli) : "—"}
+                  dimmed
+                />
+                <CalcRow
+                  label={`Hasil Jual (${vol.toLocaleString()} kg × ${alert.price_sell != null ? fmtRp(alert.price_sell) : "—"})`}
+                  value={hasilJual != null ? fmtRp(hasilJual) : "—"}
+                  dimmed
+                />
+                <CalcRow
+                  label="Gross Profit (Jual − Beli)"
+                  value={grossProfit != null ? fmtRp(grossProfit) : "—"}
+                  borderTop
+                />
+                <CalcRow
+                  label={`Biaya Transport${alert.vendor_name ? ` (${alert.vendor_name})` : ""}`}
+                  value={alert.transport_cost != null ? `− ${fmtRp(alert.transport_cost)}` : "—"}
+                />
+                <CalcRow
+                  label="NET PROFIT"
+                  value={netProfit != null ? fmtRp(netProfit) : "—"}
+                  highlight
+                  borderTop
+                />
+                {roi != null && (
+                  <CalcRow
+                    label="ROI"
+                    value={<span className={roi >= 0 ? "text-up" : "text-dn"}>{roi.toFixed(2)}%</span>}
+                  />
+                )}
+                {alert.ai_confidence != null && (
+                  <CalcRow
+                    label="Confidence AI"
+                    value={`${Math.round(alert.ai_confidence * 100)}%`}
+                    dimmed
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Anomaly calculation breakdown ── */}
+          {isAnomaly && (
+            <div>
+              <div className="font-mono text-[9px] font-bold text-ink-dim uppercase tracking-[0.7px] mb-[6px]">
+                📊 Rincian Perhitungan
+              </div>
+              <div className="bg-white border border-rule rounded-md px-3 py-[8px]">
+                <CalcRow label="Harga Pasar"  value={alert.price  != null ? fmtRp(alert.price)  : "—"} dimmed />
+                <CalcRow label="HET (batas)"  value={alert.het_ha != null ? fmtRp(alert.het_ha) : "—"} dimmed />
+                <CalcRow
+                  label="Selisih (Harga − HET)"
+                  value={hetSelisih != null ? fmtRp(hetSelisih) : "—"}
+                  borderTop
+                />
+                <CalcRow
+                  label="Kelebihan %"
+                  value={<span className="text-dn">+{alert.excess_percent?.toFixed(2)}%</span>}
+                  highlight
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ── AI Insights (full, arbitrage only) ── */}
+          {isArbitrage && alert.insights && alert.insights.length > 0 && (
+            <div>
+              <div className="font-mono text-[9px] font-bold text-ink-dim uppercase tracking-[0.7px] mb-[6px]">🤖 AI Insight</div>
+              <div className="flex flex-col gap-[3px]">
+                {alert.insights.map((s, i) => (
+                  <div key={i} className="text-[10px] text-ink-mid leading-[1.5]">· {s}</div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Recommended actions ── */}
+          {isArbitrage && alert.recommended_actions && alert.recommended_actions.length > 0 && (
+            <div>
+              <div className="font-mono text-[9px] font-bold text-ink-dim uppercase tracking-[0.7px] mb-[6px]">📋 Rekomendasi</div>
+              <div className="flex flex-col gap-[3px]">
+                {alert.recommended_actions.map((s, i) => (
+                  <div key={i} className="text-[10px] text-ink-mid leading-[1.5]">→ {s}</div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Risk factors ── */}
+          {isArbitrage && alert.risk_factors && alert.risk_factors.length > 0 && (
+            <div>
+              <div className="font-mono text-[9px] font-bold text-ink-dim uppercase tracking-[0.7px] mb-[6px]">⚠ Risiko</div>
+              <div className="flex flex-col gap-[3px]">
+                {alert.risk_factors.map((s, i) => (
+                  <div key={i} className="text-[10px] text-ink-mid leading-[1.5]">! {s}</div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="font-mono text-[9px] text-ink-dim text-right">
+            {new Date(alert.created_at).toLocaleString("id-ID")}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
