@@ -12,6 +12,7 @@ export function Sidebar() {
       className="flex flex-col shrink-0 overflow-y-auto w-[186px] bg-[#f0ece4] border-r border-rule p-[10px_7px]"
     >
       <SectionLabel>Sumber Data</SectionLabel>
+      {/* ── 1. SP2KP: harga pasar resmi Kemendag ── */}
       <Item
         href="/dashboard/sp2kp"
         active={pathname === "/dashboard/sp2kp"}
@@ -20,17 +21,31 @@ export function Sidebar() {
         badge="Live"
         badgeClassName="bg-sp-light text-sp"
       />
+      {/* ── 2. Harga Pedagang: input manual / Phase 3 scrape ── */}
       <Item
         href="/dashboard/pedagang"
-        active={pathname.startsWith("/dashboard/pedagang")}
-        label="Pedagang"
+        active={pathname === "/dashboard/pedagang"}
+        label="Harga Pedagang"
         pip="var(--ped)"
+        badge="Phase 3"
+        badgeClassName="bg-paper-3 text-ink-dim"
       />
-      <Sub label="Data Harga" placeholder />
-      <Sub
+      {/* ── 3. Vendor Transport: DB biaya logistik ── */}
+      <Item
         href="/dashboard/pedagang/vendor-transport"
         active={pathname.startsWith("/dashboard/pedagang/vendor-transport")}
         label="Vendor Transport"
+        pip="#6366f1"
+        badge="Live"
+        badgeClassName="bg-[#ede9fe] text-[#4f46e5]"
+      />
+      {/* ── 4. Data Lain: scrape marketplace + eksternal (Phase 3) ── */}
+      <Item
+        label="Data Lain"
+        pip="#94a3b8"
+        placeholder
+        badge="Phase 3"
+        badgeClassName="bg-paper-3 text-ink-dim"
       />
 
       <Divider />
@@ -52,7 +67,7 @@ export function Sidebar() {
 
       <Divider />
       <SectionLabel>Admin</SectionLabel>
-      <Item label="Admin Hidden" pip="#6b7280" dim />
+      <Item label="Admin" pip="#6b7280" dim />
       <Sub label="Naming Queue" placeholder />
       <Sub label="Commodity Queue" placeholder />
       <Sub
@@ -63,11 +78,9 @@ export function Sidebar() {
       <Sub label="Ingest Log" placeholder />
 
       <div className="mt-auto p-2.5 font-mono bg-paper rounded-[7px] border border-rule text-[10px] text-ink-dim leading-[1.8]">
-        <b className="text-ink-mid">SP2KP</b> aktif
-        <br />
-        <b className="text-ink-mid">Transport</b> aktif
-        <br />
-        Komparasi · Arbitrase · Pedagang data → Phase 2+.
+        <b className="text-ink-mid">SP2KP</b> aktif<br />
+        <b className="text-ink-mid">Transport</b> aktif<br />
+        Pedagang · Scraper → Phase 3.
       </div>
     </aside>
   );

@@ -80,6 +80,44 @@
 ## Task Aktif
 **Jalankan migration 014 di Supabase** → test `POST /api/agents/arbitrage` → cek AlertCenter.
 
+Sidebar nav sudah distrukturisasi: SP2KP · Harga Pedagang · Vendor Transport · Data Lain (masing-masing main tab).
+
+---
+
+## Alur Data (Data Flow Architecture)
+
+```
+SUMBER DATA
+├── SP2KP (Live ✅)
+│   └── Upload CSV/XLSX → ingest/sp2kp → sp2kp_prices → sp2kp_latest VIEW
+│       └── ──→ (trigger) agents/arbitrage → arbitrage_alerts
+│
+├── Harga Pedagang (Phase 3 🔲)
+│   └── Scraper / Manual input → prices_pedagang table
+│       └── ──→ prices_all VIEW (unified)
+│
+├── Vendor Transport (Live ✅)
+│   └── Manual CRUD → transport_vendors table
+│       └── ──→ dikonsumsi arbitrase kalkulator (Layer 1 cost calc)
+│
+└── Data Lain (Phase 3 🔲)
+    └── Marketplace scraper / External API → external_sources table
+        └── ──→ prices_all VIEW (unified)
+
+ANALITIK
+├── Komparasi (Phase 3 🔲)
+│   └── Membandingkan SP2KP vs Pedagang vs Marketplace (dari prices_all)
+│
+└── Arbitrase (Phase 2 ✅)
+    ├── Layer 1: detectAnomalies() + findArbitrage() dari sp2kp_latest + transport_vendors
+    └── Layer 2: Gemini Flash → insights → arbitrage_alerts table
+        └── UI: AlertCenter (filter, mark read, manual run)
+
+FUTURE: prices_all VIEW akan unify SP2KP + Pedagang + Marketplace
+         → Arbitrase bisa cross-source (lebih akurat)
+         → Komparasi bisa cross-source comparison
+```
+
 ## Reference
 - `Project Update/` — archived planning docs
 - `CLAUDE.md` — project brain + AI agent architecture
