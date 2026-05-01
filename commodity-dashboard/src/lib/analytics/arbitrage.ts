@@ -114,46 +114,54 @@ function getFerryFare(islandA: string, islandB: string, gol: Golongan): number {
 function buildTransportDetail(
   vendor: Vendor,
   distanceKm: number,
-  trips: number,
   ferryFare: number,
   fromIsland: string,
   toIsland: string,
 ): string {
-  const km    = Math.round(distanceKm);
-  const gol   = getGolongan(vendor);
-  const fmtRp = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
+  const km  = Math.round(distanceKm);
+  const gol = getGolongan(vendor);
+  const fmt = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
 
-  let landStr: string;
+  const lines: string[] = [];
+  lines.push(`Jarak ${km} km | 1 trip (Gol ${gol})`);
+
   if (vendor.pricing_type === "flat_per_trip") {
-    landStr = `Flat ${fmtRp(vendor.price)}`;
+    lines.push(`Flat: ${fmt(vendor.price)}`);
   } else if (vendor.base_fare_rp != null && vendor.base_km != null) {
     if (distanceKm <= vendor.base_km) {
-      landStr = `Darat: Base ${fmtRp(vendor.base_fare_rp)} (≤${vendor.base_km} km)`;
+      lines.push(`Base (≤${vendor.base_km} km): ${fmt(vendor.base_fare_rp)}`);
     } else {
-      const lanjutan = (distanceKm - vendor.base_km) * vendor.price;
-      landStr = `Darat: Base ${fmtRp(vendor.base_fare_rp)} + Lanjut ${fmtRp(Math.round(lanjutan))}`;
+      const lanjutanKm  = distanceKm - vendor.base_km;
+      const lanjutanRp  = lanjutanKm * vendor.price;
+      lines.push(`Base (${vendor.base_km} km): ${fmt(vendor.base_fare_rp)}`);
+      lines.push(`Lanjutan (${Math.round(lanjutanKm)} km × ${fmt(vendor.price)}/km): ${fmt(lanjutanRp)}`);
     }
   } else {
-    landStr = `Darat: ${fmtRp(vendor.price)}/km`;
+    lines.push(`${fmt(vendor.price)}/km × ${km} km: ${fmt(vendor.price * distanceKm)}`);
   }
 
-  const routeLabel = fromIsland !== toIsland ? `${fromIsland}-${toIsland}` : "";
-  const parts = [`Jarak ${km} km`, `${trips} trip (Gol ${gol})`, landStr];
-  if (ferryFare > 0) parts.push(`Feri (${routeLabel}): ${fmtRp(ferryFare)}`);
-  return parts.join(" | ");
+  if (ferryFare > 0) {
+    const routeLabel = fromIsland !== toIsland ? `${fromIsland}↔${toIsland}` : "";
+    lines.push(`Feri (${routeLabel}): ${fmt(ferryFare)}`);
+  }
+
+  const totalPerTrip = calcTransport(vendor, distanceKm) + ferryFare;
+  lines.push(`Total Transport: ${fmt(totalPerTrip)}`);
+
+  return lines.join("\n");
 }
 
 function estimateTransportCost(
   vendors: Vendor[],
-  volumeKg: number,
   fromLat: number | null,
   fromLon: number | null,
   toLat: number | null,
   toLon: number | null,
   fromIsland: string,
   toIsland: string,
-): { cost: number; vendor_name: string | null; distance_km: number; transport_detail: string } {
+): { cost: number; vendor_name: string | null; volume_kg: number; distance_km: number; transport_detail: string } {
   const distanceKm = calculateDistanceKm(fromLat, fromLon, toLat, toLon);
+  const fmt = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
 
   if (vendors.length === 0) {
     const gol      = "VB" as Golongan;
@@ -161,49 +169,59 @@ function estimateTransportCost(
     return {
       cost: ferryFare,
       vendor_name: null,
+      volume_kg: 0,
       distance_km: distanceKm,
-      transport_detail: `Jarak ${Math.round(distanceKm)} km | Tidak ada vendor${ferryFare > 0 ? ` | Feri: Rp ${ferryFare.toLocaleString("id-ID")}` : ""}`,
+      transport_detail: `Jarak ${Math.round(distanceKm)} km | Tidak ada vendor${ferryFare > 0 ? ` | Feri: ${fmt(ferryFare)}` : ""}`,
     };
   }
 
-  let bestCost = Infinity;
-  let bestVendor: Vendor | null = null;
-  let bestTrips = 1;
-  let bestFerry = 0;
-
+  // Collect all valid vendors — 1 full trip each (volume = vendor.capacity_kg)
+  const options: { vendor: Vendor; cost: number; ferryFare: number }[] = [];
   for (const v of vendors) {
     if (!v.capacity_kg || v.capacity_kg <= 0) continue;
     const gol       = getGolongan(v);
     const ferryFare = getFerryFare(fromIsland, toIsland, gol);
-    const trips     = Math.ceil(volumeKg / v.capacity_kg);
-    const totalCost = (calcTransport(v, distanceKm) + ferryFare) * trips;
-    if (totalCost < bestCost) {
-      bestCost   = totalCost;
-      bestVendor = v;
-      bestTrips  = trips;
-      bestFerry  = ferryFare;
-    }
+    const cost      = calcTransport(v, distanceKm) + ferryFare;
+    options.push({ vendor: v, cost, ferryFare });
   }
 
-  // Fallback: no vendor has capacity_kg — use first vendor, 1 trip
-  if (!bestVendor) {
-    const fallback   = vendors[0];
-    const gol        = getGolongan(fallback);
-    const ferryFare  = getFerryFare(fromIsland, toIsland, gol);
-    const cost       = calcTransport(fallback, distanceKm) + ferryFare;
+  // Fallback: no vendor has capacity_kg
+  if (options.length === 0) {
+    const fallback  = vendors[0];
+    const gol       = getGolongan(fallback);
+    const ferryFare = getFerryFare(fromIsland, toIsland, gol);
+    const cost      = calcTransport(fallback, distanceKm) + ferryFare;
     return {
       cost,
       vendor_name:      fallback.name,
+      volume_kg:        fallback.capacity_kg ?? 0,
       distance_km:      distanceKm,
-      transport_detail: buildTransportDetail(fallback, distanceKm, 1, ferryFare, fromIsland, toIsland),
+      transport_detail: buildTransportDetail(fallback, distanceKm, ferryFare, fromIsland, toIsland),
     };
   }
 
+  // Sort cheapest first
+  options.sort((a, b) => a.cost - b.cost);
+
+  const best = options[0];
+  const top3 = options.slice(0, 3);
+
+  // Summary lines for top-3 options
+  const summaryLines = top3.map((opt, idx) =>
+    `Opsi ${idx + 1} (${opt.vendor.name} - ${opt.vendor.capacity_kg}kg): ${fmt(opt.cost)}`
+  );
+
+  // Detailed breakdown for best (cheapest) option
+  const detailLines = buildTransportDetail(best.vendor, distanceKm, best.ferryFare, fromIsland, toIsland);
+
+  const transport_detail = [...summaryLines, "", detailLines].join("\n");
+
   return {
-    cost:             bestCost,
-    vendor_name:      bestVendor.name,
-    distance_km:      distanceKm,
-    transport_detail: buildTransportDetail(bestVendor, distanceKm, bestTrips, bestFerry, fromIsland, toIsland),
+    cost:         best.cost,
+    vendor_name:  best.vendor.name,
+    volume_kg:    best.vendor.capacity_kg!,
+    distance_km:  distanceKm,
+    transport_detail,
   };
 }
 
@@ -213,6 +231,7 @@ interface RawCandidate {
   profit: number;
   transportCost: number;
   vendor_name: string | null;
+  volume_kg: number;
   distance_km: number;
   transport_detail: string;
   cheapest: PricePoint;
@@ -227,11 +246,12 @@ interface RawCandidate {
  *   2. Return pairs that pass MIN_SPREAD_PERCENT + MIN_PROFIT_THRESHOLD → "low/medium/high"
  *   3. If total results < TOP_N_FALLBACK, backfill with best remaining pairs
  *      marked as "low" severity (margin tipis, tetap dicatat)
+ *
+ * Volume: uses vendor.capacity_kg (1 full trip) — NOT a fixed hardcoded value.
  */
 export function findArbitrage(
   points: PricePoint[],
   vendors: Vendor[],
-  volumeKg = 1000,
   TOP_N_FALLBACK = 8
 ): ArbitrageOpportunity[] {
   const passed: ArbitrageOpportunity[] = [];
@@ -253,19 +273,19 @@ export function findArbitrage(
 
     for (let i = 0; i < sorted.length; i++) {
       for (let j = i + 1; j < sorted.length; j++) {
-        const cheapest = sorted[i];
+        const cheapest  = sorted[i];
         const expensive = sorted[j];
         if (cheapest.kode_wilayah === expensive.kode_wilayah) continue;
 
-        const spread = expensive.price - cheapest.price;
+        const spread    = expensive.price - cheapest.price;
         const spreadPct = spread / cheapest.price;
-        const { cost: transportCost, vendor_name, distance_km, transport_detail } = estimateTransportCost(
-          vendors, volumeKg,
-          cheapest.latitude, cheapest.longitude,
+        const { cost: transportCost, vendor_name, volume_kg, distance_km, transport_detail } = estimateTransportCost(
+          vendors,
+          cheapest.latitude,  cheapest.longitude,
           expensive.latitude, expensive.longitude,
-          cheapest.island, expensive.island,
+          cheapest.island,    expensive.island,
         );
-        const profit = expensive.price * volumeKg - cheapest.price * volumeKg - transportCost;
+        const profit = expensive.price * volume_kg - cheapest.price * volume_kg - transportCost;
 
         const meetsThreshold = spreadPct >= MIN_SPREAD_PERCENT && profit >= MIN_PROFIT_THRESHOLD;
 
@@ -276,24 +296,23 @@ export function findArbitrage(
           passed.push({
             type: "arbitrage",
             severity,
-            commodity_id: cheapest.commodity_id,
-            commodity_name: cheapest.commodity_name,
-            city_from: cheapest.city_name,
-            city_to: expensive.city_name,
-            price_buy: cheapest.price,
-            price_sell: expensive.price,
-            price_spread: spread,
-            spread_percent: parseFloat((spreadPct * 100).toFixed(2)),
-            volume_kg: volumeKg,
-            transport_cost: transportCost,
+            commodity_id:    cheapest.commodity_id,
+            commodity_name:  cheapest.commodity_name,
+            city_from:       cheapest.city_name,
+            city_to:         expensive.city_name,
+            price_buy:       cheapest.price,
+            price_sell:      expensive.price,
+            price_spread:    spread,
+            spread_percent:  parseFloat((spreadPct * 100).toFixed(2)),
+            volume_kg,
+            transport_cost:  transportCost,
             profit_estimate: profit,
             vendor_name,
             distance_km,
             transport_detail,
           });
         } else if (spread > 0) {
-          // Candidate for fallback (best-effort)
-          fallback.push({ spread, spreadPct, profit, transportCost, vendor_name, distance_km, transport_detail, cheapest, expensive });
+          fallback.push({ spread, spreadPct, profit, transportCost, vendor_name, volume_kg, distance_km, transport_detail, cheapest, expensive });
         }
       }
     }
@@ -304,7 +323,7 @@ export function findArbitrage(
 
   // Backfill from best candidates if we don't have enough
   if (passed.length < TOP_N_FALLBACK) {
-    const need = TOP_N_FALLBACK - passed.length;
+    const need  = TOP_N_FALLBACK - passed.length;
     const dedup = new Set(passed.map((p) => `${p.commodity_id}:${p.city_from}:${p.city_to}`));
 
     fallback
@@ -319,19 +338,19 @@ export function findArbitrage(
         passed.push({
           type: "arbitrage",
           severity: "low",
-          commodity_id: c.cheapest.commodity_id,
-          commodity_name: c.cheapest.commodity_name,
-          city_from: c.cheapest.city_name,
-          city_to: c.expensive.city_name,
-          price_buy: c.cheapest.price,
-          price_sell: c.expensive.price,
-          price_spread: c.spread,
-          spread_percent: parseFloat((c.spreadPct * 100).toFixed(2)),
-          volume_kg: volumeKg,
-          transport_cost: c.transportCost,
+          commodity_id:    c.cheapest.commodity_id,
+          commodity_name:  c.cheapest.commodity_name,
+          city_from:       c.cheapest.city_name,
+          city_to:         c.expensive.city_name,
+          price_buy:       c.cheapest.price,
+          price_sell:      c.expensive.price,
+          price_spread:    c.spread,
+          spread_percent:  parseFloat((c.spreadPct * 100).toFixed(2)),
+          volume_kg:       c.volume_kg,
+          transport_cost:  c.transportCost,
           profit_estimate: c.profit,
-          vendor_name: c.vendor_name,
-          distance_km: c.distance_km,
+          vendor_name:     c.vendor_name,
+          distance_km:     c.distance_km,
           transport_detail: c.transport_detail,
         });
       });
