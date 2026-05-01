@@ -59,17 +59,27 @@ function calcTransport(vendor: Vendor, km: number): number {
 function estimateTransportCost(vendors: Vendor[], volumeKg: number): { cost: number; vendor_name: string | null } {
   if (vendors.length === 0) return { cost: 0, vendor_name: null };
 
-  // Use cheapest per-km vendor. Default 200km inter-city.
-  const trucks = vendors.filter((v) => v.pricing_type === "per_km");
-  const candidate = trucks.length > 0 ? trucks[0] : vendors[0];
-
   const DEFAULT_KM = 200;
-  const costPerTrip = calcTransport(candidate, DEFAULT_KM);
-  const trips = candidate.capacity_kg && candidate.capacity_kg > 0
-    ? Math.ceil(volumeKg / candidate.capacity_kg)
-    : 1;
+  let bestCost = Infinity;
+  let bestVendor: Vendor | null = null;
 
-  return { cost: costPerTrip * trips, vendor_name: candidate.name };
+  for (const v of vendors) {
+    if (!v.capacity_kg || v.capacity_kg <= 0) continue;
+    const trips = Math.ceil(volumeKg / v.capacity_kg);
+    const totalCost = calcTransport(v, DEFAULT_KM) * trips;
+    if (totalCost < bestCost) {
+      bestCost = totalCost;
+      bestVendor = v;
+    }
+  }
+
+  // Fallback: no vendor has capacity_kg — use first vendor, 1 trip
+  if (!bestVendor) {
+    const fallback = vendors[0];
+    return { cost: calcTransport(fallback, DEFAULT_KM), vendor_name: fallback.name };
+  }
+
+  return { cost: bestCost, vendor_name: bestVendor.name };
 }
 
 interface RawCandidate {
