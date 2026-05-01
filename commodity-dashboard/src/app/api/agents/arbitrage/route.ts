@@ -110,17 +110,19 @@ export async function POST(): Promise<NextResponse> {
     const geminiUsed   = geminiResult.ai_confidence > 0;
 
     const alertRows = [
+      // Anomaly rows: no Gemini insights (HET breach is self-explanatory)
       ...anomalies.map((a) => ({
         run_id, type: "anomaly", severity: a.severity,
         commodity_id: a.commodity_id, commodity_name: a.commodity_name,
         city_name: a.city_name, price: a.price, het_ha: a.het_ha,
         excess_percent: a.excess_percent,
-        insights: geminiUsed ? geminiResult.insights : null,
-        recommended_actions: geminiUsed ? geminiResult.recommended_actions : null,
-        risk_factors: geminiUsed ? geminiResult.risk_factors : null,
-        ai_signal: geminiUsed ? geminiResult.ai_signal : null,
-        ai_confidence: geminiUsed ? geminiResult.ai_confidence : null,
+        insights: null,
+        recommended_actions: null,
+        risk_factors: null,
+        ai_signal: null,
+        ai_confidence: null,
       })),
+      // Arbitrage rows: attach Gemini insights
       ...opportunities.map((o) => ({
         run_id, type: "arbitrage", severity: o.severity,
         commodity_id: o.commodity_id, commodity_name: o.commodity_name,

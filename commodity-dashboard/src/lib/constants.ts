@@ -24,6 +24,9 @@ export const MIN_PROFIT_THRESHOLD = 10_000;
 // 3% = deteksi peluang tipis; agent tetap mark low severity.
 export const MIN_SPREAD_PERCENT = 0.03;
 
+// Rp/km fallback bila vendor DB kosong atau tidak ada rute.
+export const TRANSPORT_COST_PER_KM = 500;
+
 // ─── Phase 2: Province & island mapping ─────────────────────────────────────
 
 export const PROVINCE_MAP: Record<string, string> = {
