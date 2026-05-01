@@ -32,9 +32,10 @@ export async function POST(): Promise<NextResponse> {
   }
 
   try {
-    // ── Fetch SP2KP data via Supabase client (reliable, auth handled) ──────
+    // ── Fetch SP2KP data via Supabase client ─────────────────────────────────
+    // Must pass explicit null params — empty {} causes "Invalid path" error
     const { data: rawPrices, error: rpcErr } = await supabase
-      .rpc("get_sp2kp_latest", {});
+      .rpc("get_sp2kp_latest", { p_island: null, p_province: null });
 
     if (rpcErr) {
       return NextResponse.json(
