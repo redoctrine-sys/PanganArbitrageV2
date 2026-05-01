@@ -2,61 +2,66 @@
 // @feature: api-route
 // POST /api/agents/arbitrage
 // Runs Layer 1 (statistical) + Layer 2 (Gemini) and stores results.
-// Gracefully handles missing arbitrage_alerts table.
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getServerClient, getServiceClient } from "@/lib/supabase/server";
 import { detectAnomalies, findArbitrage } from "@/lib/analytics/arbitrage";
 import { analyzeWithGemini } from "@/lib/ai/agents/arbitrage/gemini-agent";
 import type { PricePoint, Vendor } from "@/lib/ai/agents/arbitrage/types";
-import type { AlertRunResult } from "@/lib/ai/agents/arbitrage/types";
 
-function getServiceClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Supabase env vars tidak dikonfigurasi");
-  return createClient(url, key);
-}
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(): Promise<NextResponse> {
   const run_id = crypto.randomUUID();
 
-  let supabase;
-  try {
-    supabase = getServiceClient();
-  } catch (err) {
+  // Read client — anon key, SECURITY DEFINER RPC sudah bypass RLS
+  let reader;
+  try { reader = getServerClient(); }
+  catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Supabase tidak terkonfigurasi" },
+      { error: err instanceof Error ? err.message : "Supabase belum dikonfigurasi" },
       { status: 500 }
     );
   }
 
-  try {
-    // ── Fetch SP2KP data via Supabase client ─────────────────────────────────
-    // Must pass explicit null params — empty {} causes "Invalid path" error
-    const { data: rawPrices, error: rpcErr } = await supabase
-      .rpc("get_sp2kp_latest", { p_island: null, p_province: null });
+  // Service client — untuk INSERT ke arbitrage_alerts (ada RLS)
+  let writer;
+  try { writer = getServiceClient(); }
+  catch { writer = reader; } // Graceful: fall back to anon if no service key
 
-    if (rpcErr) {
+  try {
+    // ── Fetch SP2KP per-province, parallel (sama seperti /api/sp2kp/latest) ──
+    const PROVINCES = [
+      "DKI Jakarta", "Jawa Barat", "Jawa Tengah", "DI Yogyakarta",
+      "Jawa Timur", "Banten", "Bali", "Nusa Tenggara Barat",
+    ];
+
+    const results = await Promise.all(
+      PROVINCES.map((prov) =>
+        reader.rpc("get_sp2kp_latest", { p_island: null, p_province: prov })
+      )
+    );
+
+    const firstError = results.find((r) => r.error);
+    if (firstError?.error) {
       return NextResponse.json(
-        { error: `RPC get_sp2kp_latest gagal: ${rpcErr.message}` },
+        { error: `RPC gagal: ${firstError.error.message}` },
         { status: 502 }
       );
     }
 
+    const rawPrices = results.flatMap((r) => (r.data ?? []) as Record<string, unknown>[]);
+
     // ── Fetch vendors ────────────────────────────────────────────────────────
-    const { data: vendorRows, error: vendorErr } = await supabase
+    const { data: vendorRows } = await reader
       .from("transport_vendors")
       .select("id, name, pricing_type, price, capacity_kg, base_fare_rp, base_km, coverage");
 
-    if (vendorErr) {
-      console.warn("[Arbitrage Agent] Vendor fetch error:", vendorErr.message);
-    }
-
     const vendors: Vendor[] = (vendorRows ?? []) as Vendor[];
 
-    // Map RPC rows → PricePoint (only rows with actual price data)
-    const points: PricePoint[] = ((rawPrices ?? []) as Record<string, unknown>[])
+    // ── Map rows → PricePoint ────────────────────────────────────────────────
+    const points: PricePoint[] = rawPrices
       .filter((r) => r.price_latest != null && Number(r.price_latest) > 0)
       .map((r) => ({
         kode_wilayah:   String(r.kode_wilayah ?? ""),
@@ -70,27 +75,27 @@ export async function POST(): Promise<NextResponse> {
         island:         String(r.island ?? ""),
       }));
 
-    console.log(`[Arbitrage Agent] run_id=${run_id} points=${points.length} vendors=${vendors.length}`);
+    console.log(`[Arbitrage] run=${run_id} points=${points.length} vendors=${vendors.length}`);
 
     if (points.length === 0) {
       return NextResponse.json({
         run_id, anomalies: [], opportunities: [], total_inserted: 0,
         gemini_used: false, timestamp: new Date().toISOString(),
-        warning: "Tidak ada data harga SP2KP. Upload CSV SP2KP terlebih dahulu.",
+        warning: "Tidak ada data harga SP2KP. Upload CSV terlebih dahulu.",
       });
     }
 
-    // ── Layer 1: Statistical ────────────────────────────────────────────────
-    const anomalies    = detectAnomalies(points);
+    // ── Layer 1: Statistical detection ───────────────────────────────────────
+    const anomalies     = detectAnomalies(points);
     const opportunities = findArbitrage(points, vendors);
 
-    console.log(`[Arbitrage Agent] anomalies=${anomalies.length} opportunities=${opportunities.length}`);
+    console.log(`[Arbitrage] anomalies=${anomalies.length} opportunities=${opportunities.length}`);
 
-    // ── Layer 2: Gemini AI ──────────────────────────────────────────────────
+    // ── Layer 2: Gemini ───────────────────────────────────────────────────────
     const geminiResult = await analyzeWithGemini(anomalies, opportunities);
     const geminiUsed   = geminiResult.ai_confidence > 0;
 
-    // ── Store alerts (graceful: skip if table missing) ──────────────────────
+    // ── Store to DB ───────────────────────────────────────────────────────────
     const alertRows = [
       ...anomalies.map((a) => ({
         run_id, type: "anomaly", severity: a.severity,
@@ -123,28 +128,25 @@ export async function POST(): Promise<NextResponse> {
     let db_error: string | null = null;
 
     if (alertRows.length > 0) {
-      const { count, error: insertErr } = await supabase
+      const { count, error: insertErr } = await writer
         .from("arbitrage_alerts")
         .insert(alertRows, { count: "exact" });
 
       if (insertErr) {
-        // Table mungkin belum di-migrate — log tapi jangan fail
         db_error = insertErr.message;
-        console.error("[Arbitrage Agent] Insert error (run migration 014):", insertErr.message);
+        console.error("[Arbitrage] Insert error:", insertErr.message);
       } else {
         total_inserted = count ?? 0;
       }
     }
 
-    const result: AlertRunResult & { db_error?: string; warning?: string } = {
+    return NextResponse.json({
       run_id, anomalies, opportunities,
       total_inserted, gemini_used: geminiUsed,
       timestamp: new Date().toISOString(),
       ...(db_error ? { db_error } : {}),
-      ...(alertRows.length === 0 ? { warning: "Tidak ada alert terdeteksi dari data SP2KP." } : {}),
-    };
+    });
 
-    return NextResponse.json(result);
   } catch (err) {
     console.error("[Arbitrage Agent] Fatal:", err);
     return NextResponse.json(
