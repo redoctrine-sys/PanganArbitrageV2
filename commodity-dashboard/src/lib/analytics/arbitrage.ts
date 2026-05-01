@@ -121,16 +121,19 @@ function buildBreakdown(
 ): string {
   const km  = Math.round(distanceKm);
   const fmt = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
-  const parts: string[] = [`Jarak ${km} km`];
+  const parts: string[] = [`Jarak Total: ${km} km`];
 
   if (vendor.pricing_type === "flat_per_trip") {
     parts.push(`Flat ${fmt(vendor.price)}`);
   } else if (vendor.base_fare_rp != null && vendor.base_km != null) {
     if (distanceKm <= vendor.base_km) {
-      parts.push(`Base ${fmt(vendor.base_fare_rp)} (≤${vendor.base_km} km)`);
+      parts.push(`Base (${vendor.base_km} km): ${fmt(vendor.base_fare_rp)} (Tanpa lanjutan)`);
     } else {
-      const lanjutanRp = (distanceKm - vendor.base_km) * vendor.price;
-      parts.push(`Base ${fmt(vendor.base_fare_rp)} + Lanjutan ${fmt(lanjutanRp)}`);
+      const lanjutanKm = Math.round(Math.max(0, distanceKm - vendor.base_km));
+      const lanjutanRp = lanjutanKm * vendor.price;
+      parts.push(
+        `Base (${vendor.base_km} km): ${fmt(vendor.base_fare_rp)} + Lanjutan (${lanjutanKm} km × ${fmt(vendor.price)}/km): ${fmt(lanjutanRp)}`
+      );
     }
   } else {
     parts.push(`${km} km × ${fmt(vendor.price)}/km = ${fmt(vendor.price * distanceKm)}`);
