@@ -72,20 +72,43 @@ function calculateDistanceKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-const FERRY_FARES: Record<string, number> = {
-  "Bali-Jawa":    1_000_000,
-  "Jawa-Bali":    1_000_000,
-  "Bali-Lombok":  1_500_000,
-  "Lombok-Bali":  1_500_000,
-  "Jawa-Lombok":  2_500_000,
-  "Lombok-Jawa":  2_500_000,
-  "Jawa-Madura":  0,
-  "Madura-Jawa":  0,
+// ASDP tariffs per golongan kendaraan
+// Ketapang-Gilimanuk (Jawa↔Bali) dan Padangbai-Lembar (Bali↔Lombok)
+type Golongan = "II" | "IVB" | "VB" | "VIB";
+
+const ASDP_KG: Record<Golongan, number> = {
+  "II":   31_600,   // Motor
+  "IVB":  193_200,  // Pickup / < 2000 kg
+  "VB":   353_400,  // Truk Engkel / < 5000 kg
+  "VIB":  572_000,  // Truk Besar / >= 5000 kg
 };
 
-function getFerryFare(islandA: string, islandB: string): number {
+const ASDP_PL: Record<Golongan, number> = {
+  "II":   81_600,
+  "IVB":  1_058_000,
+  "VB":   1_996_000,
+  "VIB":  3_310_000,
+};
+
+function getGolongan(vendor: Vendor): Golongan {
+  const cap  = vendor.capacity_kg ?? 0;
+  const name = vendor.name.toLowerCase();
+  if (name.includes("motor") || cap <= 50)  return "II";
+  if (cap < 2000 || name.includes("pickup") || name.includes("mpv") || name.includes("van")) return "IVB";
+  if (cap < 5000) return "VB";
+  return "VIB";
+}
+
+function getFerryFare(islandA: string, islandB: string, gol: Golongan): number {
   if (islandA === islandB) return 0;
-  return FERRY_FARES[`${islandA}-${islandB}`] ?? 0;
+  const pair = [islandA, islandB].sort().join("-");
+  switch (pair) {
+    case "Bali-Jawa":    return ASDP_KG[gol];
+    case "Bali-Lombok":  return ASDP_PL[gol];
+    case "Jawa-Lombok":  return ASDP_KG[gol] + ASDP_PL[gol];
+    case "Jawa-Madura":  return 0;
+    default:             return 0;
+  }
 }
 
 function buildTransportDetail(
@@ -93,8 +116,11 @@ function buildTransportDetail(
   distanceKm: number,
   trips: number,
   ferryFare: number,
+  fromIsland: string,
+  toIsland: string,
 ): string {
-  const km  = Math.round(distanceKm);
+  const km    = Math.round(distanceKm);
+  const gol   = getGolongan(vendor);
   const fmtRp = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
 
   let landStr: string;
@@ -102,17 +128,18 @@ function buildTransportDetail(
     landStr = `Flat ${fmtRp(vendor.price)}`;
   } else if (vendor.base_fare_rp != null && vendor.base_km != null) {
     if (distanceKm <= vendor.base_km) {
-      landStr = `Darat: ${fmtRp(vendor.base_fare_rp)} (≤${vendor.base_km} km)`;
+      landStr = `Darat: Base ${fmtRp(vendor.base_fare_rp)} (≤${vendor.base_km} km)`;
     } else {
       const lanjutan = (distanceKm - vendor.base_km) * vendor.price;
-      landStr = `Darat: ${fmtRp(vendor.base_fare_rp)} + ${fmtRp(Math.round(lanjutan))} (Lanjutan)`;
+      landStr = `Darat: Base ${fmtRp(vendor.base_fare_rp)} + Lanjut ${fmtRp(Math.round(lanjutan))}`;
     }
   } else {
     landStr = `Darat: ${fmtRp(vendor.price)}/km`;
   }
 
-  const parts = [`Jarak ${km} km`, `${trips} trip (${vendor.name})`, landStr];
-  if (ferryFare > 0) parts.push(`Feri: ${fmtRp(ferryFare)}`);
+  const routeLabel = fromIsland !== toIsland ? `${fromIsland}-${toIsland}` : "";
+  const parts = [`Jarak ${km} km`, `${trips} trip (Gol ${gol})`, landStr];
+  if (ferryFare > 0) parts.push(`Feri (${routeLabel}): ${fmtRp(ferryFare)}`);
   return parts.join(" | ");
 }
 
@@ -127,9 +154,10 @@ function estimateTransportCost(
   toIsland: string,
 ): { cost: number; vendor_name: string | null; distance_km: number; transport_detail: string } {
   const distanceKm = calculateDistanceKm(fromLat, fromLon, toLat, toLon);
-  const ferryFare  = getFerryFare(fromIsland, toIsland);
 
   if (vendors.length === 0) {
+    const gol      = "VB" as Golongan;
+    const ferryFare = getFerryFare(fromIsland, toIsland, gol);
     return {
       cost: ferryFare,
       vendor_name: null,
@@ -141,27 +169,33 @@ function estimateTransportCost(
   let bestCost = Infinity;
   let bestVendor: Vendor | null = null;
   let bestTrips = 1;
+  let bestFerry = 0;
 
   for (const v of vendors) {
     if (!v.capacity_kg || v.capacity_kg <= 0) continue;
+    const gol       = getGolongan(v);
+    const ferryFare = getFerryFare(fromIsland, toIsland, gol);
     const trips     = Math.ceil(volumeKg / v.capacity_kg);
     const totalCost = (calcTransport(v, distanceKm) + ferryFare) * trips;
     if (totalCost < bestCost) {
       bestCost   = totalCost;
       bestVendor = v;
       bestTrips  = trips;
+      bestFerry  = ferryFare;
     }
   }
 
   // Fallback: no vendor has capacity_kg — use first vendor, 1 trip
   if (!bestVendor) {
-    const fallback = vendors[0];
-    const cost     = calcTransport(fallback, distanceKm) + ferryFare;
+    const fallback   = vendors[0];
+    const gol        = getGolongan(fallback);
+    const ferryFare  = getFerryFare(fromIsland, toIsland, gol);
+    const cost       = calcTransport(fallback, distanceKm) + ferryFare;
     return {
       cost,
       vendor_name:      fallback.name,
       distance_km:      distanceKm,
-      transport_detail: buildTransportDetail(fallback, distanceKm, 1, ferryFare),
+      transport_detail: buildTransportDetail(fallback, distanceKm, 1, ferryFare, fromIsland, toIsland),
     };
   }
 
@@ -169,7 +203,7 @@ function estimateTransportCost(
     cost:             bestCost,
     vendor_name:      bestVendor.name,
     distance_km:      distanceKm,
-    transport_detail: buildTransportDetail(bestVendor, distanceKm, bestTrips, ferryFare),
+    transport_detail: buildTransportDetail(bestVendor, distanceKm, bestTrips, bestFerry, fromIsland, toIsland),
   };
 }
 
