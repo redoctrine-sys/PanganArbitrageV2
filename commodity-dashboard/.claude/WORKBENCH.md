@@ -50,4 +50,4 @@ Next: Split ArbitrasePage.tsx.
 
 ## Reference Docs
 - `Project Update/` — archived planning docs (PROJECT_CONTEXT, PHASE1-3_DETAIL, AGENTS)
-- `AGENTS.md` — AI agent architecture (Phase 2+)
+- AI agent architecture → included in `CLAUDE.md` (bottom section)
