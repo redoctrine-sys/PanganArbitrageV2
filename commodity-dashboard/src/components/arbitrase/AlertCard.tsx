@@ -189,8 +189,8 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
                   value={alert.transport_cost != null ? `− ${fmtRp(alert.transport_cost)}` : "—"}
                 />
                 {alert.transport_detail && (
-                  <div className="text-[9px] font-mono text-ink-dim mt-[2px] leading-[1.4] pl-1">
-                    {alert.transport_detail}
+                  <div className="text-[10px] text-ink-dim mt-1 leading-[1.4]">
+                    ↳ {alert.transport_detail}
                   </div>
                 )}
                 <CalcRow

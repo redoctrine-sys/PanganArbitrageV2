@@ -124,8 +124,8 @@ export async function POST(): Promise<NextResponse> {
         date:           String(r.date_latest ?? ""),
         province:       String(r.province ?? ""),
         island:         String(r.island ?? ""),
-        lat:            r.lat != null ? Number(r.lat) : null,
-        lng:            r.lng != null ? Number(r.lng) : null,
+        latitude:  r.lat != null ? Number(r.lat) : null,
+        longitude: r.lng != null ? Number(r.lng) : null,
       }));
 
     console.log(`[Arbitrage] run=${run_id} points=${points.length} vendors=${vendors.length}`);
