@@ -141,9 +141,9 @@ function Sub({
 }: {
   label: string; placeholder?: boolean; href?: string; active?: boolean;
 }) {
-  const baseClass = `select-none flex items-center gap-[6px] pl-[26px] pr-[9px] py-[5px] rounded-[5px] text-[11px] mb-px no-underline
-    ${active ? "text-ink bg-paper font-semibold" : "text-ink-dim bg-transparent font-normal"}
-    ${placeholder ? "cursor-not-allowed" : "cursor-pointer"}`;
+  const baseClass = `select-none flex items-center gap-[6px] pl-[26px] pr-[9px] py-[5px] rounded-[5px] text-[11px] mb-px no-underline transition-colors duration-100
+    ${active ? "text-ink bg-paper font-semibold" : "text-ink-dim bg-transparent font-normal hover:text-ink hover:bg-paper"}
+    ${placeholder ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`;
 
   if (href && !placeholder) {
     return <Link href={href} className={baseClass}>{label}</Link>;

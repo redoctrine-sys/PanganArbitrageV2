@@ -17,10 +17,12 @@ export const PRICE_LIMIT_PER_QUERY = 5000;
 // ─── Phase 2: Arbitrage thresholds ──────────────────────────────────────────
 
 // Minimum net profit (Rp) untuk dianggap peluang arbitrase.
-export const MIN_PROFIT_THRESHOLD = 50_000;
+// Diturunkan agar SP2KP data yang spread tipis tetap terdeteksi.
+export const MIN_PROFIT_THRESHOLD = 10_000;
 
 // Minimum spread antar kota (%) untuk dianggap peluang arbitrase.
-export const MIN_SPREAD_PERCENT = 0.10;
+// 3% = deteksi peluang tipis; agent tetap mark low severity.
+export const MIN_SPREAD_PERCENT = 0.03;
 
 // ─── Phase 2: Province & island mapping ─────────────────────────────────────
 
