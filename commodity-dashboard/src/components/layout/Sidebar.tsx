@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AlertBadge } from "@/components/arbitrase/AlertBadge";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -40,6 +41,7 @@ export function Sidebar() {
         active={pathname.startsWith("/dashboard/arbitrase")}
         label="Arbitrase"
         pip="var(--arb)"
+        badge={<AlertBadge />}
       />
       <Sub label="AI Suggestion" placeholder />
       <Sub
@@ -82,7 +84,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function Item({
   label, pip, badge, badgeClassName, active, placeholder, dim, href,
 }: {
-  label: string; pip: string; badge?: string;
+  label: string; pip: string; badge?: React.ReactNode;
   badgeClassName?: string; active?: boolean;
   placeholder?: boolean; dim?: boolean; href?: string;
 }) {
@@ -97,9 +99,9 @@ function Item({
       <div style={{ width: 7, height: 7, borderRadius: "50%", background: pip, flexShrink: 0 }} />
       {label}
       {badge && (
-        <span className={`ml-auto font-mono text-[9px] px-[5px] py-px rounded-[5px] ${badgeClassName ?? ""}`}>
-          {badge}
-        </span>
+        typeof badge === "string"
+          ? <span className={`ml-auto font-mono text-[9px] px-[5px] py-px rounded-[5px] ${badgeClassName ?? ""}`}>{badge}</span>
+          : badge
       )}
     </>
   );

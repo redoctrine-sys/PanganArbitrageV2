@@ -158,6 +158,15 @@ export async function POST(req: Request): Promise<NextResponse> {
     ),
   ];
 
+  // ── Fire-and-forget: trigger arbitrage analysis after successful ingest ──
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000";
+  fetch(`${baseUrl}/api/agents/arbitrage`, { method: "POST" }).catch(() => {
+    // Non-critical: log only, don't fail the ingest response
+    console.warn("[Ingest] Arbitrage agent trigger failed");
+  });
+
   return NextResponse.json({
     received:         parsed.rows.length,
     inserted:         totalInserted,
