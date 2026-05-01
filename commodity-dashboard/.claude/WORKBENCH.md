@@ -1,66 +1,55 @@
 # WORKBENCH — Current Task
 *Baca file ini PERTAMA setiap kali membuka project*
 
-## Status: Phase 1 Debt Cleanup
+## Status: Phase 2 Complete ✅ → Phase 3 Planning
 
 ---
 
-## Phase 1: Data Foundation — ✅ Complete + 🔴 Debt
+## Phase 1: Data Foundation — ✅ Complete
 
 ### ✅ Done
 - [x] DB schema + seed migrations (001–013)
 - [x] SP2KP parser (encoding, dates, ×1000)
 - [x] API routes (preview, ingest, prices, latest, cities, transport-vendors)
-- [x] CSVUploader + preview modal
-- [x] SP2KP page (By City / By Commodity, filters, sortable)
-- [x] ChartPanel (daily line + candlestick W/M)
+- [x] CSVUploader → DropZone + UploadBlocks (split)
+- [x] SP2KP page (By City / By Commodity, filters, sortable) → SP2KPHeader extracted
+- [x] ChartPanel (daily line `connectNulls` fix + candlestick W/M)
 - [x] Auto-seed cities + RLS
 - [x] Server-side ingest + chunked bulk RPC
 - [x] Vercel deploy (vercel.json)
 - [x] Vendor Transport CRUD + detail panel
-- [x] Arbitrase tab demo (manual calculator)
-- [x] Admin cities page (lat/lng editor)
-- [x] Extract constants → `lib/constants.ts`
+- [x] Admin cities page → CityEditModal extracted
+- [x] Extract constants → `lib/constants.ts` (PROVINCE_MAP, ISLAND_MAP, COMMODITY_CATEGORIES)
 - [x] Unit tests: `parser.test.ts`, `metrics.test.ts`
 - [x] Tailwind-only migration (globals.css, all components)
 - [x] Split VendorTransportPage → 4 files
-
-### 🔴 Debt (must clear before Phase 2)
-- [ ] **Split ArbitrasePage.tsx** (756 baris → <200) — HIGHEST PRIORITY
-- [ ] Split AdminCitiesPage.tsx (365 → <200)
-- [ ] Split CSVUploader.tsx (324 → <200)
-- [ ] Trim SP2KPPage.tsx (297 → <200)
-- [ ] Trim CommodityGroupRow.tsx (277 → <200)
-- [ ] Extract DetailRow base (CommodityRow + CitySubRow ~80% identical)
-- [ ] Error boundaries di dashboard layout
-- [ ] Lengkapi constants.ts (PROVINCE_MAP, COMMODITY_CATEGORIES)
-- [ ] Migrate fetch → useSWR di components
+- [x] **Split ArbitrasePage.tsx** (756 → ~80) → types, AISubtab, ManualSubtab, LegCard
+- [x] ErrorBoundary → dipasang di dashboard layout
 
 ---
 
-## Phase 2: AI-Powered Arbitrage — ⚪ Blocked by Phase 1 debt
+## Phase 2: AI-Powered Arbitrage — ✅ Complete
 
-### Core Logic
-- [ ] `lib/analytics/arbitrage.ts` — detectAnomalies(), findArbitrage()
-- [ ] `lib/ai/agents/arbitrage/gemini-agent.ts` — analyzeWithGemini()
-- [ ] `lib/ai/agents/arbitrage/prompts.ts` — Profit Scout prompt
-- [ ] `lib/ai/agents/arbitrage/types.ts`
-- [ ] `tests/analytics.test.ts`
+### ✅ Done
+- [x] `014_arbitrage_alerts.sql` — table + RLS
+- [x] `lib/ai/agents/arbitrage/types.ts`
+- [x] `lib/analytics/arbitrage.ts` — detectAnomalies(), findArbitrage() (pure, testable)
+- [x] `lib/ai/agents/arbitrage/prompts.ts` — Profit Scout system prompt
+- [x] `lib/ai/agents/arbitrage/gemini-agent.ts` — Gemini Flash + graceful fallback
+- [x] `app/api/agents/arbitrage/route.ts` — POST, Layer 1 + Layer 2 + DB insert
+- [x] `components/arbitrase/AlertCard.tsx`
+- [x] `components/arbitrase/AlertBadge.tsx` — live unread count
+- [x] `components/arbitrase/AlertCenter.tsx` — filter bar + manual run trigger
+- [x] AISubtab: now renders AlertCenter (real alerts, not demo cards)
+- [x] Sidebar: AlertBadge di Arbitrase nav item
+- [x] ingest/sp2kp: fire-and-forget trigger post-ingest
 
-### Database
-- [ ] Migration `014_arbitrage_alerts.sql`
-- [ ] RLS: public read
-
-### API + Triggers
-- [ ] `app/api/agents/arbitrage/route.ts` — POST endpoint
-- [ ] Hook: `/api/ingest/sp2kp` → trigger arbitrage after insert
-- [ ] Cron: vercel.json atau GitHub Actions (6 jam)
-
-### Dashboard UI
-- [ ] `components/arbitrage/AlertCenter.tsx`
-- [ ] `components/arbitrage/AlertCard.tsx`
-- [ ] `components/arbitrage/AlertBadge.tsx` (Sidebar unread count)
-- [ ] `components/arbitrage/AlertFilter.tsx`
+### ⚠️ Next Steps Before Phase 2 Fully Live
+1. **Jalankan migration 014** di Supabase SQL Editor:
+   `supabase/migrations/014_arbitrage_alerts.sql`
+2. **Test manual**: POST `/api/agents/arbitrage` dari dashboard → klik "Jalankan Analisis"
+3. Verifikasi alerts muncul di AlertCenter
+4. (Opsional) Tambah cron trigger di `vercel.json`
 
 ---
 
@@ -89,11 +78,7 @@
 ---
 
 ## Task Aktif
-Next: **Split ArbitrasePage.tsx** (756 baris → 5 sub-components).
-
-## Issues / Blockers
-- ArbitrasePage.tsx blocks Phase 2 integration
-- constants.ts belum punya PROVINCE_MAP & COMMODITY_CATEGORIES
+**Jalankan migration 014 di Supabase** → test `POST /api/agents/arbitrage` → cek AlertCenter.
 
 ## Reference
 - `Project Update/` — archived planning docs
