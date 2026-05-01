@@ -35,6 +35,12 @@ interface Alert {
   vendor_name?: string;
   distance_km?: number;
   transport_detail?: string;
+  // Logistics risk fields
+  eta_hours?: number;
+  volatility_pct?: number;
+  volatility_label?: string;
+  spread_duration?: string;
+  logistic_risk?: string;
   // AI fields
   insights?: string[];
   recommended_actions?: string[];
@@ -77,6 +83,14 @@ function CalcRow({ label, value, highlight, dimmed, borderTop }: {
       <span className={`font-semibold ${highlight ? "text-up text-[11px]" : dimmed ? "text-ink-dim" : "text-ink"}`}>{value}</span>
     </div>
   );
+}
+
+function fmtEta(hours: number, distanceKm?: number): string {
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  const time = h === 0 ? `~${m} Menit` : m === 0 ? `~${h} Jam` : `~${h} Jam ${m} Menit`;
+  const hasFerry = distanceKm != null && hours > distanceKm / 40 + 1;
+  return hasFerry ? `${time} (Darat + Feri)` : `${time} (Darat)`;
 }
 
 function parseTransportOptions(raw: string | undefined): TransportOption[] {
@@ -292,6 +306,49 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
                   value={<span className="text-dn">+{alert.excess_percent?.toFixed(2)}%</span>}
                   highlight
                 />
+              </div>
+            </div>
+          )}
+
+          {/* ── Logistics Risk Analysis ── */}
+          {isArbitrage && (alert.eta_hours != null || alert.volatility_pct != null) && (
+            <div>
+              <div className="font-mono text-[9px] font-bold text-ink-dim uppercase tracking-[0.7px] mb-[6px]">
+                🚛 Analisis Risiko Logistik
+              </div>
+              <div className="bg-white border border-rule rounded-md px-3 py-[8px]">
+                {alert.eta_hours != null && (
+                  <CalcRow
+                    label="Estimasi Perjalanan"
+                    value={fmtEta(alert.eta_hours, alert.distance_km)}
+                    dimmed
+                  />
+                )}
+                {alert.volatility_pct != null && (
+                  <CalcRow
+                    label="Volatilitas Harga (Tujuan)"
+                    value={
+                      <span className={
+                        alert.volatility_label === "Tinggi" ? "text-dn" :
+                        alert.volatility_label === "Sedang" ? "text-[#78350f]" : "text-up"
+                      }>
+                        {alert.volatility_pct.toFixed(1)}% ({alert.volatility_label ?? "—"})
+                      </span>
+                    }
+                  />
+                )}
+                {alert.spread_duration && (
+                  <CalcRow
+                    label="Status Spread"
+                    value={alert.spread_duration}
+                    dimmed
+                  />
+                )}
+                {alert.logistic_risk && (
+                  <div className="text-[10px] font-mono mt-[6px] p-2 bg-[#fee2e2] text-[#991b1b] rounded border border-[#fecaca] leading-[1.5]">
+                    {alert.logistic_risk}
+                  </div>
+                )}
               </div>
             </div>
           )}

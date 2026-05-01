@@ -13,6 +13,12 @@ export interface PricePoint {
   island: string;
   latitude: number | null;
   longitude: number | null;
+  // 30-day stats & previous price (from get_sp2kp_latest RPC)
+  price_prev: number | null;
+  date_prev: string | null;
+  avg_30d: number | null;
+  max_30d: number | null;
+  min_30d: number | null;
 }
 
 export interface Vendor {
@@ -55,6 +61,12 @@ export interface ArbitrageOpportunity {
   vendor_name: string | null;
   distance_km: number;
   transport_detail: string;
+  // Logistics risk metrics
+  eta_hours: number;
+  volatility_pct: number | null;
+  volatility_label: "Rendah" | "Sedang" | "Tinggi" | null;
+  spread_duration: string;
+  logistic_risk: string | null;
 }
 
 export interface GeminiAnalysis {

@@ -124,8 +124,13 @@ export async function POST(): Promise<NextResponse> {
         date:           String(r.date_latest ?? ""),
         province:       String(r.province ?? ""),
         island:         String(r.island ?? ""),
-        latitude:  r.lat != null ? Number(r.lat) : null,
-        longitude: r.lng != null ? Number(r.lng) : null,
+        latitude:  r.lat       != null ? Number(r.lat)       : null,
+        longitude: r.lng       != null ? Number(r.lng)       : null,
+        price_prev: r.price_prev != null ? Number(r.price_prev) : null,
+        date_prev:  r.date_prev  != null ? String(r.date_prev)  : null,
+        avg_30d:    r.avg_30d    != null ? Number(r.avg_30d)    : null,
+        max_30d:    r.max_30d    != null ? Number(r.max_30d)    : null,
+        min_30d:    r.min_30d    != null ? Number(r.min_30d)    : null,
       }));
 
     console.log(`[Arbitrage] run=${run_id} points=${points.length} vendors=${vendors.length}`);
@@ -174,6 +179,9 @@ export async function POST(): Promise<NextResponse> {
         volume_kg: o.volume_kg, transport_cost: o.transport_cost,
         profit_estimate: o.profit_estimate, vendor_name: o.vendor_name,
         distance_km: o.distance_km, transport_detail: o.transport_detail,
+        eta_hours: o.eta_hours, volatility_pct: o.volatility_pct,
+        volatility_label: o.volatility_label, spread_duration: o.spread_duration,
+        logistic_risk: o.logistic_risk,
         insights:            geminiUsed ? geminiResult.insights            : null,
         recommended_actions: geminiUsed ? geminiResult.recommended_actions : null,
         risk_factors:        geminiUsed ? geminiResult.risk_factors        : null,

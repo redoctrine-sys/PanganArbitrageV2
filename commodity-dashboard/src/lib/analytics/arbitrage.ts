@@ -238,6 +238,41 @@ function estimateTransportCost(
   };
 }
 
+// ─── Logistics Risk Helpers ───────────────────────────────────────────────────
+
+function countFerryLegs(fromIsland: string, toIsland: string): number {
+  if (fromIsland === toIsland) return 0;
+  const pair = [fromIsland, toIsland].sort().join("-");
+  return pair === "Jawa-Lombok" ? 2 : 1;
+}
+
+function calcEta(distanceKm: number, fromIsland: string, toIsland: string): number {
+  return parseFloat((distanceKm / 40 + countFerryLegs(fromIsland, toIsland) * 4).toFixed(1));
+}
+
+function calcVolatility(point: PricePoint): {
+  pct: number | null;
+  label: "Rendah" | "Sedang" | "Tinggi" | null;
+} {
+  if (point.avg_30d == null || point.max_30d == null || point.min_30d == null || point.avg_30d <= 0) {
+    return { pct: null, label: null };
+  }
+  const pct = ((point.max_30d - point.min_30d) / point.avg_30d) * 100;
+  const label: "Rendah" | "Sedang" | "Tinggi" = pct < 5 ? "Rendah" : pct <= 15 ? "Sedang" : "Tinggi";
+  return { pct: parseFloat(pct.toFixed(1)), label };
+}
+
+function calcSpreadDuration(cheapest: PricePoint, expensive: PricePoint): string {
+  if (cheapest.price_prev != null && expensive.price_prev != null) {
+    return expensive.price_prev - cheapest.price_prev > 0
+      ? "Spread konsisten sejak kemarin"
+      : "Spread baru muncul hari ini";
+  }
+  return "Data sebelumnya tidak tersedia";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface RawCandidate {
   spread: number;
   spreadPct: number;
@@ -247,6 +282,11 @@ interface RawCandidate {
   volume_kg: number;
   distance_km: number;
   transport_detail: string;
+  eta_hours: number;
+  volatility_pct: number | null;
+  volatility_label: "Rendah" | "Sedang" | "Tinggi" | null;
+  spread_duration: string;
+  logistic_risk: string | null;
   cheapest: PricePoint;
   expensive: PricePoint;
 }
@@ -300,6 +340,14 @@ export function findArbitrage(
         );
         const profit = expensive.price * volume_kg - cheapest.price * volume_kg - transportCost;
 
+        // Logistics risk metrics
+        const eta_hours       = calcEta(distance_km, cheapest.island, expensive.island);
+        const { pct: volatility_pct, label: volatility_label } = calcVolatility(expensive);
+        const spread_duration = calcSpreadDuration(cheapest, expensive);
+        const logistic_risk   = eta_hours > 24 && (volatility_pct ?? 0) > 15
+          ? "⚠ Risiko Tinggi: Perjalanan memakan waktu > 24 jam sedangkan volatilitas harga di kota tujuan sangat tinggi. Harga jual bisa anjlok sebelum barang tiba."
+          : null;
+
         const meetsThreshold = spreadPct >= MIN_SPREAD_PERCENT && profit >= MIN_PROFIT_THRESHOLD;
 
         if (meetsThreshold) {
@@ -323,9 +371,18 @@ export function findArbitrage(
             vendor_name,
             distance_km,
             transport_detail,
+            eta_hours,
+            volatility_pct,
+            volatility_label,
+            spread_duration,
+            logistic_risk,
           });
         } else if (spread > 0) {
-          fallback.push({ spread, spreadPct, profit, transportCost, vendor_name, volume_kg, distance_km, transport_detail, cheapest, expensive });
+          fallback.push({
+            spread, spreadPct, profit, transportCost, vendor_name, volume_kg, distance_km, transport_detail,
+            eta_hours, volatility_pct, volatility_label, spread_duration, logistic_risk,
+            cheapest, expensive,
+          });
         }
       }
     }
@@ -363,6 +420,11 @@ export function findArbitrage(
           vendor_name:     c.vendor_name,
           distance_km:     c.distance_km,
           transport_detail: c.transport_detail,
+          eta_hours:        c.eta_hours,
+          volatility_pct:   c.volatility_pct,
+          volatility_label: c.volatility_label,
+          spread_duration:  c.spread_duration,
+          logistic_risk:    c.logistic_risk,
         });
       });
   }
