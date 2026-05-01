@@ -157,8 +157,8 @@ export function findArbitrage(
         const spreadPct = spread / cheapest.price;
         const { cost: transportCost, vendor_name } = estimateTransportCost(
           vendors, volumeKg,
-          cheapest.latitude, cheapest.longitude,
-          expensive.latitude, expensive.longitude,
+          cheapest.lat, cheapest.lng,
+          expensive.lat, expensive.lng,
         );
         const profit = expensive.price * volumeKg - cheapest.price * volumeKg - transportCost;
 

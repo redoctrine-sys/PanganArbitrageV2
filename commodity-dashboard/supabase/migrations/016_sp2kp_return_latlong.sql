@@ -1,8 +1,8 @@
 -- ═══════════════════════════════════════
--- 016 — get_sp2kp_latest: return latitude & longitude from cities table
+-- 016 — get_sp2kp_latest: return lat & lng from cities table
 --
--- Dibutuhkan oleh arbitrage engine untuk menghitung jarak aktual (Haversine)
--- antar kota sebagai pengganti fallback 200km flat.
+-- cities table uses columns lat/lng (numeric(9,6)), not latitude/longitude.
+-- Dibutuhkan oleh arbitrage engine untuk menghitung jarak aktual (Haversine).
 -- Re-runnable. Mempertahankan SECURITY DEFINER dari migration 009.
 -- ═══════════════════════════════════════
 
@@ -31,8 +31,8 @@ RETURNS TABLE(
   max_30d        numeric,
   min_30d        numeric,
   obs_30d        bigint,
-  latitude       numeric,
-  longitude      numeric
+  lat            numeric,
+  lng            numeric
 ) AS $$
   WITH ranked AS (
     SELECT
@@ -87,8 +87,8 @@ RETURNS TABLE(
         ELSE 'Jawa'
       END AS island,
       CASE WHEN c.name ILIKE 'Kota%' THEN 'kota' ELSE 'kabupaten' END AS entity_type,
-      c.latitude,
-      c.longitude
+      c.lat,
+      c.lng
     FROM cities c
     WHERE c.kode_wilayah IS NOT NULL
       AND substr(c.kode_wilayah, 1, 2) IN ('31','32','33','34','35','36','51','52')
@@ -103,8 +103,8 @@ RETURNS TABLE(
     l.price, p.price, l.het_ha,
     l.date, p.date,
     s.avg_30d, s.max_30d, s.min_30d, COALESCE(s.obs_30d, 0),
-    sc.latitude,
-    sc.longitude
+    sc.lat,
+    sc.lng
   FROM scope_cities sc
   CROSS JOIN (SELECT * FROM commodities WHERE is_sp2kp = true) cm
   LEFT JOIN latest l ON l.kode_wilayah = sc.kode_wilayah AND l.commodity_id = cm.id
