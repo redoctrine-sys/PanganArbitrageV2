@@ -1,15 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { AlertCard, type Alert } from "./AlertCard";
-
-function getClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-}
 
 type FilterType = "all" | "anomaly" | "arbitrage";
 type FilterSeverity = "all" | "high" | "medium" | "low";
@@ -33,23 +25,20 @@ export function AlertCenter() {
   const [lastRun, setLastRun]       = useState<string | null>(null);
   const [runInfo, setRunInfo]       = useState<RunResult | null>(null);
   const [apiError, setApiError]     = useState<string | null>(null);
+  // Default "all" so alerts are immediately visible
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [filterSev, setFilterSev]   = useState<FilterSeverity>("all");
 
+  // Load alerts via API GET (uses server-side cleanUrl)
   const loadAlerts = useCallback(async () => {
     setLoading(true);
-    const supabase = getClient();
-    const { data, error } = await supabase
-      .from("arbitrage_alerts")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (error) {
-      // Table might not exist yet
-      console.warn("[AlertCenter] DB load error:", error.message);
+    try {
+      const res  = await fetch("/api/agents/arbitrage", { cache: "no-store" });
+      const json = await res.json() as { data?: Alert[]; db_error?: string };
+      setAlerts((json.data ?? []) as Alert[]);
+    } catch {
+      setAlerts([]);
     }
-    setAlerts((data ?? []) as Alert[]);
     setLoading(false);
   }, []);
 
@@ -62,31 +51,30 @@ export function AlertCenter() {
     try {
       const res  = await fetch("/api/agents/arbitrage", { method: "POST" });
       const json = await res.json() as RunResult;
-
       setRunInfo(json);
 
-      if (!res.ok) {
+      if (!res.ok || json.error) {
         setApiError(json.error ?? `HTTP ${res.status}`);
-        return;
-      }
-
-      if (json.error) {
-        setApiError(json.error);
+        // Even on DB error, show in-memory results from API response
+        const fromApi: Alert[] = [
+          ...((json.anomalies ?? []) as Alert[]),
+          ...((json.opportunities ?? []) as Alert[]),
+        ].map((a) => ({ ...a, is_read: false, created_at: json.timestamp ?? "" }));
+        if (fromApi.length > 0) setAlerts(fromApi);
         return;
       }
 
       setLastRun(json.timestamp ?? new Date().toISOString());
 
-      // If DB insert worked, reload from DB. If not (db_error), use API response directly.
-      if (!json.db_error) {
-        await loadAlerts();
-      } else {
-        // Merge in-memory from API response (table missing scenario)
+      if (json.db_error) {
+        // DB insert failed — show in-memory
         const fromApi: Alert[] = [
           ...((json.anomalies ?? []) as Alert[]),
           ...((json.opportunities ?? []) as Alert[]),
         ].map((a) => ({ ...a, is_read: false, created_at: json.timestamp ?? "" }));
         setAlerts(fromApi);
+      } else {
+        await loadAlerts();
       }
     } catch (err) {
       setApiError(err instanceof Error ? err.message : "Network error");
@@ -96,8 +84,9 @@ export function AlertCenter() {
   }
 
   async function markRead(id: string) {
-    const supabase = getClient();
-    await supabase.from("arbitrage_alerts").update({ is_read: true }).eq("id", id);
+    try {
+      await fetch(`/api/agents/arbitrage?id=${id}`, { method: "PATCH" });
+    } catch {}
     setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, is_read: true } : a));
   }
 
@@ -143,51 +132,56 @@ export function AlertCenter() {
         </div>
       </div>
 
-      {/* Status bar */}
+      {/* Status messages */}
       <div className="shrink-0 px-[18px] pt-[8px] flex flex-col gap-2">
-        {/* Success */}
         {lastRun && !apiError && (
-          <div className="px-3 py-[6px] bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg text-[10px] font-mono text-[#166534] flex gap-3 items-center">
+          <div className="px-3 py-[6px] bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg text-[10px] font-mono text-[#166534] flex gap-3 items-center flex-wrap">
             <span>✓ Analisis selesai — {new Date(lastRun).toLocaleString("id-ID")}</span>
-            {runInfo?.total_inserted != null && (
-              <span className="opacity-70">·  {runInfo.total_inserted} alerts disimpan</span>
-            )}
+            {runInfo?.total_inserted != null && <span className="opacity-70">· {runInfo.total_inserted} alerts disimpan</span>}
             {runInfo?.gemini_used && <span className="opacity-70">· 🤖 Gemini aktif</span>}
-            {runInfo?.db_error && (
-              <span className="text-[#78350f]">· ⚠ DB skip (migration 014 belum dijalankan)</span>
-            )}
+            {runInfo?.db_error && <span className="text-[#78350f]">· ⚠ DB: {runInfo.db_error}</span>}
             {runInfo?.warning && <span className="opacity-70">· {runInfo.warning}</span>}
           </div>
         )}
-        {/* Error */}
         {apiError && (
-          <div className="px-3 py-[6px] bg-[#fef2f2] border border-[#fecaca] rounded-lg text-[10px] font-mono text-[#991b1b] leading-[1.6]">
+          <div className="px-3 py-[6px] bg-[#fef2f2] border border-[#fecaca] rounded-lg text-[10px] font-mono text-[#991b1b]">
             <b>Error:</b> {apiError}
-            {apiError.includes("Supabase") && (
-              <div className="opacity-70 mt-1">Pastikan SUPABASE_SERVICE_ROLE_KEY dikonfigurasi di Vercel env vars.</div>
-            )}
           </div>
         )}
       </div>
 
-      {/* Metrics info strip — only after run */}
+      {/* Metrics strip after run */}
       {runInfo && !apiError && (
-        <div className="mx-[18px] mt-[6px] px-3 py-[6px] bg-paper-2 border border-rule rounded-lg shrink-0">
-          <div className="font-mono text-[9px] text-ink-dim uppercase tracking-[0.8px] mb-1">Hasil Analisis</div>
-          <div className="flex gap-4 flex-wrap">
-            <Metric label="Anomali HET" value={String(runInfo.anomalies?.length ?? 0)} />
-            <Metric label="Peluang Arbitrase" value={String(runInfo.opportunities?.length ?? 0)} />
-            <Metric label="Data SP2KP" value={`${alerts.length} total`} />
-          </div>
+        <div className="mx-[18px] mt-[6px] px-3 py-[6px] bg-paper-2 border border-rule rounded-lg shrink-0 flex gap-4 flex-wrap items-center">
+          <span className="font-mono text-[9px] text-ink-dim uppercase tracking-[0.8px]">Hasil Analisis</span>
+          <Metric label="Anomali HET"       value={String(runInfo.anomalies?.length ?? 0)} />
+          <Metric label="Peluang Arbitrase" value={String(runInfo.opportunities?.length ?? 0)} />
+          <Metric label="Total tampil"      value={String(alerts.length)} />
+          {filterSev !== "all" && (
+            <span className="font-mono text-[9px] text-ink-dim">· filter: {filterSev}</span>
+          )}
         </div>
       )}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-[12px_18px]">
-        {loading && (
-          <div className="empty"><div className="empty-title">Memuat alerts...</div></div>
+        {loading && <div className="empty"><div className="empty-title">Memuat alerts...</div></div>}
+
+        {!loading && filtered.length === 0 && alerts.length > 0 && (
+          <div className="empty py-8">
+            <div className="text-[22px] mb-2">🔍</div>
+            <div className="empty-title">Tidak ada alert dengan filter ini</div>
+            <div className="empty-sub">
+              Ada <b>{alerts.length}</b> alert tersimpan — coba ubah filter severity ke <b>Semua</b>.
+            </div>
+            <button type="button" className="btn btn-ghost mt-3 text-[11px]"
+              onClick={() => { setFilterType("all"); setFilterSev("all"); }}>
+              Reset Filter
+            </button>
+          </div>
         )}
-        {!loading && filtered.length === 0 && (
+
+        {!loading && alerts.length === 0 && (
           <div className="empty">
             <div className="text-[28px] mb-2">🤖</div>
             <div className="empty-title">Belum ada alerts</div>
@@ -196,11 +190,15 @@ export function AlertCenter() {
             </div>
           </div>
         )}
+
         {!loading && filtered.length > 0 && (
           <div className="flex flex-col gap-[8px]">
             {filtered.map((a, i) => (
-              <AlertCard key={a.id ?? `${a.type}-${a.commodity_name}-${i}`}
-                alert={a} onRead={markRead} />
+              <AlertCard
+                key={a.id ?? `${a.type}-${a.commodity_name}-${i}`}
+                alert={a}
+                onRead={markRead}
+              />
             ))}
           </div>
         )}
