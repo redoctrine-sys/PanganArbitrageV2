@@ -1,3 +1,5 @@
+import { TREND_FLAT_THRESHOLD } from "@/lib/constants";
+
 export function calcChangePct(latest: number | null, prev: number | null | undefined): number | null {
   if (latest == null || prev == null || prev === 0) return null;
   return ((latest - prev) / prev) * 100;
@@ -22,7 +24,7 @@ export function calcTrend(prices: number[]): "up" | "down" | "flat" {
   const recent = prices.slice(0, 3);
   const slope = recent[0] - recent[2];
   const denom = recent[2] === 0 ? 1 : recent[2];
-  if (Math.abs(slope / denom) < 0.01) return "flat";
+  if (Math.abs(slope / denom) < TREND_FLAT_THRESHOLD) return "flat";
   return slope > 0 ? "up" : "down";
 }
 

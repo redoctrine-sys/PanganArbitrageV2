@@ -6,6 +6,7 @@ import { MiniSparkline } from "@/components/pills/MiniSparkline";
 import { CommodityColHeader, CommodityRow, useCommoditySelector } from "@/components/sp2kp/CommodityRow";
 import { calcChangePct, calcVolatility, calcTrend, formatRupiah } from "@/lib/analytics/metrics";
 import type { SP2KPLatestRow } from "@/types/sp2kp";
+import { HET_ANOMALY_THRESHOLD } from "@/lib/constants";
 
 interface CityGroup {
   kode_wilayah: string;
@@ -58,7 +59,7 @@ export function CityRow({ group, index, isOpen, onToggle }: Props) {
       : "flat";
 
   const aboveHetCommodities = rows.filter(
-    (r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * 1.02,
+    (r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * HET_ANOMALY_THRESHOLD,
   );
   const hasAnomaly = aboveHetCommodities.length > 0;
 
@@ -66,8 +67,8 @@ export function CityRow({ group, index, isOpen, onToggle }: Props) {
 
   // Sort: anomalies first (above HET), then alphabetical.
   const sortedRows = [...rows].sort((a, b) => {
-    const aAnom = a.het_ha != null && a.price_latest != null && a.price_latest > a.het_ha * 1.02 ? 0 : 1;
-    const bAnom = b.het_ha != null && b.price_latest != null && b.price_latest > b.het_ha * 1.02 ? 0 : 1;
+    const aAnom = a.het_ha != null && a.price_latest != null && a.price_latest > a.het_ha * HET_ANOMALY_THRESHOLD ? 0 : 1;
+    const bAnom = b.het_ha != null && b.price_latest != null && b.price_latest > b.het_ha * HET_ANOMALY_THRESHOLD ? 0 : 1;
     if (aAnom !== bAnom) return aAnom - bAnom;
     return a.commodity_name.localeCompare(b.commodity_name);
   });

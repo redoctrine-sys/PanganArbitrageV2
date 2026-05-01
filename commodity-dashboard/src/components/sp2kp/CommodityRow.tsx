@@ -6,6 +6,7 @@ import { VolatilityPill } from "@/components/pills/VolatilityPill";
 import { ChartPanel } from "@/components/sp2kp/ChartPanel";
 import { calcChangePct, calcVolatility, calcVsAvg, formatPct, formatRupiah } from "@/lib/analytics/metrics";
 import type { SP2KPLatestRow } from "@/types/sp2kp";
+import { HET_ANOMALY_THRESHOLD } from "@/lib/constants";
 
 interface Props {
   row: SP2KPLatestRow;
@@ -20,7 +21,7 @@ export function CommodityRow({ row, index, isOpen, onToggle }: Props) {
   const change = calcChangePct(row.price_latest, row.price_prev);
   const volatility = calcVolatility(row.max_30d, row.min_30d, row.avg_30d);
   const vsAvg = calcVsAvg(row.price_latest, row.avg_30d);
-  const aboveHet = row.het_ha != null && row.price_latest != null && row.price_latest > row.het_ha * 1.02;
+  const aboveHet = row.het_ha != null && row.price_latest != null && row.price_latest > row.het_ha * HET_ANOMALY_THRESHOLD;
 
   return (
     <div className={`l2-block ${isOpen ? "open" : ""} ${aboveHet ? "anom" : ""}`}>

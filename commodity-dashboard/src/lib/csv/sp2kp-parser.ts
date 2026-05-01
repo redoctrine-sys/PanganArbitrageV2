@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import type { Island, ParsedRow, ParseResult } from "@/types/sp2kp";
+import { PRICE_SCALE } from "@/lib/constants";
 
 // Kode wilayah Madura — meski prefix '35' (Jatim), island = 'Madura'
 const MADURA_CODES = new Set(["3526", "3527", "3528", "3529"]);
@@ -20,11 +21,6 @@ const SCOPE_PREFIXES = new Set([
 // Accept both D/M/YYYY and DD/MM/YYYY (with or without leading zeros)
 const DATE_PATTERN = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
 
-// SP2KP menyimpan harga dalam satuan RIBU (mis. cell `35` = Rp 35.000,
-// `12.813` = Rp 12.813, HET `41.5` = Rp 41.500). Konversi sekali di parser
-// sebagai single source of truth — semua downstream code (UI/RPC/chart)
-// melihat angka rupiah utuh.
-const PRICE_SCALE = 1000;
 
 // Excel serial dates can appear in headers when XLSX is exported without
 // preserving the cell format. SP2KP files often mix DD/MM/YYYY strings with

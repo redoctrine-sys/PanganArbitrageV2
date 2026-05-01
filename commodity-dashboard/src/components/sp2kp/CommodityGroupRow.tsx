@@ -14,6 +14,7 @@ import {
 } from "@/components/sp2kp/CitySubRow";
 import { calcChangePct, calcTrend, calcVolatility, calcVsAvg, formatRupiah } from "@/lib/analytics/metrics";
 import type { SP2KPLatestRow } from "@/types/sp2kp";
+import { HET_ANOMALY_THRESHOLD } from "@/lib/constants";
 
 interface CommodityGroup {
   commodity_id: string;
@@ -50,7 +51,7 @@ export function CommodityGroupRow({ group, index, isOpen, onToggle }: Props) {
   const trend = calcTrend([avgPriceLatest, prevMean, avg30Mean]);
 
   const aboveHetCities = rows.filter(
-    (r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * 1.02,
+    (r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * HET_ANOMALY_THRESHOLD,
   );
   const hasAnomaly = aboveHetCities.length > 0;
 
@@ -121,8 +122,8 @@ function sortCityRows(rows: SP2KPLatestRow[], sort: CitySubSort): SP2KPLatestRow
   const out = [...rows];
   if (sort.key == null) {
     return out.sort((a, b) => {
-      const aAnom = a.het_ha != null && a.price_latest != null && a.price_latest > a.het_ha * 1.02 ? 0 : 1;
-      const bAnom = b.het_ha != null && b.price_latest != null && b.price_latest > b.het_ha * 1.02 ? 0 : 1;
+      const aAnom = a.het_ha != null && a.price_latest != null && a.price_latest > a.het_ha * HET_ANOMALY_THRESHOLD ? 0 : 1;
+      const bAnom = b.het_ha != null && b.price_latest != null && b.price_latest > b.het_ha * HET_ANOMALY_THRESHOLD ? 0 : 1;
       if (aAnom !== bAnom) return aAnom - bAnom;
       return (b.price_latest ?? 0) - (a.price_latest ?? 0);
     });
@@ -246,8 +247,8 @@ export function sortCommodityGroups(
   const out = [...groups];
   if (sort.key == null) {
     return out.sort((a, b) => {
-      const aAnom = a.rows.some((r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
-      const bAnom = b.rows.some((r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * 1.02) ? 0 : 1;
+      const aAnom = a.rows.some((r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * HET_ANOMALY_THRESHOLD) ? 0 : 1;
+      const bAnom = b.rows.some((r) => r.het_ha != null && r.price_latest != null && r.price_latest > r.het_ha * HET_ANOMALY_THRESHOLD) ? 0 : 1;
       if (aAnom !== bAnom) return aAnom - bAnom;
       return a.commodity_name.localeCompare(b.commodity_name);
     });

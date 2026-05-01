@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -33,8 +33,8 @@ export function Sidebar() {
       />
       <Sub label="Data Harga" placeholder />
       <Sub
-        href="/dashboard/pedagang"
-        active={pathname === "/dashboard/pedagang"}
+        href="/dashboard/pedagang/vendor-transport"
+        active={pathname.startsWith("/dashboard/pedagang/vendor-transport")}
         label="Vendor Transport"
       />
 
@@ -82,7 +82,7 @@ export function Sidebar() {
         <br />
         <b style={{ color: "var(--ink-mid)" }}>Transport</b> aktif
         <br />
-        Komparasi · Arbitrase · Pedagang data → Phase 2+.
+        Komparasi Â· Arbitrase Â· Pedagang data â†’ Phase 2+.
       </div>
     </aside>
   );
