@@ -13,81 +13,125 @@ interface Props {
   onAddLeg: () => void;
 }
 
-function SummaryCell({ label, value, color }: { label: string; value: string; color: string }) {
+function ChainMetric({
+  label, value, color, sub,
+}: { label: string; value: string; color: string; sub?: string }) {
   return (
-    <div>
-      <div className="font-mono text-[9px] uppercase tracking-[0.9px] mb-[3px]" style={{ color: "rgba(245,241,234,.4)" }}>
+    <div className="flex flex-col gap-[2px]">
+      <div className="font-mono text-[8px] uppercase tracking-[1px]" style={{ color: "rgba(245,241,234,.4)" }}>
         {label}
       </div>
-      <div className="font-mono text-[15px] font-bold" style={{ color }}>{value}</div>
+      <div className="font-mono text-[16px] font-bold leading-tight" style={{ color }}>
+        {value}
+      </div>
+      {sub && <div className="font-mono text-[9px]" style={{ color: "rgba(245,241,234,.3)" }}>{sub}</div>}
     </div>
   );
 }
 
 export function ManualSubtab({ legs, vendors, legResults, chainSummary, onUpdateLeg, onRemoveLeg, onAddLeg }: Props) {
+  const totalLegs = legs.length;
+  const calculatedLegs = legResults.filter(Boolean).length;
+
   return (
-    <div className="flex-1 overflow-y-auto p-[16px_18px]">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <div className="font-serif text-[14px] font-bold">Manual Arbitrase Calculator</div>
-          <div className="font-mono text-[10px] text-ink-dim mt-[2px]">
-            Multi-leg bebas · Vendor dari DB · Harga manual atau ambil dari SP2KP (Phase 2)
-          </div>
+    <div className="flex-1 overflow-y-auto">
+      {/* Top info bar */}
+      <div className="flex items-center gap-3 px-[18px] py-[9px] bg-white border-b border-rule">
+        <div className="flex items-center gap-[6px] text-[10px] font-mono">
+          <span className="w-2 h-2 rounded-full bg-[#16a34a]" />
+          <span className="text-ink-dim">Multi-leg kalkulator</span>
+        </div>
+        <div className="w-px h-3 bg-rule" />
+        <div className="text-[10px] font-mono text-ink-dim">
+          <span className="text-ink font-semibold">{totalLegs}</span> leg ·{" "}
+          <span className="text-ink font-semibold">{calculatedLegs}</span> terhitung ·{" "}
+          <span className="text-ink font-semibold">{vendors.length}</span> vendor tersedia
+        </div>
+        <div className="ml-auto flex gap-2">
+          <button
+            type="button"
+            onClick={onAddLeg}
+            className="btn btn-ghost text-[10px] px-3 py-[5px]"
+          >
+            + Leg Baru
+          </button>
         </div>
       </div>
 
-      {/* Leg cards */}
-      {legs.map((leg, idx) => (
-        <LegCard
-          key={leg.id}
-          leg={leg}
-          index={idx}
-          vendors={vendors}
-          result={legResults[idx]}
-          canRemove={legs.length > 1}
-          onUpdate={(patch) => onUpdateLeg(leg.id, patch)}
-          onRemove={() => onRemoveLeg(leg.id)}
-        />
-      ))}
+      {/* Legs + Summary — two column if chain */}
+      <div className="p-[14px_18px] flex flex-col gap-[10px]">
+        {/* Leg cards */}
+        {legs.map((leg, idx) => (
+          <LegCard
+            key={leg.id}
+            leg={leg}
+            index={idx}
+            vendors={vendors}
+            result={legResults[idx]}
+            canRemove={legs.length > 1}
+            onUpdate={(patch) => onUpdateLeg(leg.id, patch)}
+            onRemove={() => onRemoveLeg(leg.id)}
+          />
+        ))}
 
-      {/* Add leg button */}
-      <button
-        type="button"
-        onClick={onAddLeg}
-        className="w-full p-[10px] border-2 border-dashed border-rule rounded-lg bg-transparent text-[12px] font-medium text-ink-dim cursor-pointer mb-[14px] transition-all duration-150 hover:border-arb hover:text-arb hover:bg-[#ffedd5]"
-      >
-        + Tambah Leg Baru
-      </button>
+        {/* Chain Summary — dark card */}
+        {chainSummary && (
+          <div className="rounded-xl overflow-hidden border border-[rgba(255,255,255,.07)]">
+            <div
+              className="px-[18px] py-[14px]"
+              style={{ background: "linear-gradient(135deg, #1a1a1a 0%, #111 100%)" }}
+            >
+              <div className="flex items-center gap-2 mb-[14px]">
+                <span className="text-[13px]">📊</span>
+                <div className="font-serif text-[13px] font-bold text-paper">
+                  Chain Summary — {totalLegs} Leg
+                </div>
+                {chainSummary.totalNet >= 0 ? (
+                  <span className="ml-auto px-[8px] py-[3px] rounded-[5px] text-[10px] font-mono font-semibold bg-[rgba(110,231,160,.12)] text-[#6ee7a0] border border-[rgba(110,231,160,.2)]">
+                    ✓ Viable
+                  </span>
+                ) : (
+                  <span className="ml-auto px-[8px] py-[3px] rounded-[5px] text-[10px] font-mono font-semibold bg-[rgba(252,100,100,.12)] text-[#fca5a5] border border-[rgba(252,100,100,.2)]">
+                    ✗ Merugi
+                  </span>
+                )}
+              </div>
 
-      {/* Chain summary */}
-      {chainSummary && (
-        <div className="bg-ink rounded-lg p-[14px_16px] text-paper">
-          <div className="font-serif text-[14px] font-bold mb-[10px]">
-            📊 Chain Summary — {legs.length} Leg
+              <div className="grid grid-cols-4 gap-4">
+                <ChainMetric label="Total Modal" value={fmtRp(chainSummary.totalModal)} color="#fcd34d" />
+                <ChainMetric
+                  label="Biaya Transport"
+                  value={fmtRp(chainSummary.totalTransport)}
+                  color="rgba(245,241,234,.5)"
+                  sub={`${((chainSummary.totalTransport / (chainSummary.totalModal || 1)) * 100).toFixed(1)}% dari modal`}
+                />
+                <ChainMetric
+                  label="Net Profit"
+                  value={fmtRp(chainSummary.totalNet)}
+                  color={chainSummary.totalNet >= 0 ? "#6ee7a0" : "#fca5a5"}
+                />
+                <ChainMetric
+                  label="ROI Chain"
+                  value={fmtPct(chainSummary.roi)}
+                  color={chainSummary.roi >= 0 ? "#6ee7a0" : "#fca5a5"}
+                  sub={chainSummary.roi >= 10 ? "🔥 Profitable" : chainSummary.roi >= 0 ? "Marginal" : "Rugi"}
+                />
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-4 gap-2 mb-[10px]">
-            <SummaryCell label="Total Modal"     value={fmtRp(chainSummary.totalModal)}     color="#fcd34d" />
-            <SummaryCell label="Total Transport" value={fmtRp(chainSummary.totalTransport)} color="rgba(245,241,234,.55)" />
-            <SummaryCell label="Net Profit"      value={fmtRp(chainSummary.totalNet)}       color={chainSummary.totalNet >= 0 ? "#6ee7a0" : "#fca5a5"} />
-            <SummaryCell label="ROI Chain"       value={fmtPct(chainSummary.roi)}           color={chainSummary.roi >= 0 ? "#6ee7a0" : "#fca5a5"} />
+        )}
+
+        {/* Empty state when no result yet */}
+        {calculatedLegs === 0 && (
+          <div className="empty py-8">
+            <div className="text-[26px] mb-2">⚡</div>
+            <div className="empty-title">Isi harga beli & jual untuk kalkulasi</div>
+            <div className="empty-sub">
+              Kalkulator akan menghitung profit, ROI, dan biaya transport secara otomatis.
+            </div>
           </div>
-          <div className="border-t border-[rgba(245,241,234,.1)] pt-[9px] flex gap-[7px] items-center">
-            {chainSummary.totalNet >= 0 ? (
-              <span className="px-2 py-[3px] rounded-[5px] text-[10px] font-mono font-semibold bg-[rgba(110,231,160,.12)] text-[#6ee7a0] border border-[rgba(110,231,160,.25)]">
-                ✓ Viable
-              </span>
-            ) : (
-              <span className="px-2 py-[3px] rounded-[5px] text-[10px] font-mono font-semibold bg-[rgba(252,100,100,.12)] text-[#fca5a5] border border-[rgba(252,100,100,.25)]">
-                ✗ Rugi
-              </span>
-            )}
-            <span className="font-mono text-[10px] ml-auto" style={{ color: "rgba(245,241,234,.35)" }}>
-              Harga manual · Vendor transport DB ✓
-            </span>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

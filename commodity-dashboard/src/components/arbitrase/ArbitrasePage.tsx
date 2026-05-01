@@ -5,8 +5,8 @@ import { AISubtab } from "./AISubtab";
 import { ManualSubtab } from "./ManualSubtab";
 import { newLeg, calcTransportPerTrip, type Sub, type Vendor, type Leg, type LegResult } from "./arbitrase.types";
 
-export function ArbitrasePage() {
-  const [sub, setSub] = useState<Sub>("manual");
+export function ArbitrasePage({ defaultTab = "manual" }: { defaultTab?: Sub }) {
+  const [sub, setSub] = useState<Sub>(defaultTab);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [legs, setLegs] = useState<Leg[]>([newLeg()]);
 

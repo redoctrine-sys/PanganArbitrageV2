@@ -58,11 +58,15 @@ export function Sidebar() {
         pip="var(--arb)"
         badge={<AlertBadge />}
       />
-      <Sub label="AI Suggestion" placeholder />
+      <Sub
+        href="/dashboard/arbitrase?tab=ai"
+        active={pathname === "/dashboard/arbitrase" && false /* managed by tab state */}
+        label="🤖 AI Suggestion"
+      />
       <Sub
         href="/dashboard/arbitrase"
         active={pathname === "/dashboard/arbitrase"}
-        label="Manual Kalkulator"
+        label="⚡ Manual Kalkulator"
       />
 
       <Divider />
