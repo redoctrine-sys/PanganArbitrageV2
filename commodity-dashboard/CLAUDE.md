@@ -1,53 +1,91 @@
-# PanganArbitrage — Project Brain
-Stack: Next.js 15 App Router · TypeScript · Supabase · Tailwind · Recharts
-Deploy target: Vercel
-End-state: pangan-summary-v6.md (4 tab + Admin). **Phase 1 = SP2KP only.**
+# PanganArbitrage V2 — Project Brain
+
+> **Last Updated**: 2026-05-01
+> Stack: Next.js 14 App Router · TypeScript · Supabase · Tailwind 3 · Recharts
+> Deploy: Vercel Hobby ($0)
 
 ## Boot sequence
-1. Read `.claude/WORKBENCH.md` first — it tracks current task
-2. Don't auto-read other files until needed
+1. Read `.claude/WORKBENCH.md` first — tracks current task & debt
+2. Read `AGENTS.md` if working on AI agent features (Phase 2+)
+3. Don't auto-read other files until needed
 
-## PHASE 1 SCOPE: Tab SP2KP saja
-Fokus: upload CSV/XLSX → parse → ingest → display accordion + chart.
-Tab lain (Pedagang, Komparasi, Arbitrase, Admin) = PLACEHOLDER dulu.
-Naming queue / commodity pairing / arbitrage engine = Phase 2+.
+## Project scope
+Dashboard harga komoditas pangan RI (Jawa, Madura, Bali, Lombok).
+- Phase 1: SP2KP data pipeline + dashboard (✅ ~85% done)
+- Phase 2: AI arbitrage detection — Gemini Flash, $0 (🟡 next)
+- Phase 3: Full agentic system — Hermes + 4 workers, $20-50/mo (⚪ planned)
 
-## SP2KP Parser — KRITIS (`src/lib/csv/sp2kp-parser.ts`)
-- Support XLSX dan CSV (library `xlsx`).
-- Kolom WAJIB di-strip: `'Komoditas '` dan `'HET/HA '` ada trailing space di file asli.
-- Filter scope: prefix kode `31`–`36` (Jawa), `51` (Bali), `52` (NTB → filter Lombok only).
-- Madura: kode `3526`–`3529` → `island='Madura'` (tetap dalam prefix 35/Jatim).
-- Lombok include: Kab. Lombok Barat/Tengah/Timur/Utara + Kota Mataram.
-- Lombok exclude: Kab/Kota Bima, Dompu, Sumbawa, Sumbawa Barat.
-- Harga dtype: float64, TIDAK ada prefix 'Rp', TIDAK ada titik ribuan.
-- **Skala harga: SP2KP simpan dalam RIBU** — cell `35` berarti Rp 35.000, `12.813` berarti Rp 12.813,
-  HET `41.5` berarti Rp 41.500. Parser kalikan `× 1000` (`PRICE_SCALE`) sekali sebagai single
-  source of truth — semua downstream (UI/RPC/chart) sudah terima rupiah utuh.
-- HET/HA: ~9% null = normal, kolom nullable.
-- Tanggal di file: `DD/MM/YYYY` → simpan `YYYY-MM-DD`.
+## SP2KP Parser — KRITIS (`lib/csv/sp2kp-parser.ts`)
+- Support XLSX dan CSV (library `xlsx`). Binary vs text (magic bytes).
+- Kolom WAJIB di-strip: `'Komoditas '` dan `'HET/HA '` trailing space.
+- Filter scope: prefix kode `31`–`36` (Jawa), `51` (Bali), `52` (NTB → Lombok only).
+- Madura: kode `3526`–`3529` → `island='Madura'` (province tetap Jawa Timur).
+- **Skala harga**: SP2KP simpan dalam RIBU — `35` = Rp 35.000. Parser × 1000 sekali.
+- HET/HA: ~9% null = normal. Tanggal: `DD/MM/YYYY` → `YYYY-MM-DD`.
 
-## DB rules
-- `prices_raw`: INSERT ONLY, `ON CONFLICT DO NOTHING`.
-- UNIQUE: `(date, city_raw, commodity_raw, source)`.
-- **SP2KP tab = RAW DISPLAY**: data ditampilkan apa adanya pakai `kode_wilayah` +
-  `city_raw` langsung. Display gate hanya `source='sp2kp'` AND `kode_wilayah IS NOT NULL`
-  AND `commodity_id IS NOT NULL` (commodity_id = exact match ke 17 seeded commodities).
-- TIDAK ADA approval gate untuk SP2KP — itu Phase 2 untuk Komparasi tab (cross-source).
-- `cities` table dipakai HANYA untuk Phase 2 cross-source canonicalization (mis. matching
-  "Kab. Bogor" SP2KP ↔ "Bogor Kabupaten" Pedagang). Tidak dipakai SP2KP display.
-- `city_id` tetap di-backfill via `auto_seed_cities()` saat ingest — pre-seeding untuk
-  Phase 2, tapi tidak blocking Phase 1.
-- province/island/entity_type SP2KP di-derive dari `kode_wilayah` inline di RPC
-  `get_sp2kp_latest()` (no JOIN ke cities table).
+## Database
+- `prices_raw`: UNIQUE(date, city_raw, commodity_raw, source). INSERT via bulk RPC.
+- `cities`: auto-seeded dari kode_wilayah. Untuk Phase 2 cross-source canonicalization.
+- `transport_vendors`: biaya transport, dipakai kalkulasi arbitrase.
+- `commodities`: 17 komoditas SP2KP (seeded).
+- RPCs: `get_sp2kp_latest()`, `bulk_insert_sp2kp_prices()`, `auto_seed_cities()`.
+- 13 migrations (001 → 013). Phase 2 tambah `014_arbitrage_alerts.sql`.
 
-## Auto-seed cities (Phase 1)
-- Migration `004_auto_seed_cities.sql`: fungsi `auto_seed_cities()` — INSERT cities baru + UPDATE city_id NULL.
-- Province dan island di-derive dari kode prefix; entity_type dari prefix nama (`Kota%` vs `Kab.%`).
-- Madura override: kode 3526–3529 → island='Madura' (province tetap Jawa Timur).
-- Ingest API route memanggil `sb.rpc('auto_seed_cities')` setelah batch insert, return
-  `cities_seeded` + `rows_backfilled` di response.
+## Constants — `lib/constants.ts` (single source of truth)
+```
+PRICE_SCALE = 1000          HET_ANOMALY_THRESHOLD = 1.02
+TREND_FLAT_THRESHOLD = 0.01 CHART_DAYS_DEFAULT = 30
+CHART_DAYS_MAX = 400        PRICE_LIMIT_PER_QUERY = 5000
+```
+Phase 2 tambah: PROVINCE_MAP, COMMODITY_CATEGORIES, MIN_PROFIT_THRESHOLD.
 
-## 17 Komoditas SP2KP (seed exact)
+## API routes
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/csv/preview` | POST | Parse file, return stats (NO insert) |
+| `/api/ingest/sp2kp` | POST | Parse + chunked bulk RPC insert |
+| `/api/prices` | GET | Daily price series for chart |
+| `/api/sp2kp/latest` | GET | RPC get_sp2kp_latest, parallel per-province |
+| `/api/health` | GET | DB diagnostic |
+| `/api/cities` | GET/PATCH | Cities CRUD |
+| `/api/transport-vendors` | GET/POST/PATCH/DELETE | Transport vendor CRUD |
+
+## Styling rules (enforced)
+- **Tailwind utilities ONLY** — migration sudah selesai 2026-05-01
+- NO inline `style={{}}` — exception: `gridTemplateColumns` (dynamic), pip color (dynamic prop)
+- Custom classes di `globals.css` pakai `@layer components` + `@apply` murni Tailwind
+- CSS variables hanya: `--font-sans/serif/mono` (dipakai tailwind.config.ts)
+
+## File size rules
+- Page component: max 200 baris → MUST split
+- API route: max 150 baris → extract to lib/
+- Utility function: max 100 baris → split by concern
+- Every pure function MUST have unit test
+
+## Component structure (post-refactor)
+```
+components/
+├── layout/      Sidebar, Topbar
+├── sp2kp/       SP2KPPage, CityRow, CitySubRow, CommodityGroupRow, CommodityRow, ChartPanel
+├── charts/      PriceLineChart, CandlestickChart
+├── csv/         CSVUploader
+├── pedagang/    VendorTransportPage, VendorModal, VendorDetailPanel, vendor.types.ts
+├── arbitrase/   ArbitrasePage (🔴 756 baris — MUST SPLIT)
+├── admin/       AdminCitiesPage (🟡 365 baris)
+└── pills/       ChangePill, VolatilityPill, MiniSparkline
+```
+
+## Display logic
+- SP2KP: RPC `get_sp2kp_latest()` → client-side group/filter.
+- Metrics (changePct, volatility, vsAvg, trend): `lib/analytics/metrics.ts`.
+- Chart: GET `/api/prices` lazy on expand. Max 90d/400d.
+- Accordion: 1 kota terbuka, 1 komoditas per kota.
+
+## Design tokens (tailwind.config.ts)
+`sp:#1b5e3b` `ped:#4a3728` `up:#166534` `dn:#991b1b` `warn:#78350f`
+Paper `#f5f1ea`, ink `#1a1612`. Serif=Fraunces, mono=DM Mono, sans=DM Sans.
+
+## 17 Komoditas SP2KP
 Bawang Merah, Bawang Putih Honan, Beras Medium, Beras Premium,
 Cabai Merah Besar, Cabai Merah Keriting, Cabai Rawit Merah,
 Daging Ayam Ras, Daging Sapi Paha Belakang, Garam Halus,
@@ -55,24 +93,8 @@ Gula Pasir Curah, Ikan Kembung, Minyak Goreng Sawit Curah,
 Minyak Goreng Sawit Kemasan Premium, Minyakita, Telur Ayam Ras,
 Tepung Terigu
 
-## API routes (Phase 1)
-- `POST /api/csv/preview`     ← parse file, return stats (NO insert)
-- `POST /api/ingest/sp2kp`    ← insert rows ke `prices_raw`
-- `GET  /api/prices`          ← query approved data untuk chart (`?city_id=&commodity_id=&days=30`)
-- `GET  /api/sp2kp/latest`    ← RPC `get_sp2kp_latest`, optional `?island=&province=`
-
-## Display logic
-- Level 1 (kota) dan Level 2 (komoditas): dari RPC `get_sp2kp_latest()`, group client-side.
-- Chart data: GET `/api/prices` lazy on commodity expand.
-- Semua metric (changePct, volatility, vsAvg, trend) dihitung client-side via `lib/analytics/metrics.ts`.
-- HET/HA muncul HANYA sebagai ReferenceLine di chart + 1 baris di stats panel. TIDAK di row list.
-- Accordion: 1 kota terbuka pada satu waktu, 1 komoditas per kota.
-
-## Design tokens (v8 mockup, Tailwind theme)
-`--sp:#1b5e3b` `--up:#166534` `--dn:#991b1b` `--warn:#78350f` `--hi:#9a3412` `--lo:#14532d`
-Paper background `#f5f1ea`, ink `#1a1612`. Serif = Fraunces, mono = DM Mono, sans = DM Sans.
-
-## Performa
-- RPC `get_sp2kp_latest()` dipanggil sekali saat page load (filter island di server).
-- Filter provinsi/kota client-side dari hasil fetch.
-- Chart lazy on demand, max 90 hari per series.
+## Phase 2 hooks (don't break)
+- `prices_raw.source` — filter 'sp2kp'; Phase 2 adds 'pedagang', 'marketplace'
+- `cities.kode_wilayah` — PK for cross-source canonicalization
+- `/api/ingest/sp2kp` after insert → will trigger `/api/agents/arbitrage`
+- `findArbitrage()` accepts `PricePoint[]` from any source
