@@ -109,6 +109,7 @@ export interface TransportOption {
   profit: number;
   roi: number;
   breakdown: string;
+  eta_hours: number;
 }
 
 // Concise single-line breakdown string stored inside each TransportOption
@@ -171,6 +172,7 @@ function estimateTransportCost(
       profit:      0,
       roi:         0,
       breakdown:   `Jarak ${Math.round(distanceKm)} km${ferryFare > 0 ? ` | Feri: ${fmt(ferryFare)}` : ""}`,
+      eta_hours:   calcEta(distanceKm, fromIsland, toIsland),
     };
     return {
       cost:             ferryFare,
@@ -193,7 +195,8 @@ function estimateTransportCost(
     const modalBeli  = priceBuy * volume_kg;
     const roi        = modalBeli > 0 ? (profit / modalBeli) * 100 : 0;
     const breakdown  = buildBreakdown(v, distanceKm, ferryFare, fromIsland, toIsland);
-    options.push({ vendor_name: v.name, capacity_kg: volume_kg, cost, profit, roi, breakdown });
+    const eta_hours  = calcEtaForVendor(v, distanceKm, fromIsland, toIsland);
+    options.push({ vendor_name: v.name, capacity_kg: volume_kg, cost, profit, roi, breakdown, eta_hours });
   }
 
   // Fallback: no vendor has capacity_kg
@@ -213,6 +216,7 @@ function estimateTransportCost(
       profit,
       roi,
       breakdown: buildBreakdown(fallback, distanceKm, ferryFare, fromIsland, toIsland),
+      eta_hours: calcEtaForVendor(fallback, distanceKm, fromIsland, toIsland),
     };
     return {
       cost,
@@ -250,6 +254,20 @@ function calcEta(distanceKm: number, fromIsland: string, toIsland: string): numb
   return parseFloat((distanceKm / 40 + countFerryLegs(fromIsland, toIsland) * 4).toFixed(1));
 }
 
+function getVehicleSpeedKmh(vendor: Vendor): number {
+  const name = (vendor.name ?? "").toLowerCase();
+  const cap  = vendor.capacity_kg ?? 0;
+  if (name.includes("motor") || cap <= 50)  return 55;
+  if (cap < 2000 || name.includes("pickup") || name.includes("mpv") || name.includes("van")) return 55;
+  if (cap < 8000 || name.includes("engkel") || name.includes("box")) return 40;
+  return 35;
+}
+
+function calcEtaForVendor(vendor: Vendor, distanceKm: number, fromIsland: string, toIsland: string): number {
+  const speed = getVehicleSpeedKmh(vendor);
+  return parseFloat((distanceKm / speed + countFerryLegs(fromIsland, toIsland) * 4).toFixed(1));
+}
+
 function calcVolatility(point: PricePoint): {
   pct: number | null;
   label: "Rendah" | "Sedang" | "Tinggi" | null;
@@ -262,13 +280,55 @@ function calcVolatility(point: PricePoint): {
   return { pct: parseFloat(pct.toFixed(1)), label };
 }
 
-function calcSpreadDuration(cheapest: PricePoint, expensive: PricePoint): string {
-  if (cheapest.price_prev != null && expensive.price_prev != null) {
-    return expensive.price_prev - cheapest.price_prev > 0
-      ? "Spread konsisten sejak kemarin"
-      : "Spread baru muncul hari ini";
+function calcDaysSince(isoDate: string): number {
+  const diff = Math.floor((Date.now() - new Date(isoDate).getTime()) / 86_400_000);
+  return Math.max(1, diff);
+}
+
+function calcSpreadAnalysis(
+  cheapest: PricePoint,
+  expensive: PricePoint,
+  spreadPct: number,
+): {
+  spread_duration: string;
+  spread_divergence_days: number | null;
+  spread_divergence_date: string | null;
+  avg_spread_pct: number | null;
+} {
+  let prevSpreadPct: number | null = null;
+  if (cheapest.price_prev != null && expensive.price_prev != null && cheapest.price_prev > 0) {
+    prevSpreadPct = (expensive.price_prev - cheapest.price_prev) / cheapest.price_prev;
   }
-  return "Data sebelumnya tidak tersedia";
+  const prevHadSpread = prevSpreadPct != null && prevSpreadPct >= MIN_SPREAD_PERCENT;
+
+  let spread_divergence_date: string | null;
+  let spread_divergence_days: number | null;
+  let spread_duration: string;
+
+  if (prevHadSpread) {
+    const d = cheapest.date_prev ?? expensive.date_prev ?? null;
+    spread_divergence_date = d;
+    spread_divergence_days = d ? calcDaysSince(d) : 2;
+    const label = d
+      ? new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
+      : "kemarin";
+    spread_duration = `Spread konsisten sejak ${label}`;
+  } else {
+    spread_divergence_date = cheapest.date ?? expensive.date ?? null;
+    spread_divergence_days = 1;
+    spread_duration = "Spread baru muncul hari ini";
+  }
+
+  let avg_spread_pct: number | null = null;
+  if (cheapest.avg_30d != null && expensive.avg_30d != null && cheapest.avg_30d > 0) {
+    avg_spread_pct = parseFloat(((expensive.avg_30d - cheapest.avg_30d) / cheapest.avg_30d * 100).toFixed(2));
+  } else if (prevHadSpread && prevSpreadPct != null) {
+    avg_spread_pct = parseFloat(((prevSpreadPct + spreadPct) / 2 * 100).toFixed(2));
+  } else {
+    avg_spread_pct = parseFloat((spreadPct * 100).toFixed(2));
+  }
+
+  return { spread_duration, spread_divergence_days, spread_divergence_date, avg_spread_pct };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -277,6 +337,7 @@ interface RawCandidate {
   spread: number;
   spreadPct: number;
   profit: number;
+  profit_avg: number | null;
   transportCost: number;
   vendor_name: string | null;
   volume_kg: number;
@@ -285,7 +346,12 @@ interface RawCandidate {
   eta_hours: number;
   volatility_pct: number | null;
   volatility_label: "Rendah" | "Sedang" | "Tinggi" | null;
+  volatility_pct_from: number | null;
+  volatility_label_from: "Rendah" | "Sedang" | "Tinggi" | null;
   spread_duration: string;
+  spread_divergence_days: number | null;
+  spread_divergence_date: string | null;
+  avg_spread_pct: number | null;
   logistic_risk: string | null;
   cheapest: PricePoint;
   expensive: PricePoint;
@@ -341,12 +407,19 @@ export function findArbitrage(
         const profit = expensive.price * volume_kg - cheapest.price * volume_kg - transportCost;
 
         // Logistics risk metrics
-        const eta_hours       = calcEta(distance_km, cheapest.island, expensive.island);
-        const { pct: volatility_pct, label: volatility_label } = calcVolatility(expensive);
-        const spread_duration = calcSpreadDuration(cheapest, expensive);
-        const logistic_risk   = eta_hours > 24 && (volatility_pct ?? 0) > 15
+        const eta_hours                                                = calcEta(distance_km, cheapest.island, expensive.island);
+        const { pct: volatility_pct,      label: volatility_label }   = calcVolatility(expensive);
+        const { pct: volatility_pct_from, label: volatility_label_from } = calcVolatility(cheapest);
+        const { spread_duration, spread_divergence_days, spread_divergence_date, avg_spread_pct }
+                                                                       = calcSpreadAnalysis(cheapest, expensive, spreadPct);
+        const logistic_risk = eta_hours > 24 && (volatility_pct ?? 0) > 15
           ? "⚠ Risiko Tinggi: Perjalanan memakan waktu > 24 jam sedangkan volatilitas harga di kota tujuan sangat tinggi. Harga jual bisa anjlok sebelum barang tiba."
           : null;
+
+        // Profit using 30d average prices (best effort)
+        const priceBuyAvg  = cheapest.avg_30d ?? cheapest.price;
+        const priceSellAvg = expensive.avg_30d ?? expensive.price;
+        const profit_avg   = priceSellAvg * volume_kg - priceBuyAvg * volume_kg - transportCost;
 
         const meetsThreshold = spreadPct >= MIN_SPREAD_PERCENT && profit >= MIN_PROFIT_THRESHOLD;
 
@@ -357,30 +430,37 @@ export function findArbitrage(
           passed.push({
             type: "arbitrage",
             severity,
-            commodity_id:    cheapest.commodity_id,
-            commodity_name:  cheapest.commodity_name,
-            city_from:       cheapest.city_name,
-            city_to:         expensive.city_name,
-            price_buy:       cheapest.price,
-            price_sell:      expensive.price,
-            price_spread:    spread,
-            spread_percent:  parseFloat((spreadPct * 100).toFixed(2)),
+            commodity_id:         cheapest.commodity_id,
+            commodity_name:       cheapest.commodity_name,
+            city_from:            cheapest.city_name,
+            city_to:              expensive.city_name,
+            price_buy:            cheapest.price,
+            price_sell:           expensive.price,
+            price_spread:         spread,
+            spread_percent:       parseFloat((spreadPct * 100).toFixed(2)),
             volume_kg,
-            transport_cost:  transportCost,
-            profit_estimate: profit,
+            transport_cost:       transportCost,
+            profit_estimate:      profit,
+            profit_estimate_avg:  profit_avg,
             vendor_name,
             distance_km,
             transport_detail,
             eta_hours,
             volatility_pct,
             volatility_label,
+            volatility_pct_from,
+            volatility_label_from,
             spread_duration,
+            spread_divergence_days,
+            spread_divergence_date,
+            avg_spread_pct,
             logistic_risk,
           });
         } else if (spread > 0) {
           fallback.push({
-            spread, spreadPct, profit, transportCost, vendor_name, volume_kg, distance_km, transport_detail,
-            eta_hours, volatility_pct, volatility_label, spread_duration, logistic_risk,
+            spread, spreadPct, profit, profit_avg, transportCost, vendor_name, volume_kg, distance_km, transport_detail,
+            eta_hours, volatility_pct, volatility_label, volatility_pct_from, volatility_label_from,
+            spread_duration, spread_divergence_days, spread_divergence_date, avg_spread_pct, logistic_risk,
             cheapest, expensive,
           });
         }
@@ -406,25 +486,31 @@ export function findArbitrage(
         passed.push({
           type: "arbitrage",
           severity: "low",
-          commodity_id:    c.cheapest.commodity_id,
-          commodity_name:  c.cheapest.commodity_name,
-          city_from:       c.cheapest.city_name,
-          city_to:         c.expensive.city_name,
-          price_buy:       c.cheapest.price,
-          price_sell:      c.expensive.price,
-          price_spread:    c.spread,
-          spread_percent:  parseFloat((c.spreadPct * 100).toFixed(2)),
-          volume_kg:       c.volume_kg,
-          transport_cost:  c.transportCost,
-          profit_estimate: c.profit,
-          vendor_name:     c.vendor_name,
-          distance_km:     c.distance_km,
-          transport_detail: c.transport_detail,
-          eta_hours:        c.eta_hours,
-          volatility_pct:   c.volatility_pct,
-          volatility_label: c.volatility_label,
-          spread_duration:  c.spread_duration,
-          logistic_risk:    c.logistic_risk,
+          commodity_id:          c.cheapest.commodity_id,
+          commodity_name:        c.cheapest.commodity_name,
+          city_from:             c.cheapest.city_name,
+          city_to:               c.expensive.city_name,
+          price_buy:             c.cheapest.price,
+          price_sell:            c.expensive.price,
+          price_spread:          c.spread,
+          spread_percent:        parseFloat((c.spreadPct * 100).toFixed(2)),
+          volume_kg:             c.volume_kg,
+          transport_cost:        c.transportCost,
+          profit_estimate:       c.profit,
+          profit_estimate_avg:   c.profit_avg,
+          vendor_name:           c.vendor_name,
+          distance_km:           c.distance_km,
+          transport_detail:      c.transport_detail,
+          eta_hours:             c.eta_hours,
+          volatility_pct:        c.volatility_pct,
+          volatility_label:      c.volatility_label,
+          volatility_pct_from:   c.volatility_pct_from,
+          volatility_label_from: c.volatility_label_from,
+          spread_duration:       c.spread_duration,
+          spread_divergence_days: c.spread_divergence_days,
+          spread_divergence_date: c.spread_divergence_date,
+          avg_spread_pct:        c.avg_spread_pct,
+          logistic_risk:         c.logistic_risk,
         });
       });
   }

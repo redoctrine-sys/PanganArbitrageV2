@@ -58,14 +58,22 @@ export interface ArbitrageOpportunity {
   volume_kg: number;
   transport_cost: number;
   profit_estimate: number;
+  profit_estimate_avg: number | null;
   vendor_name: string | null;
   distance_km: number;
   transport_detail: string;
   // Logistics risk metrics
   eta_hours: number;
+  // Volatility — origin (from) + destination (to) separately
   volatility_pct: number | null;
   volatility_label: "Rendah" | "Sedang" | "Tinggi" | null;
+  volatility_pct_from: number | null;
+  volatility_label_from: "Rendah" | "Sedang" | "Tinggi" | null;
+  // Spread divergence analysis
   spread_duration: string;
+  spread_divergence_days: number | null;
+  spread_divergence_date: string | null;
+  avg_spread_pct: number | null;
   logistic_risk: string | null;
 }
 

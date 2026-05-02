@@ -10,6 +10,7 @@ interface TransportOption {
   profit: number;
   roi: number;
   breakdown: string;
+  eta_hours?: number;
 }
 
 interface Alert {
@@ -39,7 +40,13 @@ interface Alert {
   eta_hours?: number;
   volatility_pct?: number;
   volatility_label?: string;
+  volatility_pct_from?: number;
+  volatility_label_from?: string;
   spread_duration?: string;
+  spread_divergence_days?: number;
+  spread_divergence_date?: string;
+  avg_spread_pct?: number;
+  profit_estimate_avg?: number;
   logistic_risk?: string;
   // AI fields
   insights?: string[];
@@ -176,13 +183,36 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
               <span className="text-ink-dim">→</span>
               <span className="font-mono font-semibold text-ink">{alert.city_to ?? "—"}</span>
             </div>
+
+            {/* Task 4: Volatility at top */}
+            <div className="grid grid-cols-2 gap-x-4 mb-[4px]">
+              <Row label="Volatilitas Asal" value={
+                alert.volatility_pct_from != null
+                  ? <span className={
+                      alert.volatility_label_from === "Tinggi" ? "text-dn" :
+                      alert.volatility_label_from === "Sedang" ? "text-[#78350f]" : "text-up"
+                    }>{alert.volatility_pct_from.toFixed(1)}% ({alert.volatility_label_from ?? "—"})</span>
+                  : <span className="text-ink-dim">—</span>
+              } />
+              <Row label="Volatilitas Tujuan" value={
+                alert.volatility_pct != null
+                  ? <span className={
+                      alert.volatility_label === "Tinggi" ? "text-dn" :
+                      alert.volatility_label === "Sedang" ? "text-[#78350f]" : "text-up"
+                    }>{alert.volatility_pct.toFixed(1)}% ({alert.volatility_label ?? "—"})</span>
+                  : <span className="text-ink-dim">—</span>
+              } />
+            </div>
+            <div className="border-t border-rule my-[4px]" />
+
             <div className="grid grid-cols-2 gap-x-4">
               <Row label="Harga Beli"  value={alert.price_buy  != null ? fmtRp(alert.price_buy)  : "—"} />
               <Row label="Harga Jual"  value={alert.price_sell != null ? fmtRp(alert.price_sell) : "—"} />
               <Row label="Spread"      value={<span className="text-up">{alert.spread_percent?.toFixed(1)}%</span>} />
               <Row label="Transport"   value={alert.transport_cost != null ? fmtRp(alert.transport_cost) : "—"} />
               <Row label="Volume"      value={`${vol.toLocaleString()} kg`} />
-              <Row label="Est. Profit" value={
+              {/* Task 3: Split profit into 2 */}
+              <Row label="Est. Profit (Latest)" value={
                 <span className="flex items-center gap-1">
                   <span className={alert.profit_estimate != null && alert.profit_estimate >= 0 ? "text-up font-bold" : "text-dn font-bold"}>
                     {alert.profit_estimate != null ? fmtRp(alert.profit_estimate) : "—"}
@@ -192,7 +222,37 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
                   )}
                 </span>
               } />
+              <div />
+              <Row label="Est. Profit (Avg Divergence)" value={
+                <span className={alert.profit_estimate_avg != null && alert.profit_estimate_avg >= 0 ? "text-up font-semibold" : "text-dn font-semibold"}>
+                  {alert.profit_estimate_avg != null ? fmtRp(alert.profit_estimate_avg) : "—"}
+                </span>
+              } />
             </div>
+
+            {/* Task 2: Spread Analysis */}
+            {(alert.spread_divergence_days != null || alert.avg_spread_pct != null) && (
+              <div className="mt-[6px] px-[8px] py-[5px] bg-[#f0f9ff] border border-rule rounded-md">
+                <div className="font-mono text-[8px] font-bold text-ink-dim uppercase tracking-[0.6px] mb-[3px]">📈 Spread Analisis</div>
+                <div className="grid grid-cols-2 gap-x-4">
+                  <Row label="Durasi Divergence" value={
+                    alert.spread_divergence_days != null
+                      ? `${alert.spread_divergence_days} hari${alert.spread_divergence_date
+                          ? ` (sejak ${new Date(alert.spread_divergence_date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })})`
+                          : ""}`
+                      : "—"
+                  } />
+                  <Row label="Avg Spread" value={
+                    alert.avg_spread_pct != null
+                      ? <span className={alert.avg_spread_pct >= 0 ? "text-up" : "text-dn"}>
+                          {alert.avg_spread_pct >= 0 ? "+" : ""}{alert.avg_spread_pct.toFixed(1)}%
+                        </span>
+                      : "—"
+                  } />
+                </div>
+              </div>
+            )}
+
             {alert.vendor_name && (
               <div className="text-[9px] font-mono text-ink-dim mt-1">🚛 Via: {alert.vendor_name}</div>
             )}
@@ -317,11 +377,38 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
                 🚛 Analisis Risiko Logistik
               </div>
               <div className="bg-white border border-rule rounded-md px-3 py-[8px]">
-                {alert.eta_hours != null && (
+                {/* Task 1: Per-vendor ETA */}
+                {(transportOptions.length > 0 || alert.eta_hours != null) && (
+                  <div className="mb-[6px]">
+                    <div className="text-[9px] font-mono text-ink-dim mb-[3px]">Estimasi Perjalanan per Kendaraan:</div>
+                    {transportOptions.length > 0
+                      ? transportOptions.map((opt, idx) => (
+                          <div key={idx} className="flex justify-between text-[10px] font-mono py-[2px]">
+                            <span className="text-ink-mid">{opt.vendor_name} ({opt.capacity_kg.toLocaleString()} kg)</span>
+                            <span className="font-semibold text-ink">
+                              {fmtEta(opt.eta_hours ?? alert.eta_hours ?? 0, alert.distance_km)}
+                            </span>
+                          </div>
+                        ))
+                      : alert.eta_hours != null && (
+                          <div className="text-[10px] font-mono text-ink-mid">
+                            {fmtEta(alert.eta_hours, alert.distance_km)}
+                          </div>
+                        )
+                    }
+                  </div>
+                )}
+                {alert.volatility_pct_from != null && (
                   <CalcRow
-                    label="Estimasi Perjalanan"
-                    value={fmtEta(alert.eta_hours, alert.distance_km)}
-                    dimmed
+                    label="Volatilitas Harga (Asal)"
+                    value={
+                      <span className={
+                        alert.volatility_label_from === "Tinggi" ? "text-dn" :
+                        alert.volatility_label_from === "Sedang" ? "text-[#78350f]" : "text-up"
+                      }>
+                        {alert.volatility_pct_from.toFixed(1)}% ({alert.volatility_label_from ?? "—"})
+                      </span>
+                    }
                   />
                 )}
                 {alert.volatility_pct != null && (
