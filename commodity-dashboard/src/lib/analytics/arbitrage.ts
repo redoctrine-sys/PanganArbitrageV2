@@ -110,6 +110,22 @@ export interface TransportOption {
   roi: number;
   breakdown: string;
   eta_hours: number;
+  weight_loss_pct: number;
+}
+
+// Interpolate weight-loss % based on travel time and distance.
+// Short (<5h/<100km): 2%-5%. Long (>12h): 10%-15%. Mid: 5%-10%.
+export function calcWeightLossPct(eta_hours: number, distance_km: number): number {
+  if (eta_hours < 5 && distance_km < 100) {
+    const factor = Math.max(eta_hours / 5, distance_km / 100);
+    return parseFloat((2 + factor * 3).toFixed(1));
+  }
+  if (eta_hours >= 12) {
+    const excess = Math.min((eta_hours - 12) / 8, 1);
+    return parseFloat((10 + excess * 5).toFixed(1));
+  }
+  const factor = (eta_hours - 5) / 7;
+  return parseFloat((5 + factor * 5).toFixed(1));
 }
 
 // Concise single-line breakdown string stored inside each TransportOption
@@ -165,14 +181,16 @@ function estimateTransportCost(
   if (vendors.length === 0) {
     const gol       = "VB" as Golongan;
     const ferryFare = getFerryFare(fromIsland, toIsland, gol);
+    const _etaFallback = calcEta(distanceKm, fromIsland, toIsland);
     const option: TransportOption = {
-      vendor_name: "Tidak ada vendor",
-      capacity_kg: 0,
-      cost:        ferryFare,
-      profit:      0,
-      roi:         0,
-      breakdown:   `Jarak ${Math.round(distanceKm)} km${ferryFare > 0 ? ` | Feri: ${fmt(ferryFare)}` : ""}`,
-      eta_hours:   calcEta(distanceKm, fromIsland, toIsland),
+      vendor_name:      "Tidak ada vendor",
+      capacity_kg:      0,
+      cost:             ferryFare,
+      profit:           0,
+      roi:              0,
+      breakdown:        `Jarak ${Math.round(distanceKm)} km${ferryFare > 0 ? ` | Feri: ${fmt(ferryFare)}` : ""}`,
+      eta_hours:        _etaFallback,
+      weight_loss_pct:  calcWeightLossPct(_etaFallback, distanceKm),
     };
     return {
       cost:             ferryFare,
@@ -195,8 +213,9 @@ function estimateTransportCost(
     const modalBeli  = priceBuy * volume_kg;
     const roi        = modalBeli > 0 ? (profit / modalBeli) * 100 : 0;
     const breakdown  = buildBreakdown(v, distanceKm, ferryFare, fromIsland, toIsland);
-    const eta_hours  = calcEtaForVendor(v, distanceKm, fromIsland, toIsland);
-    options.push({ vendor_name: v.name, capacity_kg: volume_kg, cost, profit, roi, breakdown, eta_hours });
+    const eta_hours      = calcEtaForVendor(v, distanceKm, fromIsland, toIsland);
+    const weight_loss_pct = calcWeightLossPct(eta_hours, distanceKm);
+    options.push({ vendor_name: v.name, capacity_kg: volume_kg, cost, profit, roi, breakdown, eta_hours, weight_loss_pct });
   }
 
   // Fallback: no vendor has capacity_kg
@@ -215,8 +234,9 @@ function estimateTransportCost(
       cost,
       profit,
       roi,
-      breakdown: buildBreakdown(fallback, distanceKm, ferryFare, fromIsland, toIsland),
-      eta_hours: calcEtaForVendor(fallback, distanceKm, fromIsland, toIsland),
+      breakdown:        buildBreakdown(fallback, distanceKm, ferryFare, fromIsland, toIsland),
+      eta_hours:        calcEtaForVendor(fallback, distanceKm, fromIsland, toIsland),
+      weight_loss_pct:  calcWeightLossPct(calcEtaForVendor(fallback, distanceKm, fromIsland, toIsland), distanceKm),
     };
     return {
       cost,
@@ -365,6 +385,7 @@ interface RawCandidate {
   distance_km: number;
   transport_detail: string;
   eta_hours: number;
+  weight_loss_pct: number;
   volatility_pct: number | null;
   volatility_label: "Rendah" | "Sedang" | "Tinggi" | null;
   volatility_pct_from: number | null;
@@ -429,6 +450,7 @@ export function findArbitrage(
 
         // Logistics risk metrics
         const eta_hours                                                = calcEta(distance_km, cheapest.island, expensive.island);
+        const weight_loss_pct                                          = calcWeightLossPct(eta_hours, distance_km);
         const { pct: volatility_pct,      label: volatility_label }   = calcVolatility(expensive);
         const { pct: volatility_pct_from, label: volatility_label_from } = calcVolatility(cheapest);
         const { spread_duration, spread_divergence_days, spread_divergence_date, avg_spread_pct }
@@ -467,6 +489,7 @@ export function findArbitrage(
             distance_km,
             transport_detail,
             eta_hours,
+            weight_loss_pct,
             volatility_pct,
             volatility_label,
             volatility_pct_from,
@@ -480,7 +503,7 @@ export function findArbitrage(
         } else if (spread > 0) {
           fallback.push({
             spread, spreadPct, profit, profit_avg, transportCost, vendor_name, volume_kg, distance_km, transport_detail,
-            eta_hours, volatility_pct, volatility_label, volatility_pct_from, volatility_label_from,
+            eta_hours, weight_loss_pct, volatility_pct, volatility_label, volatility_pct_from, volatility_label_from,
             spread_duration, spread_divergence_days, spread_divergence_date, avg_spread_pct, logistic_risk,
             cheapest, expensive,
           });
@@ -523,6 +546,7 @@ export function findArbitrage(
           distance_km:           c.distance_km,
           transport_detail:      c.transport_detail,
           eta_hours:             c.eta_hours,
+          weight_loss_pct:       c.weight_loss_pct,
           volatility_pct:        c.volatility_pct,
           volatility_label:      c.volatility_label,
           volatility_pct_from:   c.volatility_pct_from,

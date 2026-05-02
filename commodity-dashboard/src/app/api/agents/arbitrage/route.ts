@@ -179,7 +179,7 @@ export async function POST(): Promise<NextResponse> {
         volume_kg: o.volume_kg, transport_cost: o.transport_cost,
         profit_estimate: o.profit_estimate, vendor_name: o.vendor_name,
         distance_km: o.distance_km, transport_detail: o.transport_detail,
-        eta_hours: o.eta_hours,
+        eta_hours: o.eta_hours, weight_loss_pct: o.weight_loss_pct,
         volatility_pct: o.volatility_pct, volatility_label: o.volatility_label,
         volatility_pct_from: o.volatility_pct_from, volatility_label_from: o.volatility_label_from,
         spread_duration: o.spread_duration,

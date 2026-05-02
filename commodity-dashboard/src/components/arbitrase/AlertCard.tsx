@@ -11,6 +11,7 @@ interface TransportOption {
   roi: number;
   breakdown: string;
   eta_hours?: number;
+  weight_loss_pct?: number;
 }
 
 interface Alert {
@@ -47,6 +48,7 @@ interface Alert {
   spread_divergence_date?: string;
   avg_spread_pct?: number;
   profit_estimate_avg?: number;
+  weight_loss_pct?: number;
   logistic_risk?: string;
   // AI fields
   insights?: string[];
@@ -324,6 +326,24 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
                             <span className="text-ink-mid">Net Profit ({opt.capacity_kg.toLocaleString()} kg)</span>
                             <span className={`font-semibold ${opt.profit >= 0 ? "text-up" : "text-dn"}`}>{fmtRp(opt.profit)}</span>
                           </div>
+                          {opt.weight_loss_pct != null && alert.price_sell != null && (
+                            (() => {
+                              const shrinkVal = opt.weight_loss_pct / 100 * opt.capacity_kg * alert.price_sell;
+                              const adjProfit = opt.profit - shrinkVal;
+                              return (
+                                <>
+                                  <div className="flex justify-between border-t border-rule mt-[2px] pt-[3px]">
+                                    <span className="text-ink-dim">Susut Bobot ({opt.weight_loss_pct.toFixed(1)}%)</span>
+                                    <span className="text-dn">− {fmtRp(shrinkVal)}</span>
+                                  </div>
+                                  <div className="flex justify-between font-semibold">
+                                    <span className="text-ink-mid">Net Setelah Susut</span>
+                                    <span className={adjProfit >= 0 ? "text-up" : "text-dn"}>{fmtRp(adjProfit)}</span>
+                                  </div>
+                                </>
+                              );
+                            })()
+                          )}
                           <div className="flex justify-between">
                             <span className="text-ink-mid">ROI</span>
                             <span className={`font-semibold ${opt.roi >= 0 ? "text-up" : "text-dn"}`}>{opt.roi.toFixed(2)}%</span>
@@ -407,6 +427,17 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
                         )
                     }
                   </div>
+                )}
+                {alert.weight_loss_pct != null && (
+                  <CalcRow
+                    label="Risiko Penyusutan Bobot"
+                    value={
+                      <span className={alert.weight_loss_pct >= 10 ? "text-dn" : alert.weight_loss_pct >= 5 ? "text-[#78350f]" : "text-ink"}>
+                        ~{alert.weight_loss_pct.toFixed(1)}%
+                        {alert.weight_loss_pct < 5 ? " (Pendek)" : alert.weight_loss_pct < 10 ? " (Menengah)" : " (Jauh)"}
+                      </span>
+                    }
+                  />
                 )}
                 {alert.volatility_pct_from != null && (
                   <CalcRow

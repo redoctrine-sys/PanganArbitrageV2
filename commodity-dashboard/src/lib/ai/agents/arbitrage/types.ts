@@ -64,6 +64,7 @@ export interface ArbitrageOpportunity {
   transport_detail: string;
   // Logistics risk metrics
   eta_hours: number;
+  weight_loss_pct: number;
   // Volatility — origin (from) + destination (to) separately
   volatility_pct: number | null;
   volatility_label: "Rendah" | "Sedang" | "Tinggi" | null;
