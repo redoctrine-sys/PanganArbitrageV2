@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  CartesianGrid, Line, LineChart, ReferenceLine,
+  Brush, CartesianGrid, Line, LineChart, ReferenceLine,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { formatRupiah } from "@/lib/analytics/metrics";
@@ -13,9 +13,10 @@ interface Props {
   het: number | null;
   avg30: number | null;
   height?: number;
+  brushEnabled?: boolean;
 }
 
-export function PriceLineChart({ points, het, avg30, height = 200 }: Props) {
+export function PriceLineChart({ points, het, avg30, height = 240, brushEnabled = true }: Props) {
   if (points.length === 0) {
     return (
       <div
@@ -32,6 +33,10 @@ export function PriceLineChart({ points, het, avg30, height = 200 }: Props) {
     price: p.price,
     label: formatDateShort(p.date),
   }));
+
+  // Default brush window: last 30 of N points (most recent / relevant)
+  const brushStart = brushEnabled && data.length > 30 ? data.length - 30 : 0;
+  const brushEnd   = data.length - 1;
 
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -99,6 +104,18 @@ export function PriceLineChart({ points, het, avg30, height = 200 }: Props) {
           activeDot={{ r: 5, fill: "#16a34a", stroke: "#fff", strokeWidth: 2 }}
           isAnimationActive={false}
         />
+        {brushEnabled && (
+          <Brush
+            dataKey="label"
+            startIndex={brushStart}
+            endIndex={brushEnd}
+            height={24}
+            travellerWidth={7}
+            stroke="#c4bfb5"
+            fill="#f5f1ea"
+            tickFormatter={() => ""}
+          />
+        )}
       </LineChart>
     </ResponsiveContainer>
   );

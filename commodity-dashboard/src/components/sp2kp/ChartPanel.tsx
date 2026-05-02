@@ -15,7 +15,7 @@ interface Props {
 type ChartMode = "D" | "W" | "M";
 
 const MODE_CONFIG: Record<ChartMode, { days: number; label: string; subtitle: string }> = {
-  D: { days: 30,  label: "D",  subtitle: "Harian · 30 hari terakhir" },
+  D: { days: 90,  label: "D",  subtitle: "Harian · 90 hari · Drag brush bawah untuk zoom" },
   W: { days: 365, label: "W",  subtitle: "Candlestick mingguan · 1 tahun" },
   M: { days: 365, label: "M",  subtitle: "Candlestick bulanan · 1 tahun" },
 };
@@ -190,7 +190,7 @@ export function ChartPanel({ row }: Props) {
             points={points}
             het={row.het_ha}
             avg30={row.avg_30d}
-            height={200}
+            height={240}
           />
         ) : (
           <CandlestickChart
