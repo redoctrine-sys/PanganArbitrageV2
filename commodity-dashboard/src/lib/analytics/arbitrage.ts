@@ -280,10 +280,12 @@ function calcVolatility(point: PricePoint): {
   return { pct: parseFloat(pct.toFixed(1)), label };
 }
 
-// Days between two ISO date strings (to - from). Minimum 1.
-function calcDaysBetween(fromDate: string, toDate: string): number {
-  const diff = Math.floor((new Date(toDate).getTime() - new Date(fromDate).getTime()) / 86_400_000);
-  return Math.max(1, diff);
+function subtractDays(isoDate: string, days: number): string {
+  return new Date(new Date(isoDate).getTime() - days * 86_400_000).toISOString().slice(0, 10);
+}
+
+function fmtDateLabel(isoDate: string): string {
+  return new Date(isoDate).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
 }
 
 function calcSpreadAnalysis(
@@ -296,41 +298,54 @@ function calcSpreadAnalysis(
   spread_divergence_date: string | null;
   avg_spread_pct: number | null;
 } {
-  // Use the latest available data date as the "end" of the divergence window
-  // (NOT today — data may be days old).
+  // "End" of divergence window = latest data date, NOT today
   const latestDataDate = cheapest.date > expensive.date ? cheapest.date : expensive.date;
 
+  // Spread at T-1
   let prevSpreadPct: number | null = null;
   if (cheapest.price_prev != null && expensive.price_prev != null && cheapest.price_prev > 0) {
     prevSpreadPct = (expensive.price_prev - cheapest.price_prev) / cheapest.price_prev;
   }
   const prevHadSpread = prevSpreadPct != null && prevSpreadPct >= MIN_SPREAD_PERCENT;
 
+  // 30-day average spread between the two cities
+  let avgSpread30d: number | null = null;
+  if (cheapest.avg_30d != null && expensive.avg_30d != null && cheapest.avg_30d > 0) {
+    avgSpread30d = (expensive.avg_30d - cheapest.avg_30d) / cheapest.avg_30d;
+  }
+
   let spread_divergence_date: string | null;
   let spread_divergence_days: number | null;
   let spread_duration: string;
+  let avg_spread_pct: number | null;
 
   if (prevHadSpread) {
-    const d = cheapest.date_prev ?? expensive.date_prev ?? null;
-    spread_divergence_date = d;
-    // Days from divergence start → latest data date (not today)
-    spread_divergence_days = d ? calcDaysBetween(d, latestDataDate) : 2;
-    const label = d
-      ? new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
-      : "kemarin";
-    spread_duration = `Spread konsisten sejak ${label}`;
+    // Spread existed at T-1 → started BEFORE T-1. Estimate using avg_30d.
+    if (avgSpread30d != null && avgSpread30d >= MIN_SPREAD_PERCENT && spreadPct > 0) {
+      // avg_30d spread is diluted across 30 days. fraction = proportion of days with spread.
+      // fraction ≈ avgSpread30d / spreadPct (assumes spread was ~constant during divergence).
+      const fraction = Math.min(avgSpread30d / spreadPct, 1.0);
+      const estimatedDays = Math.max(2, Math.round(fraction * 30));
+      const startDate = subtractDays(latestDataDate, estimatedDays);
+      spread_divergence_date = startDate;
+      spread_divergence_days = estimatedDays;
+      spread_duration = `Spread ~${estimatedDays} hari (sejak ~${fmtDateLabel(startDate)})`;
+    } else {
+      // Avg 30d doesn't confirm sustained spread — recent, at least 2 days
+      const d = cheapest.date_prev ?? expensive.date_prev ?? subtractDays(latestDataDate, 1);
+      spread_divergence_date = d;
+      spread_divergence_days = 2;
+      spread_duration = `Spread sejak ${fmtDateLabel(d)} (min. 2 hari)`;
+    }
+    // Avg spread since divergence: average of T and T-1 (actual known values, not diluted 30d avg)
+    avg_spread_pct = prevSpreadPct != null
+      ? parseFloat(((spreadPct + prevSpreadPct) / 2 * 100).toFixed(2))
+      : parseFloat((spreadPct * 100).toFixed(2));
   } else {
+    // No spread at T-1 → new divergence, started at latest data date
     spread_divergence_date = latestDataDate;
     spread_divergence_days = 1;
     spread_duration = "Spread baru muncul hari ini";
-  }
-
-  let avg_spread_pct: number | null = null;
-  if (cheapest.avg_30d != null && expensive.avg_30d != null && cheapest.avg_30d > 0) {
-    avg_spread_pct = parseFloat(((expensive.avg_30d - cheapest.avg_30d) / cheapest.avg_30d * 100).toFixed(2));
-  } else if (prevHadSpread && prevSpreadPct != null) {
-    avg_spread_pct = parseFloat(((prevSpreadPct + spreadPct) / 2 * 100).toFixed(2));
-  } else {
     avg_spread_pct = parseFloat((spreadPct * 100).toFixed(2));
   }
 
