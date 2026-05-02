@@ -8,13 +8,13 @@ import { AlertBadge } from "@/components/arbitrase/AlertBadge";
 // Isolated so useSearchParams only suspends this small slice, not the whole sidebar.
 function ArbitraseSubnav({ pathname }: { pathname: string }) {
   const searchParams = useSearchParams();
-  const activeTab    = pathname.startsWith("/dashboard/arbitrase")
+  const activeTab = pathname.startsWith("/dashboard/arbitrase")
     ? (searchParams.get("tab") ?? "manual")
     : null;
   return (
     <>
       <Sub href="/dashboard/arbitrase?tab=ai" active={activeTab === "ai"} label="🤖 AI Suggestion" />
-      <Sub href="/dashboard/arbitrase"        active={activeTab === "manual"} label="⚡ Manual Kalkulator" />
+      <Sub href="/dashboard/arbitrase" active={activeTab === "manual"} label="⚡ Manual Kalkulator" />
     </>
   );
 }
@@ -24,7 +24,7 @@ function ArbitraseSubnavFallback() {
   return (
     <>
       <Sub href="/dashboard/arbitrase?tab=ai" label="🤖 AI Suggestion" />
-      <Sub href="/dashboard/arbitrase"        label="⚡ Manual Kalkulator" />
+      <Sub href="/dashboard/arbitrase" label="⚡ Manual Kalkulator" />
     </>
   );
 }
@@ -79,6 +79,9 @@ export function Sidebar() {
         pip="var(--arb)"
         badge={<AlertBadge />}
       />
+      <Suspense fallback={<ArbitraseSubnavFallback />}>
+        <ArbitraseSubnav pathname={pathname} />
+      </Suspense>
       <Item
         href="/dashboard/route-maker"
         active={pathname.startsWith("/dashboard/route-maker")}
@@ -87,9 +90,6 @@ export function Sidebar() {
         badge="Beta"
         badgeClassName="bg-[#e0f2fe] text-[#0369a1]"
       />
-      <Suspense fallback={<ArbitraseSubnavFallback />}>
-        <ArbitraseSubnav pathname={pathname} />
-      </Suspense>
 
       <Divider />
       <SectionLabel>Admin</SectionLabel>
