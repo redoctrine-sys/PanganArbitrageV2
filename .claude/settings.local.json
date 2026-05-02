@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(curl *)",
+      "Bash(claude plugin *)",
+      "Bash(npm test *)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git checkout *)",
+      "Bash(sed -i 's/^export function calcChangePct/import { TREND_FLAT_THRESHOLD } from \"@\\\\/lib\\\\/constants\";\\\\n\\\\nexport function calcChangePct/' commodity-dashboard/src/lib/analytics/metrics.ts)",
+      "Bash(sed -i 's/if \\(Math.abs\\(slope \\\\/ denom\\) < 0.01\\)/if \\(Math.abs\\(slope \\\\/ denom\\) < TREND_FLAT_THRESHOLD\\)/' commodity-dashboard/src/lib/analytics/metrics.ts)",
+      "Bash(sed -i 's/import type { SP2KPLatestRow } from \"@\\\\/types\\\\/sp2kp\";/import type { SP2KPLatestRow } from \"@\\\\/types\\\\/sp2kp\";\\\\nimport { HET_ANOMALY_THRESHOLD } from \"@\\\\/lib\\\\/constants\";/' commodity-dashboard/src/components/sp2kp/CityRow.tsx)",
+      "Bash(sed -i 's/r\\\\.het_ha \\\\* 1\\\\.02/r.het_ha * HET_ANOMALY_THRESHOLD/g' commodity-dashboard/src/components/sp2kp/CityRow.tsx)",
+      "Bash(sed -i 's/a\\\\.het_ha \\\\* 1\\\\.02/a.het_ha * HET_ANOMALY_THRESHOLD/g' commodity-dashboard/src/components/sp2kp/CityRow.tsx)",
+      "Bash(sed -i 's/b\\\\.het_ha \\\\* 1\\\\.02/b.het_ha * HET_ANOMALY_THRESHOLD/g' commodity-dashboard/src/components/sp2kp/CityRow.tsx)",
+      "Bash(sed -i 's/import type { SP2KPLatestRow } from \"@\\\\/types\\\\/sp2kp\";/import type { SP2KPLatestRow } from \"@\\\\/types\\\\/sp2kp\";\\\\nimport { HET_ANOMALY_THRESHOLD } from \"@\\\\/lib\\\\/constants\";/' commodity-dashboard/src/components/sp2kp/CommodityRow.tsx)",
+      "Bash(sed -i 's/import { formatDateLong } from \"@\\\\/lib\\\\/utils\\\\/date\";/import { formatDateLong } from \"@\\\\/lib\\\\/utils\\\\/date\";\\\\nimport { HET_ANOMALY_THRESHOLD } from \"@\\\\/lib\\\\/constants\";/' commodity-dashboard/src/components/sp2kp/SP2KPPage.tsx)",
+      "Bash(sed -i 's/r\\\\.het_ha \\\\* 1\\\\.02/r.het_ha * HET_ANOMALY_THRESHOLD/g' commodity-dashboard/src/components/sp2kp/SP2KPPage.tsx)",
+      "Bash(sed -i 's|href=\"/dashboard/pedagang\"\\\\n        active={pathname === \"/dashboard/pedagang\"}\\\\n        label=\"Vendor Transport\"|href=\"/dashboard/pedagang/vendor-transport\"\\\\n        active={pathname.startsWith\\(\"/dashboard/pedagang/vendor-transport\"\\)}\\\\n        label=\"Vendor Transport\"|' commodity-dashboard/src/components/layout/Sidebar.tsx)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(sed -i 's/    if \\(!srcRow || !dstRow\\) return null;/    if \\(!srcRow || !dstRow\\) return null;\\\\n    if \\(srcRow.price_latest == null || dstRow.price_latest == null\\) return null;\\\\n    const srcPrice = srcRow.price_latest;\\\\n    const dstPrice = dstRow.price_latest;/' commodity-dashboard/src/app/dashboard/arbitrase/hooks/useArbitraseCalc.ts)",
+      "Bash(sed -i 's/const priceDiff = dstRow.price_latest - srcRow.price_latest;/const priceDiff = dstPrice - srcPrice;/' commodity-dashboard/src/app/dashboard/arbitrase/hooks/useArbitraseCalc.ts)",
+      "Bash(sed -i 's/const capitalPerUnit = srcRow.price_latest + transportCostPerKg;/const capitalPerUnit = srcPrice + transportCostPerKg;/' commodity-dashboard/src/app/dashboard/arbitrase/hooks/useArbitraseCalc.ts)",
+      "Bash(sed -i 's/      priceSource: srcRow.price_latest,/      priceSource: srcPrice,/' commodity-dashboard/src/app/dashboard/arbitrase/hooks/useArbitraseCalc.ts)",
+      "Bash(sed -i 's/      priceDest: dstRow.price_latest,/      priceDest: dstPrice,/' commodity-dashboard/src/app/dashboard/arbitrase/hooks/useArbitraseCalc.ts)",
+      "Bash(git rebase *)",
+      "Skill(update-config)",
+      "PowerShell(irm https://claude.ai/install.ps1 | iex)",
+      "Bash(npx tsc *)",
+      "Bash(robocopy D:\\\\Ridho\\\\PanganArbitrageV2_temp *)",
+      "Bash(Remove-Item -Path \"D:\\\\Ridho\\\\PanganArbitrageV2_temp\" -Recurse -Force)",
+      "Bash(Write-Host \"Temp cleaned\")",
+      "Bash(npx vitest *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Ridho\\\\anti gravity\\\\commodity-dashboard\\\\src\" -Recurse -Filter \"*.tsx\")",
+      "Bash(Select-Object FullName)",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\('swr:', p.dependencies?.swr\\)\")"
+    ]
+  }
+}

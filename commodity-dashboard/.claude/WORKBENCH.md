@@ -44,6 +44,20 @@
 - [x] Sidebar: AlertBadge di Arbitrase nav item
 - [x] ingest/sp2kp: fire-and-forget trigger post-ingest
 
+### ✅ Debt Cleared (2026-05-02)
+- [x] Split AlertCard.tsx (530 → 79 lines) → 8 sub-components, Alert discriminated union
+- [x] Write arbitrage.test.ts — 20 tests for detectAnomalies, findArbitrage, calcWeightLossPct
+
+### ✅ Debt Cleared (2026-05-02) — continued
+- [x] **useSWR migration** — raw fetch+useEffect removed from all 6 components
+  - `SP2KPPage.tsx` — useSWR key `/api/sp2kp/latest?island=...`
+  - `ChartPanel.tsx` — useSWR key `/api/prices?...&days=...`
+  - `ArbitrasePage.tsx` — useSWR `/api/transport-vendors` (shared cache with VendorPage)
+  - `AlertCenter.tsx` — useSWR + mutate() for runAgent/markRead
+  - `VendorTransportPage.tsx` — useSWR + mutate() after save/delete
+  - `AdminCitiesPage.tsx` — useSWR + mutate() after save
+  - New: `lib/utils/fetcher.ts` — typed generic fetcher
+
 ### ⚠️ Next Steps Before Phase 2 Fully Live
 1. **Jalankan migration 014** di Supabase SQL Editor:
    `supabase/migrations/014_arbitrage_alerts.sql`

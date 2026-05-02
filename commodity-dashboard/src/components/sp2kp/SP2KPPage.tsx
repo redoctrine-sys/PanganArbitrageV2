@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/utils/fetcher";
 import { CityColHeader, CityRow, type CityGroup } from "@/components/sp2kp/CityRow";
 import {
   CommodityGroupColHeader,
@@ -18,9 +20,6 @@ import { SP2KPHeader, type View } from "@/components/sp2kp/SP2KPHeader";
 const ISLANDS: (Island | "Semua")[] = ["Semua", "Jawa", "Madura", "Bali", "Lombok"];
 
 export function SP2KPPage() {
-  const [data, setData] = useState<SP2KPLatestRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("city");
   const [island, setIsland] = useState<Island | "Semua">("Semua");
   const [province, setProvince] = useState<string | "Semua">("Semua");
@@ -37,29 +36,13 @@ export function SP2KPPage() {
     });
   };
 
-  useEffect(() => {
-    let cancel = false;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const params = new URLSearchParams();
-        if (island !== "Semua") params.set("island", island);
-        const res = await fetch(`/api/sp2kp/latest?${params.toString()}`);
-        const json = await res.json();
-        if (!cancel) {
-          if (json.error) setError(json.error);
-          setData((json.data ?? []) as SP2KPLatestRow[]);
-        }
-      } catch (e) {
-        if (!cancel) setError(e instanceof Error ? e.message : "Gagal memuat data");
-      } finally {
-        if (!cancel) setLoading(false);
-      }
-    }
-    load();
-    return () => { cancel = true; };
-  }, [island]);
+  const swrKey = island !== "Semua"
+    ? `/api/sp2kp/latest?island=${encodeURIComponent(island)}`
+    : "/api/sp2kp/latest";
+  const { data: resp, isLoading, error: fetchError } = useSWR<{ data?: SP2KPLatestRow[]; error?: string }>(swrKey, fetcher);
+  const data = resp?.data ?? [];
+  const loading = isLoading;
+  const error = fetchError?.message ?? resp?.error ?? null;
 
   const provinces = useMemo(() => {
     const set = new Set<string>();

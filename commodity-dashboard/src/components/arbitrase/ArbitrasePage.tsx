@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/utils/fetcher";
 import { AISubtab } from "./AISubtab";
 import { ManualSubtab } from "./ManualSubtab";
 import { newLeg, calcTransportPerTrip, type Sub, type Vendor, type Leg, type LegResult } from "./arbitrase.types";
@@ -9,15 +11,9 @@ export function ArbitrasePage({ defaultTab = "manual" }: { defaultTab?: Sub }) {
   const [sub, setSub] = useState<Sub>(defaultTab);
 
   useEffect(() => { setSub(defaultTab); }, [defaultTab]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const { data: vendorsResp } = useSWR<{ data?: Vendor[] }>("/api/transport-vendors", fetcher);
+  const vendors = vendorsResp?.data ?? [];
   const [legs, setLegs] = useState<Leg[]>([newLeg()]);
-
-  useEffect(() => {
-    fetch(`/api/transport-vendors?t=${Date.now()}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((j) => setVendors((j.data ?? []) as Vendor[]))
-      .catch(() => {});
-  }, []);
 
   function updateLeg(id: string, patch: Partial<Leg>) {
     setLegs((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));

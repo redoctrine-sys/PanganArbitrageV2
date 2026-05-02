@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/utils/fetcher";
 import { VendorModal } from "./VendorModal";
 import { VendorDetailPanel } from "./VendorDetailPanel";
 import {
@@ -22,32 +24,19 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 
 /* ── Main page ── */
 export function VendorTransportPage() {
-  const [data, setData] = useState<Vendor[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: resp, isLoading, error: fetchError, mutate } = useSWR<{ data?: Vendor[]; error?: string }>(
+    "/api/transport-vendors",
+    fetcher
+  );
+  const data = resp?.data ?? [];
+  const loading = isLoading;
+  const error = fetchError?.message ?? resp?.error ?? null;
   const [search, setSearch] = useState("");
   const [modaFilter, setModaFilter] = useState<(typeof MODA_FILTERS)[number]>("Semua");
   const [editing, setEditing] = useState<Vendor | null>(null);
   const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
   const [viewing, setViewing] = useState<Vendor | null>(null);
-
-  async function reload() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/transport-vendors?t=${Date.now()}`, { cache: "no-store" });
-      const json = await res.json();
-      if (json.error) setError(json.error);
-      setData((json.data ?? []) as Vendor[]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal memuat data");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { reload(); }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -89,15 +78,12 @@ export function VendorTransportPage() {
       throw new Error(msg);
     }
     if (id) {
-      setData((prev) => prev.map((v) => (v.id === id ? { ...v, ...json.data } : v)));
       setViewing((prev) => (prev?.id === id ? { ...prev, ...(json.data as Vendor) } : prev));
-    } else {
-      setData((prev) => [...prev, json.data as Vendor]);
     }
     setEditing(null);
     setAdding(false);
     setToast({ kind: "ok", msg: `${json.data.name} tersimpan` });
-    reload();
+    await mutate();
   }
 
   async function deleteVendor(v: Vendor) {
@@ -114,9 +100,9 @@ export function VendorTransportPage() {
       setToast({ kind: "err", msg: json.error ?? "Gagal menghapus" });
       return;
     }
-    setData((prev) => prev.filter((x) => x.id !== v.id));
     setViewing((prev) => (prev?.id === v.id ? null : prev));
     setToast({ kind: "ok", msg: `${v.name} dihapus` });
+    await mutate();
   }
 
   const stats = useMemo(() => {

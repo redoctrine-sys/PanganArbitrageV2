@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/utils/fetcher";
 import { CityEditModal } from "./CityEditModal";
 
 interface City {
@@ -27,27 +29,17 @@ function Stat({ label, value, accentClass }: { label: string; value: string; acc
 }
 
 export function AdminCitiesPage() {
-  const [data, setData] = useState<City[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: resp, isLoading, error: fetchError, mutate } = useSWR<{ data?: City[]; error?: string }>(
+    "/api/cities",
+    fetcher
+  );
+  const data = resp?.data ?? [];
+  const loading = isLoading;
+  const error = fetchError?.message ?? resp?.error ?? null;
   const [search, setSearch] = useState("");
   const [island, setIsland] = useState<(typeof ISLANDS)[number]>("Semua");
   const [editing, setEditing] = useState<City | null>(null);
   const [toast, setToast] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
-
-  async function reload() {
-    setLoading(true); setError(null);
-    try {
-      const res = await fetch(`/api/cities?t=${Date.now()}`, { cache: "no-store" });
-      const json = await res.json();
-      if (json.error) setError(json.error);
-      setData((json.data ?? []) as City[]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal memuat data");
-    } finally { setLoading(false); }
-  }
-
-  useEffect(() => { reload(); }, []);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 2500);
@@ -78,10 +70,9 @@ export function AdminCitiesPage() {
     });
     const json = await res.json();
     if (!res.ok) { setToast({ kind: "err", msg: json.error ?? `HTTP ${res.status}` }); throw new Error(json.error); }
-    setData((prev) => prev.map((c) => (c.id === editing.id ? { ...c, ...json.data } : c)));
     setEditing(null);
     setToast({ kind: "ok", msg: `${json.data.name} tersimpan · lat ${json.data.lat ?? "—"} lng ${json.data.lng ?? "—"}` });
-    reload();
+    await mutate();
   }
 
   return (

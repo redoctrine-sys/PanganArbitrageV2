@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PriceLineChart } from "@/components/charts/PriceLineChart";
 import { CandlestickChart } from "@/components/charts/CandlestickChart";
 import { ChangePill } from "@/components/pills/ChangePill";
 import { VolatilityPill } from "@/components/pills/VolatilityPill";
 import { calcChangePct, calcVolatility, calcVsAvg, formatPct, formatRupiah } from "@/lib/analytics/metrics";
 import type { CandleData, PricePoint, SP2KPLatestRow } from "@/types/sp2kp";
+import useSWR from "swr";
+import { fetcher } from "@/lib/utils/fetcher";
 
 interface Props {
   row: SP2KPLatestRow;
@@ -99,38 +101,13 @@ function aggregateCandles(
 
 export function ChartPanel({ row }: Props) {
   const [mode, setMode] = useState<ChartMode>("D");
-  const [points, setPoints] = useState<PricePoint[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
   const config = MODE_CONFIG[mode];
 
-  useEffect(() => {
-    let cancel = false;
-    async function load() {
-      setLoading(true);
-      setErr(null);
-      try {
-        const params = new URLSearchParams({
-          kode_wilayah: row.kode_wilayah,
-          commodity_id: row.commodity_id,
-          days: String(config.days),
-        });
-        const res = await fetch(`/api/prices?${params.toString()}`);
-        const json = await res.json();
-        if (!cancel) {
-          if (json.error) setErr(json.error);
-          setPoints((json.data ?? []) as PricePoint[]);
-        }
-      } catch (e) {
-        if (!cancel) setErr(e instanceof Error ? e.message : "Gagal memuat chart");
-      } finally {
-        if (!cancel) setLoading(false);
-      }
-    }
-    load();
-    return () => { cancel = true; };
-  }, [row.kode_wilayah, row.commodity_id, config.days]);
+  const swrKey = `/api/prices?kode_wilayah=${encodeURIComponent(row.kode_wilayah)}&commodity_id=${encodeURIComponent(row.commodity_id)}&days=${config.days}`;
+  const { data: resp, isLoading, error: fetchError } = useSWR<{ data?: PricePoint[]; error?: string }>(swrKey, fetcher);
+  const points = resp?.data ?? [];
+  const loading = isLoading;
+  const err = fetchError?.message ?? resp?.error ?? null;
 
   const candles = useMemo(() => {
     if (mode === "D") return [];

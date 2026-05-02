@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/utils/fetcher";
 import { AlertCard, type Alert } from "./AlertCard";
 
 type FilterType = "all" | "anomaly" | "arbitrage";
@@ -21,9 +23,6 @@ interface RunResult {
 interface Counts { arbitrage: number; anomaly: number; total: number }
 
 export function AlertCenter() {
-  const [alerts, setAlerts]         = useState<Alert[]>([]);
-  const [counts, setCounts]         = useState<Counts>({ arbitrage: 0, anomaly: 0, total: 0 });
-  const [loading, setLoading]       = useState(true);
   const [running, setRunning]       = useState(false);
   const [lastRun, setLastRun]       = useState<string | null>(null);
   const [runInfo, setRunInfo]       = useState<RunResult | null>(null);
@@ -31,20 +30,14 @@ export function AlertCenter() {
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [filterSev, setFilterSev]   = useState<FilterSeverity>("all");
 
-  const loadAlerts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res  = await fetch("/api/agents/arbitrage", { cache: "no-store" });
-      const json = await res.json() as { data?: Alert[]; counts?: Counts };
-      setAlerts((json.data ?? []) as Alert[]);
-      if (json.counts) setCounts(json.counts);
-    } catch {
-      setAlerts([]);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { loadAlerts(); }, [loadAlerts]);
+  const { data: swrData, isLoading, mutate } = useSWR<{ data?: Alert[]; counts?: Counts }>(
+    "/api/agents/arbitrage",
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+  const alerts = swrData?.data ?? [];
+  const counts = swrData?.counts ?? { arbitrage: 0, anomaly: 0, total: 0 };
+  const loading = isLoading;
 
   async function runAgent() {
     setRunning(true);
@@ -61,7 +54,12 @@ export function AlertCenter() {
           ...((json.anomalies ?? []) as Alert[]),
           ...((json.opportunities ?? []) as Alert[]),
         ].map((a) => ({ ...a, is_read: false, created_at: json.timestamp ?? "" }));
-        if (fromApi.length > 0) setAlerts(fromApi);
+        if (fromApi.length > 0) {
+          await mutate(
+            (cur) => ({ counts: cur?.counts ?? { arbitrage: 0, anomaly: 0, total: 0 }, data: fromApi }),
+            { revalidate: false }
+          );
+        }
         return;
       }
 
@@ -72,14 +70,12 @@ export function AlertCenter() {
           ...((json.opportunities ?? []) as Alert[]),
           ...((json.anomalies ?? []) as Alert[]),
         ].map((a) => ({ ...a, is_read: false, created_at: json.timestamp ?? "" }));
-        setAlerts(fromApi);
-        setCounts({
-          arbitrage: json.opportunities?.length ?? 0,
-          anomaly: json.anomalies?.length ?? 0,
-          total: fromApi.length,
-        });
+        await mutate(
+          { data: fromApi, counts: { arbitrage: json.opportunities?.length ?? 0, anomaly: json.anomalies?.length ?? 0, total: fromApi.length } },
+          { revalidate: false }
+        );
       } else {
-        await loadAlerts();
+        await mutate();
       }
     } catch (err) {
       setApiError(err instanceof Error ? err.message : "Network error");
@@ -90,7 +86,10 @@ export function AlertCenter() {
 
   async function markRead(id: string) {
     try { await fetch(`/api/agents/arbitrage?id=${id}`, { method: "PATCH" }); } catch {}
-    setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, is_read: true } : a));
+    await mutate(
+      (cur) => cur ? { ...cur, data: (cur.data ?? []).map((a) => a.id === id ? { ...a, is_read: true } : a) } : cur,
+      { revalidate: false }
+    );
   }
 
   // Client-side filter
