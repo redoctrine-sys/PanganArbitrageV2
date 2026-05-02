@@ -280,8 +280,9 @@ function calcVolatility(point: PricePoint): {
   return { pct: parseFloat(pct.toFixed(1)), label };
 }
 
-function calcDaysSince(isoDate: string): number {
-  const diff = Math.floor((Date.now() - new Date(isoDate).getTime()) / 86_400_000);
+// Days between two ISO date strings (to - from). Minimum 1.
+function calcDaysBetween(fromDate: string, toDate: string): number {
+  const diff = Math.floor((new Date(toDate).getTime() - new Date(fromDate).getTime()) / 86_400_000);
   return Math.max(1, diff);
 }
 
@@ -295,6 +296,10 @@ function calcSpreadAnalysis(
   spread_divergence_date: string | null;
   avg_spread_pct: number | null;
 } {
+  // Use the latest available data date as the "end" of the divergence window
+  // (NOT today — data may be days old).
+  const latestDataDate = cheapest.date > expensive.date ? cheapest.date : expensive.date;
+
   let prevSpreadPct: number | null = null;
   if (cheapest.price_prev != null && expensive.price_prev != null && cheapest.price_prev > 0) {
     prevSpreadPct = (expensive.price_prev - cheapest.price_prev) / cheapest.price_prev;
@@ -308,13 +313,14 @@ function calcSpreadAnalysis(
   if (prevHadSpread) {
     const d = cheapest.date_prev ?? expensive.date_prev ?? null;
     spread_divergence_date = d;
-    spread_divergence_days = d ? calcDaysSince(d) : 2;
+    // Days from divergence start → latest data date (not today)
+    spread_divergence_days = d ? calcDaysBetween(d, latestDataDate) : 2;
     const label = d
       ? new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
       : "kemarin";
     spread_duration = `Spread konsisten sejak ${label}`;
   } else {
-    spread_divergence_date = cheapest.date ?? expensive.date ?? null;
+    spread_divergence_date = latestDataDate;
     spread_divergence_days = 1;
     spread_duration = "Spread baru muncul hari ini";
   }
