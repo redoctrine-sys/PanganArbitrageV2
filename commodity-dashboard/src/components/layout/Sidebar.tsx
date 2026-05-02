@@ -1,22 +1,42 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AlertBadge } from "@/components/arbitrase/AlertBadge";
 
-export function Sidebar() {
-  const pathname     = usePathname();
+// Isolated so useSearchParams only suspends this small slice, not the whole sidebar.
+function ArbitraseSubnav({ pathname }: { pathname: string }) {
   const searchParams = useSearchParams();
   const activeTab    = pathname.startsWith("/dashboard/arbitrase")
     ? (searchParams.get("tab") ?? "manual")
     : null;
+  return (
+    <>
+      <Sub href="/dashboard/arbitrase?tab=ai" active={activeTab === "ai"} label="🤖 AI Suggestion" />
+      <Sub href="/dashboard/arbitrase"        active={activeTab === "manual"} label="⚡ Manual Kalkulator" />
+    </>
+  );
+}
+
+// Fallback shown during Suspense — sub-items without active highlight.
+function ArbitraseSubnavFallback() {
+  return (
+    <>
+      <Sub href="/dashboard/arbitrase?tab=ai" label="🤖 AI Suggestion" />
+      <Sub href="/dashboard/arbitrase"        label="⚡ Manual Kalkulator" />
+    </>
+  );
+}
+
+export function Sidebar() {
+  const pathname = usePathname();
 
   return (
     <aside
       className="flex flex-col shrink-0 overflow-y-auto w-[186px] bg-[#f0ece4] border-r border-rule p-[10px_7px]"
     >
       <SectionLabel>Sumber Data</SectionLabel>
-      {/* ── 1. SP2KP: harga pasar resmi Kemendag ── */}
       <Item
         href="/dashboard/sp2kp"
         active={pathname === "/dashboard/sp2kp"}
@@ -25,7 +45,6 @@ export function Sidebar() {
         badge="Live"
         badgeClassName="bg-sp-light text-sp"
       />
-      {/* ── 2. Harga Pedagang: input manual / Phase 3 scrape ── */}
       <Item
         href="/dashboard/pedagang"
         active={pathname === "/dashboard/pedagang"}
@@ -34,7 +53,6 @@ export function Sidebar() {
         badge="Phase 3"
         badgeClassName="bg-paper-3 text-ink-dim"
       />
-      {/* ── 3. Vendor Transport: DB biaya logistik ── */}
       <Item
         href="/dashboard/pedagang/vendor-transport"
         active={pathname.startsWith("/dashboard/pedagang/vendor-transport")}
@@ -43,7 +61,6 @@ export function Sidebar() {
         badge="Live"
         badgeClassName="bg-[#ede9fe] text-[#4f46e5]"
       />
-      {/* ── 4. Data Lain: scrape marketplace + eksternal (Phase 3) ── */}
       <Item
         label="Data Lain"
         pip="#94a3b8"
@@ -70,16 +87,9 @@ export function Sidebar() {
         badge="Beta"
         badgeClassName="bg-[#e0f2fe] text-[#0369a1]"
       />
-      <Sub
-        href="/dashboard/arbitrase?tab=ai"
-        active={activeTab === "ai"}
-        label="🤖 AI Suggestion"
-      />
-      <Sub
-        href="/dashboard/arbitrase"
-        active={activeTab === "manual"}
-        label="⚡ Manual Kalkulator"
-      />
+      <Suspense fallback={<ArbitraseSubnavFallback />}>
+        <ArbitraseSubnav pathname={pathname} />
+      </Suspense>
 
       <Divider />
       <SectionLabel>Admin</SectionLabel>
