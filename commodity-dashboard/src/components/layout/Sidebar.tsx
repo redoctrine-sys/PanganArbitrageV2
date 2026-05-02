@@ -62,6 +62,14 @@ export function Sidebar() {
         pip="var(--arb)"
         badge={<AlertBadge />}
       />
+      <Item
+        href="/dashboard/route-maker"
+        active={pathname.startsWith("/dashboard/route-maker")}
+        label="🗺 Route Maker"
+        pip="#0ea5e9"
+        badge="Beta"
+        badgeClassName="bg-[#e0f2fe] text-[#0369a1]"
+      />
       <Sub
         href="/dashboard/arbitrase?tab=ai"
         active={activeTab === "ai"}
