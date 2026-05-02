@@ -311,6 +311,16 @@ export function AlertCard({ alert, onRead }: { alert: Alert; onRead: (id: string
                         <div className="px-3 py-[6px] bg-white font-mono flex flex-col gap-[3px]">
                           <div className="text-ink-dim">{opt.breakdown}</div>
                           <div className="flex justify-between pt-[3px] border-t border-rule mt-[2px]">
+                            <span className="text-ink-mid">Estimasi Perjalanan</span>
+                            <span className="font-semibold text-ink">
+                              {opt.eta_hours != null
+                                ? fmtEta(opt.eta_hours, alert.distance_km)
+                                : alert.eta_hours != null
+                                  ? fmtEta(alert.eta_hours, alert.distance_km)
+                                  : "—"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
                             <span className="text-ink-mid">Net Profit ({opt.capacity_kg.toLocaleString()} kg)</span>
                             <span className={`font-semibold ${opt.profit >= 0 ? "text-up" : "text-dn"}`}>{fmtRp(opt.profit)}</span>
                           </div>
