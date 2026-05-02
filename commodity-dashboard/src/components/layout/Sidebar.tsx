@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AlertBadge } from "@/components/arbitrase/AlertBadge";
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const pathname     = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab    = pathname.startsWith("/dashboard/arbitrase")
+    ? (searchParams.get("tab") ?? "manual")
+    : null;
 
   return (
     <aside
@@ -60,12 +64,12 @@ export function Sidebar() {
       />
       <Sub
         href="/dashboard/arbitrase?tab=ai"
-        active={pathname === "/dashboard/arbitrase" && false /* managed by tab state */}
+        active={activeTab === "ai"}
         label="🤖 AI Suggestion"
       />
       <Sub
         href="/dashboard/arbitrase"
-        active={pathname === "/dashboard/arbitrase"}
+        active={activeTab === "manual"}
         label="⚡ Manual Kalkulator"
       />
 

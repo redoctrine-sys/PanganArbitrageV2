@@ -7,6 +7,8 @@ import { newLeg, calcTransportPerTrip, type Sub, type Vendor, type Leg, type Leg
 
 export function ArbitrasePage({ defaultTab = "manual" }: { defaultTab?: Sub }) {
   const [sub, setSub] = useState<Sub>(defaultTab);
+
+  useEffect(() => { setSub(defaultTab); }, [defaultTab]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [legs, setLegs] = useState<Leg[]>([newLeg()]);
 
