@@ -2,11 +2,11 @@
 *Baca file ini PERTAMA setiap kali membuka project*
 *Updated: 2026-05-05 — based on blueprint_summary_review_v3.md*
 
-## Status: Phase 2 ~85% ✅ → Phase 2.5 🟡 In Progress (PIHPS Scraper)
+## Status: Phase 2.5 🟡 In Progress — Scraper Agents
 
 > **AI Stack**: Gemini Flash (primary, $0). Tidak ada DeepSeek.
 
-### 🟡 Phase 2.5 Active (2026-05-05)
+### ✅ Phase 2.5 Completed (2026-05-05)
 - [x] Migration 026: `scrape_runs` table + `get_pihps_latest` RPC
 - [x] Sibling repo `pangan-scraper/` bootstrapped (package.json, tsconfig, .env.example)
 - [x] Shared framework: `shared/{types,browser,normalizer,supabase,logger}.ts`
@@ -14,8 +14,10 @@
 - [x] GitHub Actions cron: `.github/workflows/scrape.yml` (4×/day)
 - [x] Dashboard: `/api/pihps/latest` + `/dashboard/pihps` page + `PIHPSPage.tsx`
 - [x] Sidebar nav: PIHPS item under Sumber Data
+- [x] Chrome Extension: `pangan-scraper-extension/` — 8 files, 4-stage pipeline (keyword → Gemini → local → review)
+- [x] Extension icons generated + placed
 
-### ⏭ Next Steps Before PIHPS Live
+### ⏭ PIHPS: Remaining Steps to Go Live
 1. **Run migration 026** di Supabase SQL Editor: `supabase/migrations/026_pihps_scraper.sql`
 2. **Install scraper deps**: `cd ../pangan-scraper && npm install && npm run install-browsers`
 3. **Set scraper env**: copy `.env.example` → `.env`, fill SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY
@@ -23,6 +25,12 @@
 5. If selectors mismatch: inspect debug HTML, adjust `captureProvinceTable()` in `agents/pihps.ts`
 6. Verify rows appear at `/dashboard/pihps`
 7. Wire up GitHub Actions secrets (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY)
+
+### ⏭ Chrome Extension: Remaining Steps
+1. Load unpacked at `chrome://extensions` → test on Facebook
+2. Verify keyword matching + Gemini extraction + local staging
+3. Test accept/edit/reject flow in popup → push to Supabase
+4. Wire `/api/scraper/ingest` endpoint in commodity-dashboard
 
 ---
 
@@ -82,17 +90,14 @@
 
 ---
 
-## Phase 2.5: Scraper Agents + Route Maker + Quota Alert — 🟡 ~10% (Next Sprint)
+## Phase 2.5: Scraper Agents + Route Maker + Quota Alert — 🟡 ~30%
 
-### 🔴 Priority 1: PIHPS Scraper Agent (~3 days)
-- [ ] Setup `pangan-scraper/` repo (terpisah dari commodity-dashboard)
-- [ ] `shared/browser.ts` — Playwright + stealth setup
-- [ ] `shared/normalizer.ts` — **Gemini Flash** price normalization
-- [ ] `shared/supabase.ts` — upsert ke `prices_raw` (source: "pihps")
-- [ ] `shared/types.ts` — ScrapedPrice interface
-- [ ] `agents/pihps.ts` — scrape bi.go.id/hargapangan (82 kota × 11 komoditas)
-- [ ] `.github/workflows/scrape.yml` — cron 4×/day (06:00, 12:00, 18:00, 00:00 WIB)
-- [ ] Test: run manual → verify ~900 price points upserted
+### ✅ Priority 1: PIHPS Scraper Agent — DONE
+- [x] `pangan-scraper/` repo bootstrapped
+- [x] Shared framework: browser, normalizer, supabase, logger, types
+- [x] `agents/pihps.ts` — Playwright + Gemini Flash
+- [x] GitHub Actions cron 4×/day
+- [x] Dashboard page + API route
 
 ### 🔴 Priority 2: Paskomnas Scraper Agent (~2 days)
 - [ ] `agents/paskomnas.ts` — scrape paskomnas.id (Sayur/Buah/Bumbu/Daging)
@@ -101,17 +106,16 @@
 - [ ] Upsert ke prices_raw (source: "paskomnas")
 - [ ] Add to scrape.yml (cron 1×/day)
 
-### 🟡 Priority 3: Facebook Chrome Extension (~1 week)
-- [ ] `agents/facebook/manifest.json` — Chrome MV3
-- [ ] `agents/facebook/content-script.ts` — MutationObserver + **keyword trigger** (not regex-first)
-- [ ] `agents/facebook/keywords.ts` — KeywordConfig: preset categories (BUMBU/POKOK/PROTEIN/SAYUR/BUAH) + custom user keywords
-- [ ] `agents/facebook/background.ts` — **Gemini Flash** full-post extraction → save to **chrome.storage.local** (not Supabase)
-- [ ] `agents/facebook/storage.ts` — CapturedPrice interface, local CRUD, pending/accepted/rejected status
-- [ ] `agents/facebook/validator.ts` — auto-reject confidence < 0.6, dedup, sane price range
-- [ ] `agents/facebook/popup.html` — **review queue** (Accept/Edit/Reject per item, bulk actions), keyword manager, stats
-- [ ] `agents/facebook/popup.ts` — review logic: accept → POST `/api/scraper/ingest` → prices_raw
-- [ ] `app/api/scraper/ingest/route.ts` — receive user-accepted prices + validate + upsert prices_raw
-- [ ] Test: browse FB group → keyword match → Gemini extract → local staging → user review → push to Supabase
+### ✅ Priority 3: Facebook Chrome Extension — CODE DONE
+- [x] `pangan-scraper-extension/manifest.json` — Chrome MV3
+- [x] `content-script.js` — MutationObserver + keyword trigger
+- [x] `keywords.js` — 5 preset categories + custom + negative + context hints + price ranges
+- [x] `background.js` — Gemini Flash extraction → save to chrome.storage.local
+- [x] `storage.js` — CapturedPrice CRUD, pending/accepted/rejected, badge, cleanup
+- [x] `popup.html` + `popup.js` — review queue (Accept/Edit/Reject), keyword manager, settings
+- [x] Icons generated
+- [x] `app/api/scraper/ingest/route.ts` — receive user-accepted prices from extension
+- [ ] End-to-end test on live Facebook group
 
 ### 🟡 Priority 4: Route Maker (~1 week)
 - [ ] `lib/route-maker/graph.ts` — Dijkstra/A* multi-modal graph
@@ -179,12 +183,16 @@
 
 ## Task Aktif (May 2026)
 
-**Sprint Goal: Phase 2.5 Kickoff**
-1. Run pending migrations (022–025) di Supabase
-2. Init `pangan-scraper/` repo
-3. Build PIHPS agent (Playwright + Gemini Flash)
-4. Build Paskomnas agent
-5. Wire QuotaAlertBanner ke dashboard
+**Sprint Goal: Phase 2.5 — Scraper Agents**
+1. ~~Init `pangan-scraper/` repo~~ ✅
+2. ~~Build PIHPS agent (Playwright + Gemini Flash)~~ ✅
+3. ~~Build Chrome Extension scraper (keyword-trigger + Gemini + local review)~~ ✅
+4. ~~Wire `/api/scraper/ingest` endpoint~~ ✅
+5. Run pending migrations (022–026) di Supabase
+6. PIHPS smoke test + go live
+7. Chrome Extension: load unpacked + test on Facebook
+8. Build Paskomnas agent
+9. Wire QuotaAlertBanner ke dashboard
 
 ---
 
