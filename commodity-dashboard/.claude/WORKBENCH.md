@@ -105,11 +105,13 @@
 - [ ] `agents/facebook/manifest.json` — Chrome MV3
 - [ ] `agents/facebook/content-script.ts` — MutationObserver + **keyword trigger** (not regex-first)
 - [ ] `agents/facebook/keywords.ts` — KeywordConfig: preset categories (BUMBU/POKOK/PROTEIN/SAYUR/BUAH) + custom user keywords
-- [ ] `agents/facebook/background.ts` — **Gemini Flash** full-post extraction (commodity, price, unit, city, confidence)
-- [ ] `agents/facebook/validator.ts` — Stage 3: confidence filter, sane price range, dedup
-- [ ] `agents/facebook/popup.html` — toggle ON/OFF, keyword manager (add/remove/toggle presets), today's count, price range config
-- [ ] `app/api/scraper/ingest/route.ts` — receive + validate + dedup + upsert prices_raw
-- [ ] Test: browse Facebook pedagang group → verify keyword match → Gemini extraction → prices captured
+- [ ] `agents/facebook/background.ts` — **Gemini Flash** full-post extraction → save to **chrome.storage.local** (not Supabase)
+- [ ] `agents/facebook/storage.ts` — CapturedPrice interface, local CRUD, pending/accepted/rejected status
+- [ ] `agents/facebook/validator.ts` — auto-reject confidence < 0.6, dedup, sane price range
+- [ ] `agents/facebook/popup.html` — **review queue** (Accept/Edit/Reject per item, bulk actions), keyword manager, stats
+- [ ] `agents/facebook/popup.ts` — review logic: accept → POST `/api/scraper/ingest` → prices_raw
+- [ ] `app/api/scraper/ingest/route.ts` — receive user-accepted prices + validate + upsert prices_raw
+- [ ] Test: browse FB group → keyword match → Gemini extract → local staging → user review → push to Supabase
 
 ### 🟡 Priority 4: Route Maker (~1 week)
 - [ ] `lib/route-maker/graph.ts` — Dijkstra/A* multi-modal graph

@@ -697,14 +697,15 @@ GitHub Actions cron → Playwright loads paskomnas.id/category/*
 | Spec | Detail |
 |------|--------|
 | **Type** | Chrome Extension (Manifest V3) |
-| **Method** | 3-stage pipeline: Keyword Trigger → Gemini Flash → Local Validation |
+| **Method** | 4-stage pipeline: Keyword Trigger → Gemini Flash → Local Storage → User Review → Push |
 | **Keywords** | Fully customizable via popup UI (preset categories + custom user keywords) |
+| **Storage** | `chrome.storage.local` (staging) → user accepts → Supabase (production) |
 | **Trigger** | Passive — runs while user browses Facebook |
 | **Target** | Facebook groups (pedagang pasar, grosir sayur/bumbu, any commodity group) |
 | **AI usage** | ~1 Gemini call per keyword-matched post (80-90% noise filtered locally) |
 | **Effort** | ~1 week |
 
-**3-Stage Pipeline:**
+**4-Stage Pipeline (Local-First + Human Review):**
 ```
 ┌─ STAGE 1: Keyword Trigger (local, $0) ─────────────────────────┐
 │                                                                  │
@@ -738,13 +739,39 @@ GitHub Actions cron → Playwright loads paskomnas.id/category/*
 │    "cabai 35rb, bawang 25rb, tomat 15rb" → 3 results            │
 └──────────────────────────────────────────────────────────────────┘
         ↓
-┌─ STAGE 3: Local Validation ($0) ────────────────────────────────┐
+┌─ STAGE 3: Save to Local Storage (chrome.storage.local) ─────────┐
 │                                                                  │
-│  ├── Reject confidence < 0.6                                     │
-│  ├── Reject prices outside configurable sane range per commodity  │
+│  ├── Auto-reject confidence < 0.6 (silent discard)               │
 │  ├── Dedup by (commodity + city + date)                          │
-│  └── POST to /api/scraper/ingest → prices_raw (source: facebook)│
+│  ├── Status: "pending" — waiting for user review                 │
+│  └── Badge icon shows pending count: [5]                         │
 └──────────────────────────────────────────────────────────────────┘
+        ↓ (user opens popup)
+┌─ STAGE 4: User Review (human-in-the-loop) ──────────────────────┐
+│                                                                  │
+│  ├── User sees list of pending captured prices                   │
+│  ├── Each item: commodity, price, unit, city, confidence, snippet│
+│  ├── Actions: [✅ Accept] [✏️ Edit] [❌ Reject]                  │
+│  ├── Edit: fix price, city, commodity before accepting           │
+│  ├── Bulk: [Accept All] [Reject All]                             │
+│  └── Accepted → POST /api/scraper/ingest → prices_raw (facebook)│
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Stored Price Item (chrome.storage.local):**
+```typescript
+interface CapturedPrice {
+  id: string;                    // UUID
+  commodity: string;             // AI-extracted commodity name
+  price: number;                 // Rp (normalized)
+  unit: string;                  // "kg" | "ikat" | "pack"
+  city: string;                  // AI-extracted location
+  confidence: number;            // 0-1 from Gemini
+  status: "pending" | "accepted" | "rejected";
+  sourceSnippet: string;         // first 200 chars of FB post
+  sourceUrl?: string;            // FB post permalink
+  capturedAt: string;            // ISO timestamp
+}
 ```
 
 **Keyword Config (stored in chrome.storage.local):**
@@ -764,24 +791,36 @@ interface KeywordConfig {
 }
 ```
 
-**Popup UI:**
+**Popup UI (with Review Queue):**
 ```
-┌─ PanganScraper Extension ──────────────┐
-│ ⚡ Status: ON                    [OFF] │
-│                                         │
-│ 📊 Today: 23 prices captured           │
-│    Accuracy: 87% (conf > 0.6)          │
-│                                         │
-│ 🏷️ Keyword Presets:                     │
-│ [✅ BUMBU] [✅ POKOK] [✅ PROTEIN]      │
-│ [☐ SAYUR] [☐ BUAH]                     │
-│                                         │
-│ ✏️ Custom Keywords:                     │
-│ [kurma] [madu] [susu] [+ Add]          │
-│                                         │
-│ 💰 Price Ranges: [Configure]           │
-│ 🔑 API Key: [•••••••••] [Save]         │
-└─────────────────────────────────────────┘
+┌─ PanganScraper Extension ──────────────────────────┐
+│ ⚡ Status: ON                              [OFF]   │
+│                                                     │
+│ 📊 Today: 23 captured · 18 accepted · 3 rejected  │
+│                                                     │
+│ ─── 📋 Review Queue (5 pending) ───────────────── │
+│                                                     │
+│ 🟡 Cabai Rawit · Rp 35.000/kg · Surabaya          │
+│    conf: 0.92 · "Ready stok cabai rawit 35rb..."   │
+│    [✅ Accept] [✏️ Edit] [❌ Reject]                │
+│                                                     │
+│ 🟡 Bawang Merah · Rp 28.000/kg · Surabaya         │
+│    conf: 0.89 · "bawang merah 28rb per kg..."      │
+│    [✅ Accept] [✏️ Edit] [❌ Reject]                │
+│                                                     │
+│         [Accept All 5] [Reject All]                 │
+│ ─────────────────────────────────────────────────── │
+│                                                     │
+│ 🏷️ Keyword Presets:                                 │
+│ [✅ BUMBU] [✅ POKOK] [✅ PROTEIN]                  │
+│ [☐ SAYUR] [☐ BUAH]                                 │
+│                                                     │
+│ ✏️ Custom Keywords:                                 │
+│ [kurma] [madu] [susu] [+ Add]                      │
+│                                                     │
+│ 💰 Price Ranges: [Configure]                       │
+│ 🔑 API Key: [•••••••••] [Save]                     │
+└─────────────────────────────────────────────────────┘
 ```
 
 **Why keyword-trigger (not regex-first):**

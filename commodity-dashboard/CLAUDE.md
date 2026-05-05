@@ -218,9 +218,9 @@ interface ScrapedPrice {
 
 ### Agent 3: Facebook Price Extension (Chrome MV3)
 - **Type**: Chrome Extension, content script passive
-- **Method**: 3-stage pipeline — Keyword Trigger → Gemini Flash → Local Validation
+- **Method**: 4-stage pipeline — Keyword Trigger → Gemini Flash → Local Storage → User Review → Push
 - **Keywords**: Fully customizable via popup UI (not limited to 17 SP2KP commodities)
-- **Output**: POST `/api/scraper/ingest` → prices_raw (source: "facebook")
+- **Storage**: `chrome.storage.local` (staging) → user accepts → Supabase (production)
 - **Effort**: ~1 week
 
 **Pipeline:**
@@ -235,14 +235,38 @@ Stage 1 — Keyword Trigger (local, $0):
 
 Stage 2 — Gemini Flash (AI, ~1 call per matched post):
   Send FULL post text → extract structured JSON:
-  { commodity, price, unit, city, confidence }
+  [{ commodity, price, unit, city, confidence }]
   Handles multi-price posts ("cabai 35rb, bawang 25rb") in one call
 
-Stage 3 — Local Validation ($0):
-  ├── Reject confidence < 0.6
-  ├── Reject prices outside configurable sane range per commodity
+Stage 3 — Save to Local Storage (chrome.storage.local):
+  ├── Auto-reject confidence < 0.6 (silent discard)
   ├── Dedup by (commodity + city + date)
-  └── POST to /api/scraper/ingest
+  ├── Status: "pending" — waiting for user review
+  └── Badge count shows pending items: [5]
+
+Stage 4 — User Review in Popup (human-in-the-loop):
+  ├── User opens popup → sees list of pending captures
+  ├── Each item shows: commodity, price, unit, city, confidence, source post snippet
+  ├── Actions per item: [✅ Accept] [✏️ Edit] [❌ Reject]
+  ├── Edit: user can fix price, city, commodity before accepting
+  ├── Bulk actions: [Accept All] [Reject All]
+  └── Accepted items → POST to /api/scraper/ingest → prices_raw (source: "facebook")
+```
+
+**Stored Price Item (chrome.storage.local):**
+```typescript
+interface CapturedPrice {
+  id: string;                    // UUID
+  commodity: string;             // AI-extracted commodity name
+  price: number;                 // Rp (normalized)
+  unit: string;                  // "kg" | "ikat" | "pack"
+  city: string;                  // AI-extracted location
+  confidence: number;            // 0-1 from Gemini
+  status: "pending" | "accepted" | "rejected";
+  sourceSnippet: string;         // first 200 chars of FB post
+  sourceUrl?: string;            // FB post permalink
+  capturedAt: string;            // ISO timestamp
+}
 ```
 
 **Keyword Dictionary (stored in chrome.storage.local):**
@@ -263,8 +287,9 @@ interface KeywordConfig {
 
 **Popup UI features:**
 - Toggle ON/OFF per group/page
+- **Review queue**: list of pending captures with Accept/Edit/Reject per item
 - Keyword manager: add/remove custom keywords, toggle preset categories
-- Today's captured count + accuracy stats
+- Stats: today's captured, accepted, rejected, accuracy
 - Price range config per commodity (sane range validation)
 - Supabase API key input
 
