@@ -29,11 +29,12 @@ interface Props {
   index: number;
   isOpen: boolean;
   onToggle: () => void;
+  source?: "sp2kp" | "pihps";
 }
 
 const COLS = "28px 1fr 110px 78px 90px 38px 16px";
 
-export function CommodityGroupRow({ group, index, isOpen, onToggle }: Props) {
+export function CommodityGroupRow({ group, index, isOpen, onToggle, source = "sp2kp" }: Props) {
   const rows = group.rows;
 
   const { avgPrice: avgPriceLatest, avgChange, spreadPct } = commodityMetrics(rows);
@@ -103,6 +104,7 @@ export function CommodityGroupRow({ group, index, isOpen, onToggle }: Props) {
               index={i}
               isOpen={openId === r.kode_wilayah}
               onToggle={() => toggle(r.kode_wilayah)}
+              source={source}
             />
           ))}
         </div>

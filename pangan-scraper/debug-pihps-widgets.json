@@ -1,0 +1,173 @@
+{
+  "province": "Masuk",
+  "widgets": [
+    {
+      "id": "harga_info_11",
+      "text": "Rp 48.450 PER Kg 5.33% - Rp 2.450"
+    },
+    {
+      "id": "harga_info_12",
+      "text": "Rp 40.300 PER Kg 2.15% - Rp 850"
+    },
+    {
+      "id": "harga_info_1",
+      "text": "Rp 15.100 PER Kg 3.78% - Rp 550"
+    },
+    {
+      "id": "harga_info_2",
+      "text": "Rp 14.750 PER Kg 1.37% - Rp 200"
+    },
+    {
+      "id": "harga_info_3",
+      "text": "Rp 15.750 PER Kg -2.17% - Rp -350"
+    },
+    {
+      "id": "harga_info_4",
+      "text": "Rp 16.100 PER Kg 0.63% - Rp 100"
+    },
+    {
+      "id": "harga_info_5",
+      "text": "Rp 16.850 PER Kg -2.88% - Rp -500"
+    },
+    {
+      "id": "harga_info_6",
+      "text": "Rp 16.950 PER Kg 0.3% - Rp 50"
+    },
+    {
+      "id": "harga_info_13",
+      "text": "Rp 49.250 PER Kg -0.81% - Rp -400"
+    },
+    {
+      "id": "harga_info_14",
+      "text": "Rp 45.300 PER Kg -3.31% - Rp -1.550"
+    },
+    {
+      "id": "harga_info_15",
+      "text": "Rp 33.750 PER Kg -30.48% - Rp -14.800"
+    },
+    {
+      "id": "harga_info_16",
+      "text": "Rp 54.700 PER Kg -10.47% - Rp -6.400"
+    },
+    {
+      "id": "harga_info_7",
+      "text": "Rp 37.650 PER Kg -2.46% - Rp -950"
+    },
+    {
+      "id": "harga_info_8",
+      "text": "Rp 142.150 PER Kg -3.99% - Rp -5.900"
+    },
+    {
+      "id": "harga_info_9",
+      "text": "Rp 138.300 PER Kg -1.18% - Rp -1.650"
+    },
+    {
+      "id": "harga_info_20",
+      "text": "Rp 21.800 PER Kg 7.65% - Rp 1.550"
+    },
+    {
+      "id": "harga_info_21",
+      "text": "Rp 19.850 PER Kg 3.12% - Rp 600"
+    },
+    {
+      "id": "harga_info_17",
+      "text": "Rp 20.050 PER Kg -2.43% - Rp -500"
+    },
+    {
+      "id": "harga_info_18",
+      "text": "Rp 24.700 PER Kg 3.78% - Rp 900"
+    },
+    {
+      "id": "harga_info_19",
+      "text": "Rp 24.300 PER Kg 6.35% - Rp 1.450"
+    },
+    {
+      "id": "harga_info_10",
+      "text": "Rp 33.000 PER Kg 4.43% - Rp 1.400"
+    },
+    {
+      "id": "harga_info_11-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_12-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_1-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_2-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_3-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_4-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_5-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_6-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_13-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_14-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_15-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_16-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_7-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_8-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_9-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_20-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_21-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_17-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_18-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_19-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    },
+    {
+      "id": "harga_info_10-itemTemplate",
+      "text": "<div style=\"font-size: 19px; font-weight: bold\"> <label style=\"color: white\"><b>Rp <%- nominal.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></b></label> </div> <div style=\"font-weight: normal; font-size: 0.8em; text-transform: uppercase\"> <label style=\"color: white\">PER <%- denomination %></label> </div> <div style=\"margin-top: 5px; margin-right: -10px; width: auto; text-align: right; display: inline-block; color: #ffffff !important; font-size: 12px; z-index: 999; position: relative\"> <% if(fluc > 0) { %> <span style=\"color: white; background-color: #c0392b ;\"><i class=\"fa fa-arrow-up\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } else if (isTetap == 1) { %> <span style=\"color: white; background-color: #2980b9 ;\"><i class=\"fa fa-pause\"></i> Harga Tetap</span> <% } else if (fluc == 0) { %> <span style=\"color: white; background-color: grey ;\"><i class=\"fa fa-question-circle\"></i> Tidak Update</span> <% } else { %> <span style=\"color: white; background-color: #27ae60 ;\"><i class=\"fa fa-arrow-down\"></i> <%- fluc %>% - Rp <%- harga.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\") %></span> <% } %> </div>"
+    }
+  ]
+}

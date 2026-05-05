@@ -50,8 +50,16 @@ export function Sidebar() {
         active={pathname === "/dashboard/pedagang"}
         label="Harga Pedagang"
         pip="var(--ped)"
-        badge="Phase 3"
-        badgeClassName="bg-paper-3 text-ink-dim"
+        badge="Beta"
+        badgeClassName="bg-[#dcfce7] text-[#1b5e3b]"
+      />
+      <Item
+        href="/dashboard/pihps"
+        active={pathname === "/dashboard/pihps"}
+        label="PIHPS"
+        pip="#0369a1"
+        badge="Beta"
+        badgeClassName="bg-[#dbeafe] text-[#1e40af]"
       />
       <Item
         href="/dashboard/pedagang/vendor-transport"
@@ -106,7 +114,8 @@ export function Sidebar() {
       <div className="mt-auto p-2.5 font-mono bg-paper rounded-[7px] border border-rule text-[10px] text-ink-dim leading-[1.8]">
         <b className="text-ink-mid">SP2KP</b> aktif<br />
         <b className="text-ink-mid">Transport</b> aktif<br />
-        Pedagang · Scraper → Phase 3.
+        <b className="text-ink-mid">PIHPS</b> beta · scraper<br />
+        <b className="text-ink-mid">Pedagang</b> beta · extension
       </div>
     </aside>
   );

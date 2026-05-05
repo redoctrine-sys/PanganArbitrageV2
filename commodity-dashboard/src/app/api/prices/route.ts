@@ -6,14 +6,15 @@ import { CHART_DAYS_DEFAULT, CHART_DAYS_MAX, PRICE_LIMIT_PER_QUERY } from "@/lib
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// GET /api/prices?kode_wilayah=...&commodity_id=...&days=30
-// Phase 1 SP2KP raw: filter by kode_wilayah (BPS deterministic) + commodity_id.
-// Tidak ada gating "approved" — RLS policy sudah membatasi ke source='sp2kp'
-// AND kode_wilayah/commodity_id NOT NULL.
+// GET /api/prices?source=sp2kp&kode_wilayah=...&commodity_id=...&days=30
+// GET /api/prices?source=pihps&city_raw=...&commodity_raw=...&days=30
+//
+// SP2KP filters by kode_wilayah/commodity_id (BPS canonical). PIHPS doesn't
+// have BPS mapping for every city — filter by raw text fields instead.
+// Default source=sp2kp preserves existing SP2KP callers.
 export async function GET(req: Request): Promise<NextResponse> {
   const { searchParams } = new URL(req.url);
-  const kode_wilayah = searchParams.get("kode_wilayah");
-  const commodity_id = searchParams.get("commodity_id");
+  const source = (searchParams.get("source") ?? "sp2kp").toLowerCase();
   const days = Math.max(1, Math.min(CHART_DAYS_MAX, parseInt(searchParams.get("days") ?? String(CHART_DAYS_DEFAULT), 10)));
 
   let sb;
@@ -26,14 +27,24 @@ export async function GET(req: Request): Promise<NextResponse> {
 
   let query = sb
     .from("prices_raw")
-    .select("date, price, het_ha, kode_wilayah, commodity_id")
-    .eq("source", "sp2kp")
+    .select("date, price, het_ha, kode_wilayah, commodity_id, city_raw, commodity_raw")
+    .eq("source", source)
     .gte("date", daysAgoIso(days))
     .order("date", { ascending: true })
     .limit(PRICE_LIMIT_PER_QUERY);
 
-  if (kode_wilayah) query = query.eq("kode_wilayah", kode_wilayah);
-  if (commodity_id) query = query.eq("commodity_id", commodity_id);
+  if (source === "sp2kp") {
+    const kode_wilayah = searchParams.get("kode_wilayah");
+    const commodity_id = searchParams.get("commodity_id");
+    if (kode_wilayah) query = query.eq("kode_wilayah", kode_wilayah);
+    if (commodity_id) query = query.eq("commodity_id", commodity_id);
+  } else {
+    // pihps / paskomnas / facebook → filter by raw text
+    const city_raw = searchParams.get("city_raw");
+    const commodity_raw = searchParams.get("commodity_raw");
+    if (city_raw) query = query.eq("city_raw", city_raw);
+    if (commodity_raw) query = query.eq("commodity_raw", commodity_raw);
+  }
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

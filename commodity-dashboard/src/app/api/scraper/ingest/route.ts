@@ -197,11 +197,14 @@ export async function POST(req: Request): Promise<NextResponse> {
       inserted++;
     }
   }
-
   // ── Auto-seed cities if needed ─────────────────────────────────────
-  const { data: seedData } = await sb.rpc("auto_seed_cities").catch(() => ({
-    data: null,
-  }));
+  let citiesSeeded = 0;
+  try {
+    const { data: seedData } = await sb.rpc("auto_seed_cities");
+    citiesSeeded = (seedData as { seeded: number } | null)?.seeded ?? 0;
+  } catch {
+    // Non-critical — cities may already exist
+  }
 
   return NextResponse.json({
     source: body.source,
@@ -211,6 +214,6 @@ export async function POST(req: Request): Promise<NextResponse> {
     updated,
     validation_errors: errors,
     upsert_errors: upsertErrors,
-    cities_seeded: (seedData as { seeded: number } | null)?.seeded ?? 0,
+    cities_seeded: citiesSeeded,
   });
 }

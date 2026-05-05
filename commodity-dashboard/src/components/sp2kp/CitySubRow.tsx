@@ -15,11 +15,12 @@ interface Props {
   index: number;
   isOpen: boolean;
   onToggle: () => void;
+  source?: "sp2kp" | "pihps";
 }
 
 const COLS = "32px 1fr 95px 78px 80px 82px 16px";
 
-export function CitySubRow({ row, index, isOpen, onToggle }: Props) {
+export function CitySubRow({ row, index, isOpen, onToggle, source = "sp2kp" }: Props) {
   const change = calcChangePct(row.price_latest, row.price_prev);
   const volatility = calcVolatility(row.max_30d, row.min_30d, row.avg_30d);
   const vsAvg = calcVsAvg(row.price_latest, row.avg_30d);
@@ -67,7 +68,7 @@ export function CitySubRow({ row, index, isOpen, onToggle }: Props) {
             </span>
           </div>
         )}
-        {isOpen && <ChartPanel row={row} />}
+        {isOpen && <ChartPanel row={row} source={source} />}
       </div>
     </div>
   );

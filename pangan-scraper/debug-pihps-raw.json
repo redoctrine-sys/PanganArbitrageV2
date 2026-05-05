@@ -1,0 +1,152 @@
+{
+  "province": "Semua Provinsi",
+  "rawItems": [
+    {
+      "commodity_id_dom": "11",
+      "commodity_name": "Bawang Merah Ukuran Sedang",
+      "price_text": "48.450",
+      "unit_text": "Kg",
+      "delta_text": "5.33%"
+    },
+    {
+      "commodity_id_dom": "12",
+      "commodity_name": "Bawang Putih Ukuran Sedang",
+      "price_text": "40.300",
+      "unit_text": "Kg",
+      "delta_text": "2.15%"
+    },
+    {
+      "commodity_id_dom": "1",
+      "commodity_name": "Beras Kualitas Bawah I",
+      "price_text": "15.100",
+      "unit_text": "Kg",
+      "delta_text": "3.78%"
+    },
+    {
+      "commodity_id_dom": "2",
+      "commodity_name": "Beras Kualitas Bawah II",
+      "price_text": "14.750",
+      "unit_text": "Kg",
+      "delta_text": "1.37%"
+    },
+    {
+      "commodity_id_dom": "3",
+      "commodity_name": "Beras Kualitas Medium I",
+      "price_text": "15.750",
+      "unit_text": "Kg",
+      "delta_text": "-2.17%"
+    },
+    {
+      "commodity_id_dom": "4",
+      "commodity_name": "Beras Kualitas Medium II",
+      "price_text": "16.100",
+      "unit_text": "Kg",
+      "delta_text": "0.63%"
+    },
+    {
+      "commodity_id_dom": "5",
+      "commodity_name": "Beras Kualitas Super I",
+      "price_text": "16.850",
+      "unit_text": "Kg",
+      "delta_text": "-2.88%"
+    },
+    {
+      "commodity_id_dom": "6",
+      "commodity_name": "Beras Kualitas Super II",
+      "price_text": "16.950",
+      "unit_text": "Kg",
+      "delta_text": "0.3%"
+    },
+    {
+      "commodity_id_dom": "13",
+      "commodity_name": "Cabai Merah Besar",
+      "price_text": "49.250",
+      "unit_text": "Kg",
+      "delta_text": "-0.81%"
+    },
+    {
+      "commodity_id_dom": "14",
+      "commodity_name": "Cabai Merah Keriting ",
+      "price_text": "45.300",
+      "unit_text": "Kg",
+      "delta_text": "-3.31%"
+    },
+    {
+      "commodity_id_dom": "15",
+      "commodity_name": "Cabai Rawit Hijau",
+      "price_text": "33.750",
+      "unit_text": "Kg",
+      "delta_text": "-30.48%"
+    },
+    {
+      "commodity_id_dom": "16",
+      "commodity_name": "Cabai Rawit Merah",
+      "price_text": "54.700",
+      "unit_text": "Kg",
+      "delta_text": "-10.47%"
+    },
+    {
+      "commodity_id_dom": "7",
+      "commodity_name": "Daging Ayam Ras Segar",
+      "price_text": "37.650",
+      "unit_text": "Kg",
+      "delta_text": "-2.46%"
+    },
+    {
+      "commodity_id_dom": "8",
+      "commodity_name": "Daging Sapi Kualitas 1",
+      "price_text": "142.150",
+      "unit_text": "Kg",
+      "delta_text": "-3.99%"
+    },
+    {
+      "commodity_id_dom": "9",
+      "commodity_name": "Daging Sapi Kualitas 2",
+      "price_text": "138.300",
+      "unit_text": "Kg",
+      "delta_text": "-1.18%"
+    },
+    {
+      "commodity_id_dom": "20",
+      "commodity_name": "Gula Pasir Kualitas Premium",
+      "price_text": "21.800",
+      "unit_text": "Kg",
+      "delta_text": "7.65%"
+    },
+    {
+      "commodity_id_dom": "21",
+      "commodity_name": "Gula Pasir Lokal",
+      "price_text": "19.850",
+      "unit_text": "Kg",
+      "delta_text": "3.12%"
+    },
+    {
+      "commodity_id_dom": "17",
+      "commodity_name": "Minyak Goreng Curah",
+      "price_text": "20.050",
+      "unit_text": "Kg",
+      "delta_text": "-2.43%"
+    },
+    {
+      "commodity_id_dom": "18",
+      "commodity_name": "Minyak Goreng Kemasan Bermerk 1",
+      "price_text": "24.700",
+      "unit_text": "Kg",
+      "delta_text": "3.78%"
+    },
+    {
+      "commodity_id_dom": "19",
+      "commodity_name": "Minyak Goreng Kemasan Bermerk 2",
+      "price_text": "24.300",
+      "unit_text": "Kg",
+      "delta_text": "6.35%"
+    },
+    {
+      "commodity_id_dom": "10",
+      "commodity_name": "Telur Ayam Ras Segar",
+      "price_text": "33.000",
+      "unit_text": "Kg",
+      "delta_text": "4.43%"
+    }
+  ]
+}

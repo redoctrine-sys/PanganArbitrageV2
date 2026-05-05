@@ -10,8 +10,11 @@ import type { CandleData, PricePoint, SP2KPLatestRow } from "@/types/sp2kp";
 import useSWR from "swr";
 import { fetcher } from "@/lib/utils/fetcher";
 
+type DataSource = "sp2kp" | "pihps";
+
 interface Props {
   row: SP2KPLatestRow;
+  source?: DataSource;
 }
 
 type ChartMode = "D" | "W" | "M";
@@ -99,11 +102,14 @@ function aggregateCandles(
 
 /* ── Component ────────────────────────────────────── */
 
-export function ChartPanel({ row }: Props) {
+export function ChartPanel({ row, source = "sp2kp" }: Props) {
   const [mode, setMode] = useState<ChartMode>("D");
   const config = MODE_CONFIG[mode];
 
-  const swrKey = `/api/prices?kode_wilayah=${encodeURIComponent(row.kode_wilayah)}&commodity_id=${encodeURIComponent(row.commodity_id)}&days=${config.days}`;
+  const swrKey =
+    source === "pihps"
+      ? `/api/prices?source=pihps&city_raw=${encodeURIComponent(row.city_raw)}&commodity_raw=${encodeURIComponent(row.commodity_name)}&days=${config.days}`
+      : `/api/prices?source=sp2kp&kode_wilayah=${encodeURIComponent(row.kode_wilayah)}&commodity_id=${encodeURIComponent(row.commodity_id)}&days=${config.days}`;
   const { data: resp, isLoading, error: fetchError } = useSWR<{ data?: PricePoint[]; error?: string }>(swrKey, fetcher);
   const points = resp?.data ?? [];
   const loading = isLoading;
@@ -133,7 +139,8 @@ export function ChartPanel({ row }: Props) {
               {row.city_raw} — {row.commodity_name}
             </div>
             <div className="font-mono text-[9px] text-ink-dim mt-[2px]">
-              SP2KP · {config.subtitle} · Garis merah putus = HET
+              {source === "pihps" ? "PIHPS" : "SP2KP"} · {config.subtitle}
+              {source === "sp2kp" ? " · Garis merah putus = HET" : ""}
             </div>
           </div>
           <div className="flex gap-[1px] p-[2px] bg-paper-2 border border-rule rounded-[5px]">
@@ -212,21 +219,23 @@ export function ChartPanel({ row }: Props) {
           <span className="st-k">Volatilitas</span>
           <span className="st-v"><VolatilityPill value={volatility} withLabel /></span>
         </div>
-        <div className="st-row">
-          <span className="st-k">HET (SP2KP)</span>
-          <span className={`st-v ${row.het_ha == null ? "text-ink-dim" : "text-ink"}`}>
-            {row.het_ha == null ? (
-              <span className="text-[10px]">— tidak tersedia</span>
-            ) : (
-              <>
-                {formatRupiah(row.het_ha)}{" "}
-                <span className={`text-[9px] ${aboveHet ? "text-dn" : "text-lo"}`}>
-                  {aboveHet ? `↑ +${hetDelta?.toFixed(1)}%` : `✓ di bawah`}
-                </span>
-              </>
-            )}
-          </span>
-        </div>
+        {source === "sp2kp" && (
+          <div className="st-row">
+            <span className="st-k">HET (SP2KP)</span>
+            <span className={`st-v ${row.het_ha == null ? "text-ink-dim" : "text-ink"}`}>
+              {row.het_ha == null ? (
+                <span className="text-[10px]">— tidak tersedia</span>
+              ) : (
+                <>
+                  {formatRupiah(row.het_ha)}{" "}
+                  <span className={`text-[9px] ${aboveHet ? "text-dn" : "text-lo"}`}>
+                    {aboveHet ? `↑ +${hetDelta?.toFixed(1)}%` : `✓ di bawah`}
+                  </span>
+                </>
+              )}
+            </span>
+          </div>
+        )}
         <div className="st-row">
           <span className="st-k">Observasi 30 hari</span>
           <span className="st-v">{row.obs_30d}</span>
