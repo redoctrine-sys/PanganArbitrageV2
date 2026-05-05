@@ -218,10 +218,55 @@ interface ScrapedPrice {
 
 ### Agent 3: Facebook Price Extension (Chrome MV3)
 - **Type**: Chrome Extension, content script passive
-- **Method**: MutationObserver + **Gemini Flash** AI extraction
-- **Price regex**: `/Rp\.?\s*[\d.,]+(?:\s*(?:rb|ribu|\/kg|\/ikat|\/pack))?/gi`
+- **Method**: 3-stage pipeline — Keyword Trigger → Gemini Flash → Local Validation
+- **Keywords**: Fully customizable via popup UI (not limited to 17 SP2KP commodities)
 - **Output**: POST `/api/scraper/ingest` → prices_raw (source: "facebook")
 - **Effort**: ~1 week
+
+**Pipeline:**
+```
+Stage 1 — Keyword Trigger (local, $0):
+  MutationObserver scans post text for commodity keywords (user-configurable)
+  ├── Default presets: BUMBU, POKOK, PROTEIN, SAYUR, BUAH
+  ├── Custom keywords: user adds any keyword via popup (e.g., "kurma", "madu")
+  ├── Context hints: "harga", "jual", "ready", "stok", "/kg", "grosir"
+  ├── Negative filter: "resep", "masak", "diet", "review", "promo"
+  └── Rule: ≥1 commodity keyword + ≥1 price/context hint → proceed
+
+Stage 2 — Gemini Flash (AI, ~1 call per matched post):
+  Send FULL post text → extract structured JSON:
+  { commodity, price, unit, city, confidence }
+  Handles multi-price posts ("cabai 35rb, bawang 25rb") in one call
+
+Stage 3 — Local Validation ($0):
+  ├── Reject confidence < 0.6
+  ├── Reject prices outside configurable sane range per commodity
+  ├── Dedup by (commodity + city + date)
+  └── POST to /api/scraper/ingest
+```
+
+**Keyword Dictionary (stored in chrome.storage.local):**
+```typescript
+interface KeywordConfig {
+  presets: {
+    BUMBU: string[];    // ["cabai", "cabe", "rawit", "bawang merah", "bawang putih", "bamer", "baput"]
+    POKOK: string[];    // ["beras", "gula", "minyak goreng", "minyakita", "tepung", "garam"]
+    PROTEIN: string[];  // ["daging sapi", "daging ayam", "telur", "ikan", "telor", "udang"]
+    SAYUR: string[];    // ["tomat", "kentang", "wortel", "kangkung", "bayam"]
+    BUAH: string[];     // ["jeruk", "apel", "pisang", "mangga", "semangka"]
+  };
+  custom: string[];     // User-added: ["kurma", "madu", "susu", "keju", ...]
+  negative: string[];   // Skip posts: ["resep", "masak", "diet", "review"]
+  contextHints: string[]; // Must also match: ["harga", "jual", "ready", "/kg"]
+}
+```
+
+**Popup UI features:**
+- Toggle ON/OFF per group/page
+- Keyword manager: add/remove custom keywords, toggle preset categories
+- Today's captured count + accuracy stats
+- Price range config per commodity (sane range validation)
+- Supabase API key input
 
 ### Route Maker (Phase 2.5)
 - **Algorithm**: Dijkstra/A* multi-modal graph

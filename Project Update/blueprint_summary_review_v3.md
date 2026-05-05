@@ -521,7 +521,7 @@ src/
 |---------|--------|--------|
 | **PIHPS Scraper Agent** | 🟡 Spec Ready | Playwright + Gemini Flash, scrape bi.go.id/hargapangan, 82 kota, 11 komoditas strategis, cross-check SP2KP (different agency/methodology) |
 | **Paskomnas Scraper Agent** | 🟡 Spec Ready | HTTP/Playwright, scrape paskomnas.id, B2B wholesale prices (Sayur, Buah, Bumbu, Daging & Ikan), per-kg pricing |
-| **FB Price Extension** | 🟡 Spec Ready | Chrome Extension, passive price detection from Facebook groups/Marketplace, AI extraction (commodity, price, unit, location) |
+| **FB Price Extension** | 🟡 Spec Ready | Chrome Extension MV3, 3-stage keyword-trigger pipeline (keyword filter → Gemini Flash → validation), customizable keyword dictionary (preset categories + custom user keywords), passive Facebook group monitoring |
 | **Route Maker** | 🟡 Spec Ready | Multi-modal route optimization (Dijkstra/A*), ASDP ferry integration (Ketapang-Gilimanuk, Padangbai-Lembar), cost/ETA/weight-loss per leg |
 | **Gemini Quota Alert** | 🟡 Spec Ready | Real-time quota tracking, warning banner at 80%, block at 95%, graceful fallback to Layer 1 |
 | **Hermes Orchestrator** | 🟡 Spec Ready | DAG workflow engine, 4 specialist agents, shared memory (L0-L3), failure recovery (retry → replan → decompose) |
@@ -570,7 +570,7 @@ Phase 3: Full Agentic System      █░░░░░░░░░░░░░░�
 ### Phase 2.5: Scraper Agents + Route Maker + Quota (Spec Ready, Next Sprint)
 - 🟡 **PIHPS Scraper Agent** — Playwright + Gemini Flash, scrape bi.go.id/hargapangan, 82 kota × 11 komoditas, GitHub Actions cron 4×/day. Cross-checks SP2KP (different agency: BI vs Kemendag). **Effort: 3 days**
 - 🟡 **Paskomnas Scraper Agent** — HTTP/Playwright, scrape paskomnas.id, B2B wholesale prices (Sayur/Buah/Bumbu/Daging), per-kg. **Effort: 2 days**
-- 🟡 **Facebook Price Extension** — Chrome Extension (content script), passive price detection from pedagang groups, AI extraction to Supabase. **Effort: 1 week**
+- 🟡 **Facebook Price Extension** — Chrome Extension MV3, 3-stage keyword-trigger pipeline (customizable keywords → Gemini Flash extraction → local validation), not limited to 17 SP2KP commodities. **Effort: 1 week**
 - 🟡 **Route Maker blueprint** — Multi-modal graph (Dijkstra/A*), 3 new tables, ASDP ferry data
 - 🟡 **Gemini Quota Alert blueprint** — api_usage_log, warning banner at 80%, block at 95%
 
@@ -697,43 +697,98 @@ GitHub Actions cron → Playwright loads paskomnas.id/category/*
 | Spec | Detail |
 |------|--------|
 | **Type** | Chrome Extension (Manifest V3) |
-| **Method** | Content script + Gemini Flash AI extraction |
+| **Method** | 3-stage pipeline: Keyword Trigger → Gemini Flash → Local Validation |
+| **Keywords** | Fully customizable via popup UI (preset categories + custom user keywords) |
 | **Trigger** | Passive — runs while user browses Facebook |
-| **Target** | Facebook groups (pedagang pasar, grosir sayur/bumbu) |
-| **AI usage** | ~1 Gemini call per detected price post |
+| **Target** | Facebook groups (pedagang pasar, grosir sayur/bumbu, any commodity group) |
+| **AI usage** | ~1 Gemini call per keyword-matched post (80-90% noise filtered locally) |
 | **Effort** | ~1 week |
 
-**Architecture:**
+**3-Stage Pipeline:**
 ```
-┌─ Chrome Extension ─────────────────────────────┐
-│                                                 │
-│  content-script.ts                              │
-│  ├── MutationObserver on Facebook feed          │
-│  ├── Detect price patterns: Rp XX.XXX           │
-│  ├── Extract surrounding text context           │
-│  └── Send to background.ts                      │
-│                                                 │
-│  background.ts                                  │
-│  ├── Receive extracted text                     │
-│  ├── Call Gemini Flash:                         │
-│  │   "Extract: commodity, price, unit, city     │
-│  │    from this Facebook post text"             │
-│  ├── Validate + deduplicate                     │
-│  └── POST to /api/scraper/ingest                │
-│                                                 │
-│  popup.html                                     │
-│  ├── Toggle ON/OFF                              │
-│  ├── Show today's captured prices (count)       │
-│  ├── Configure target groups                    │
-│  └── Supabase API key input                     │
-└─────────────────────────────────────────────────┘
+┌─ STAGE 1: Keyword Trigger (local, $0) ─────────────────────────┐
+│                                                                  │
+│  MutationObserver scans post text for COMMODITY KEYWORDS:        │
+│  ├── Preset categories (toggleable):                             │
+│  │   BUMBU:    cabai, cabe, rawit, bawang merah, bawang putih,  │
+│  │             bamer, baput                                      │
+│  │   POKOK:    beras, gula, minyak goreng, minyakita, tepung,   │
+│  │             garam                                             │
+│  │   PROTEIN:  daging sapi, daging ayam, telur, ikan, telor,    │
+│  │             udang                                             │
+│  │   SAYUR:    tomat, kentang, wortel, kangkung, bayam           │
+│  │   BUAH:     jeruk, apel, pisang, mangga, semangka             │
+│  ├── Custom keywords (user-added via popup):                     │
+│  │   e.g., kurma, madu, susu, keju — any commodity              │
+│  ├── Context hints (must also match ≥1):                         │
+│  │   harga, jual, ready, stok, /kg, grosir, ecer, per ikat      │
+│  └── Negative keywords (skip if matched):                        │
+│      resep, masak, diet, review, promo                           │
+│                                                                  │
+│  RULE: ≥1 commodity keyword + ≥1 context hint → proceed to AI   │
+│  Filters out ~85% of noise BEFORE any Gemini call                │
+└──────────────────────────────────────────────────────────────────┘
+        ↓ (only matched posts)
+┌─ STAGE 2: Gemini Flash Extraction (AI, ~1 call/post) ──────────┐
+│                                                                  │
+│  Send FULL post text (not just regex match) → Gemini Flash:      │
+│  "Extract all commodity prices from this Facebook post."         │
+│  Output: [{ commodity, price, unit, city, confidence }]          │
+│  Handles multi-price posts in ONE call:                          │
+│    "cabai 35rb, bawang 25rb, tomat 15rb" → 3 results            │
+└──────────────────────────────────────────────────────────────────┘
+        ↓
+┌─ STAGE 3: Local Validation ($0) ────────────────────────────────┐
+│                                                                  │
+│  ├── Reject confidence < 0.6                                     │
+│  ├── Reject prices outside configurable sane range per commodity  │
+│  ├── Dedup by (commodity + city + date)                          │
+│  └── POST to /api/scraper/ingest → prices_raw (source: facebook)│
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-**Price detection regex:**
+**Keyword Config (stored in chrome.storage.local):**
 ```typescript
-// Matches: Rp 35.000, Rp35000, 35rb, 35.000/kg, etc.
-const PRICE_PATTERN = /Rp\.?\s*[\d.,]+(?:\s*(?:rb|ribu|\/kg|\/ikat|\/pack))?/gi;
+interface KeywordConfig {
+  presets: {
+    BUMBU: string[];    // ["cabai", "cabe", "rawit", "bawang merah", ...]
+    POKOK: string[];    // ["beras", "gula", "minyak goreng", ...]
+    PROTEIN: string[];  // ["daging sapi", "daging ayam", "telur", ...]
+    SAYUR: string[];    // ["tomat", "kentang", "wortel", ...]
+    BUAH: string[];     // ["jeruk", "apel", "pisang", ...]
+  };
+  custom: string[];     // User-added: any commodity keyword
+  negative: string[];   // Skip: ["resep", "masak", "diet", "review"]
+  contextHints: string[]; // Must also match: ["harga", "jual", "ready", "/kg"]
+  priceRanges: Record<string, { min: number; max: number }>; // per commodity
+}
 ```
+
+**Popup UI:**
+```
+┌─ PanganScraper Extension ──────────────┐
+│ ⚡ Status: ON                    [OFF] │
+│                                         │
+│ 📊 Today: 23 prices captured           │
+│    Accuracy: 87% (conf > 0.6)          │
+│                                         │
+│ 🏷️ Keyword Presets:                     │
+│ [✅ BUMBU] [✅ POKOK] [✅ PROTEIN]      │
+│ [☐ SAYUR] [☐ BUAH]                     │
+│                                         │
+│ ✏️ Custom Keywords:                     │
+│ [kurma] [madu] [susu] [+ Add]          │
+│                                         │
+│ 💰 Price Ranges: [Configure]           │
+│ 🔑 API Key: [•••••••••] [Save]         │
+└─────────────────────────────────────────┘
+```
+
+**Why keyword-trigger (not regex-first):**
+- Regex "Rp 35.000" catches shipping costs, ads, unrelated prices → high false positives
+- Keywords first → AI only called on relevant posts → 80-90% fewer Gemini calls
+- Custom keywords → not limited to 17 SP2KP commodities, user controls scope
+- Full post context → Gemini can extract city, multi-prices, and unit accurately
 
 **Why extension (not headless scraper):**
 - Passive — reads what you already browse, no automation

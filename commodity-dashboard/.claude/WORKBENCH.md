@@ -2,9 +2,27 @@
 *Baca file ini PERTAMA setiap kali membuka project*
 *Updated: 2026-05-05 — based on blueprint_summary_review_v3.md*
 
-## Status: Phase 2 ~85% ✅ → Phase 2.5 🟡 Next Sprint
+## Status: Phase 2 ~85% ✅ → Phase 2.5 🟡 In Progress (PIHPS Scraper)
 
 > **AI Stack**: Gemini Flash (primary, $0). Tidak ada DeepSeek.
+
+### 🟡 Phase 2.5 Active (2026-05-05)
+- [x] Migration 026: `scrape_runs` table + `get_pihps_latest` RPC
+- [x] Sibling repo `pangan-scraper/` bootstrapped (package.json, tsconfig, .env.example)
+- [x] Shared framework: `shared/{types,browser,normalizer,supabase,logger}.ts`
+- [x] PIHPS agent: `agents/pihps.ts` — Playwright + Gemini Flash extraction
+- [x] GitHub Actions cron: `.github/workflows/scrape.yml` (4×/day)
+- [x] Dashboard: `/api/pihps/latest` + `/dashboard/pihps` page + `PIHPSPage.tsx`
+- [x] Sidebar nav: PIHPS item under Sumber Data
+
+### ⏭ Next Steps Before PIHPS Live
+1. **Run migration 026** di Supabase SQL Editor: `supabase/migrations/026_pihps_scraper.sql`
+2. **Install scraper deps**: `cd ../pangan-scraper && npm install && npm run install-browsers`
+3. **Set scraper env**: copy `.env.example` → `.env`, fill SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY
+4. **Smoke test**: `npm run scrape:pihps:debug` — saves debug-pihps-*.html for selector verification
+5. If selectors mismatch: inspect debug HTML, adjust `captureProvinceTable()` in `agents/pihps.ts`
+6. Verify rows appear at `/dashboard/pihps`
+7. Wire up GitHub Actions secrets (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY)
 
 ---
 
@@ -85,11 +103,13 @@
 
 ### 🟡 Priority 3: Facebook Chrome Extension (~1 week)
 - [ ] `agents/facebook/manifest.json` — Chrome MV3
-- [ ] `agents/facebook/content-script.ts` — MutationObserver + price regex
-- [ ] `agents/facebook/background.ts` — **Gemini Flash** AI extraction (commodity, price, unit, city)
-- [ ] `agents/facebook/popup.html` — toggle ON/OFF + today's count
-- [ ] `app/api/scraper/ingest/route.ts` — receive + validate + dedup
-- [ ] Test: browse Facebook group → verify prices captured
+- [ ] `agents/facebook/content-script.ts` — MutationObserver + **keyword trigger** (not regex-first)
+- [ ] `agents/facebook/keywords.ts` — KeywordConfig: preset categories (BUMBU/POKOK/PROTEIN/SAYUR/BUAH) + custom user keywords
+- [ ] `agents/facebook/background.ts` — **Gemini Flash** full-post extraction (commodity, price, unit, city, confidence)
+- [ ] `agents/facebook/validator.ts` — Stage 3: confidence filter, sane price range, dedup
+- [ ] `agents/facebook/popup.html` — toggle ON/OFF, keyword manager (add/remove/toggle presets), today's count, price range config
+- [ ] `app/api/scraper/ingest/route.ts` — receive + validate + dedup + upsert prices_raw
+- [ ] Test: browse Facebook pedagang group → verify keyword match → Gemini extraction → prices captured
 
 ### 🟡 Priority 4: Route Maker (~1 week)
 - [ ] `lib/route-maker/graph.ts` — Dijkstra/A* multi-modal graph
