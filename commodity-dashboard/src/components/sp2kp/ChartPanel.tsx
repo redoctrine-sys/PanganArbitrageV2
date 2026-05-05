@@ -10,7 +10,7 @@ import type { CandleData, PricePoint, SP2KPLatestRow } from "@/types/sp2kp";
 import useSWR from "swr";
 import { fetcher } from "@/lib/utils/fetcher";
 
-type DataSource = "sp2kp" | "pihps";
+type DataSource = "sp2kp" | "pihps" | "facebook";
 
 interface Props {
   row: SP2KPLatestRow;
@@ -107,9 +107,9 @@ export function ChartPanel({ row, source = "sp2kp" }: Props) {
   const config = MODE_CONFIG[mode];
 
   const swrKey =
-    source === "pihps"
-      ? `/api/prices?source=pihps&city_raw=${encodeURIComponent(row.city_raw)}&commodity_raw=${encodeURIComponent(row.commodity_name)}&days=${config.days}`
-      : `/api/prices?source=sp2kp&kode_wilayah=${encodeURIComponent(row.kode_wilayah)}&commodity_id=${encodeURIComponent(row.commodity_id)}&days=${config.days}`;
+    source === "sp2kp"
+      ? `/api/prices?source=sp2kp&kode_wilayah=${encodeURIComponent(row.kode_wilayah)}&commodity_id=${encodeURIComponent(row.commodity_id)}&days=${config.days}`
+      : `/api/prices?source=${source}&city_raw=${encodeURIComponent(row.city_raw)}&commodity_raw=${encodeURIComponent(row.commodity_name)}&days=${config.days}`;
   const { data: resp, isLoading, error: fetchError } = useSWR<{ data?: PricePoint[]; error?: string }>(swrKey, fetcher);
   const points = resp?.data ?? [];
   const loading = isLoading;
@@ -139,7 +139,7 @@ export function ChartPanel({ row, source = "sp2kp" }: Props) {
               {row.city_raw} — {row.commodity_name}
             </div>
             <div className="font-mono text-[9px] text-ink-dim mt-[2px]">
-              {source === "pihps" ? "PIHPS" : "SP2KP"} · {config.subtitle}
+              {source === "pihps" ? "PIHPS" : source === "facebook" ? "Pedagang" : "SP2KP"} · {config.subtitle}
               {source === "sp2kp" ? " · Garis merah putus = HET" : ""}
             </div>
           </div>

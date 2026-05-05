@@ -59,13 +59,13 @@ declare global {
   }
 }
 
-/** Read province list from the DevExtreme dropdown's dataSource. */
+/** Read province list from #cboProvince2 (the dropdown that drives price-tile reload). */
 async function getProvinceList(page: import("playwright").Page): Promise<ProvinceOpt[]> {
   return await page.evaluate(async () => {
     const w = window as unknown as { $?: (sel: string) => { dxSelectBox: (k: string) => unknown }; jQuery?: typeof w.$ };
     const $ = w.$ ?? w.jQuery;
     if (!$) return [];
-    const inst = $("#cboProvince").dxSelectBox("instance") as { getDataSource: () => { load: () => Promise<unknown>; items: () => unknown[] } } | null;
+    const inst = $("#cboProvince2").dxSelectBox("instance") as { getDataSource: () => { load: () => Promise<unknown>; items: () => unknown[] } } | null;
     if (!inst) return [];
     const ds = inst.getDataSource();
     await ds.load();
@@ -74,14 +74,27 @@ async function getProvinceList(page: import("playwright").Page): Promise<Provinc
   });
 }
 
-/** Set active province via dxSelectBox API. */
+/**
+ * Set province on #cboProvince2 — its onValueChanged is UpdatePriceChartData
+ * which AJAX-fetches /UpdateChartData and reloads all harga_info widgets.
+ */
 async function selectProvince(page: import("playwright").Page, provinceId: number): Promise<void> {
   await page.evaluate((id) => {
     const w = window as unknown as { $?: (sel: string) => { dxSelectBox: (k: string) => { option: (k: string, v: number) => void } }; jQuery?: typeof w.$ };
     const $ = w.$ ?? w.jQuery;
     if (!$) return;
-    $("#cboProvince").dxSelectBox("instance").option("value", id);
+    $("#cboProvince2").dxSelectBox("instance").option("value", id);
   }, provinceId);
+}
+
+/** Wait for the UpdateChartData AJAX response after a province change. */
+async function waitForPriceUpdate(page: import("playwright").Page): Promise<void> {
+  await page
+    .waitForResponse(
+      (resp) => resp.url().includes("/UpdateChartData") && resp.status() === 200,
+      { timeout: 15_000 },
+    )
+    .catch(() => {});
 }
 
 async function extractPriceList(page: import("playwright").Page): Promise<RawPriceItem[]> {
@@ -170,7 +183,10 @@ async function run(): Promise<ScrapeRunResult> {
       }
 
       try {
+        const updatePromise = waitForPriceUpdate(session.page);
         await selectProvince(session.page, prov.province_id);
+        await updatePromise;
+        // Extra settle — widget DOM reload happens after AJAX response
         await session.page.waitForTimeout(PER_PROVINCE_REFRESH_MS);
 
         const items = await extractPriceList(session.page);

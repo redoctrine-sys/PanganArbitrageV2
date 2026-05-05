@@ -22,7 +22,7 @@ interface Props {
   index: number;
   isOpen: boolean;
   onToggle: () => void;
-  source?: "sp2kp" | "pihps";
+  source?: "sp2kp" | "pihps" | "facebook";
 }
 
 const COLS = "28px 1fr 110px 78px 90px 38px 16px";

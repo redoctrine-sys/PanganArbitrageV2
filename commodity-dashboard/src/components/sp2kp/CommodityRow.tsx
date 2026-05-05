@@ -13,7 +13,7 @@ interface Props {
   index: number;
   isOpen: boolean;
   onToggle: () => void;
-  source?: "sp2kp" | "pihps";
+  source?: "sp2kp" | "pihps" | "facebook";
 }
 
 const COLS = "32px 1fr 95px 78px 80px 82px 16px";
