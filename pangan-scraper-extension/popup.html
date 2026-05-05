@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=480, initial-scale=1.0">
+  <title>PanganScraper</title>
+  <style>
+    :root {
+      --bg: #f5f1ea;
+      --bg-card: #ffffff;
+      --ink: #1a1612;
+      --ink-muted: #78716c;
+      --sp: #1b5e3b;
+      --sp-light: #dcfce7;
+      --warn: #f59e0b;
+      --warn-light: #fef3c7;
+      --danger: #dc2626;
+      --danger-light: #fee2e2;
+      --border: #e7e5e4;
+      --radius: 8px;
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 460px;
+      max-height: 580px;
+      overflow-y: auto;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* ─── Header ──────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--sp);
+      color: white;
+    }
+    .header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .toggle-btn {
+      padding: 4px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.15);
+      color: white;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .toggle-btn:hover { background: rgba(255,255,255,0.25); }
+    .toggle-btn.off { background: rgba(220,38,38,0.3); border-color: rgba(220,38,38,0.5); }
+
+    /* ─── Stats Bar ───────────────────────────── */
+    .stats {
+      display: flex;
+      gap: 12px;
+      padding: 10px 16px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .stat { display: flex; align-items: center; gap: 4px; }
+    .stat-num { font-weight: 700; font-size: 14px; }
+    .stat-label { color: var(--ink-muted); }
+
+    /* ─── Section ─────────────────────────────── */
+    .section {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--ink-muted);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ─── Review Queue ────────────────────────── */
+    .capture-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      margin-bottom: 8px;
+    }
+    .capture-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .capture-commodity {
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .capture-confidence {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    .conf-high { background: var(--sp-light); color: var(--sp); }
+    .conf-med { background: var(--warn-light); color: #92400e; }
+    .conf-low { background: var(--danger-light); color: var(--danger); }
+
+    .capture-details {
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin-bottom: 6px;
+    }
+    .capture-price {
+      font-weight: 700;
+      color: var(--sp);
+    }
+    .capture-snippet {
+      font-size: 11px;
+      color: var(--ink-muted);
+      font-style: italic;
+      margin-bottom: 8px;
+      line-height: 1.4;
+      max-height: 32px;
+      overflow: hidden;
+    }
+    .capture-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .btn {
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      font-size: 11px;
+      cursor: pointer;
+      font-weight: 500;
+      background: var(--bg-card);
+    }
+    .btn:hover { filter: brightness(0.95); }
+    .btn-accept { background: var(--sp-light); color: var(--sp); border-color: var(--sp); }
+    .btn-reject { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
+    .btn-edit { background: #eff6ff; color: #1d4ed8; border-color: #1d4ed8; }
+
+    .bulk-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .btn-bulk {
+      flex: 1;
+      padding: 6px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    /* ─── Keywords ─────────────────────────────── */
+    .preset-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .pill {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      font-weight: 500;
+      user-select: none;
+    }
+    .pill.active {
+      background: var(--sp-light);
+      color: var(--sp);
+      border-color: var(--sp);
+    }
+    .custom-keywords {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .kw-tag {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 8px;
+      background: #f0f0f0;
+      border-radius: 10px;
+      font-size: 11px;
+    }
+    .kw-tag .remove {
+      cursor: pointer;
+      color: var(--danger);
+      font-weight: bold;
+      font-size: 13px;
+      line-height: 1;
+    }
+    .add-keyword {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .add-keyword input {
+      flex: 1;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* ─── Settings ─────────────────────────────── */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .setting-row label {
+      font-size: 12px;
+      font-weight: 500;
+      min-width: 70px;
+    }
+    .setting-row input {
+      flex: 1;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .btn-save {
+      padding: 4px 12px;
+      background: var(--sp);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-save:hover { filter: brightness(0.9); }
+
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: var(--ink-muted);
+      font-size: 12px;
+    }
+    .empty-state .icon { font-size: 24px; margin-bottom: 6px; }
+
+    /* ─── Edit Modal ──────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+    }
+    .modal-overlay.show { display: flex; align-items: center; justify-content: center; }
+    .modal {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 16px;
+      width: 90%;
+      max-width: 400px;
+    }
+    .modal h3 { margin-bottom: 12px; font-size: 14px; }
+    .modal .setting-row { margin-bottom: 10px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <h1>🌾 PanganScraper</h1>
+    <button id="toggleBtn" class="toggle-btn">ON</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-num" id="statTotal">0</span>
+      <span class="stat-label">captured</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num" id="statAccepted" style="color: var(--sp)">0</span>
+      <span class="stat-label">accepted</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num" id="statRejected" style="color: var(--danger)">0</span>
+      <span class="stat-label">rejected</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num" id="statPending" style="color: var(--warn)">0</span>
+      <span class="stat-label">pending</span>
+    </div>
+  </div>
+
+  <!-- Review Queue -->
+  <div class="section">
+    <div class="section-title">
+      📋 Review Queue
+      <span id="pendingCount">(0 pending)</span>
+    </div>
+    <div id="reviewQueue"></div>
+    <div id="bulkActions" class="bulk-actions" style="display: none;">
+      <button class="btn btn-accept btn-bulk" id="acceptAllBtn">✅ Accept All</button>
+      <button class="btn btn-reject btn-bulk" id="rejectAllBtn">❌ Reject All</button>
+    </div>
+  </div>
+
+  <!-- Keywords -->
+  <div class="section">
+    <div class="section-title">🏷️ Keywords</div>
+    <div class="preset-pills" id="presetPills"></div>
+    <div class="custom-keywords" id="customKeywords"></div>
+    <div class="add-keyword">
+      <input type="text" id="newKeyword" placeholder="Add custom keyword..." />
+      <button class="btn-save" id="addKeywordBtn">+ Add</button>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="section">
+    <div class="section-title">⚙️ Settings</div>
+    <div class="setting-row">
+      <label>🔑 Gemini Key</label>
+      <input type="password" id="geminiKey" placeholder="AIzaSy..." />
+      <button class="btn-save" id="saveGeminiKey">Save</button>
+    </div>
+    <div class="setting-row">
+      <label>🌐 API URL</label>
+      <input type="text" id="apiUrl" placeholder="https://your-app.vercel.app" />
+      <button class="btn-save" id="saveApiUrl">Save</button>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal">
+      <h3>✏️ Edit Capture</h3>
+      <input type="hidden" id="editId" />
+      <div class="setting-row">
+        <label>Commodity</label>
+        <input type="text" id="editCommodity" />
+      </div>
+      <div class="setting-row">
+        <label>Price (Rp)</label>
+        <input type="number" id="editPrice" />
+      </div>
+      <div class="setting-row">
+        <label>Unit</label>
+        <input type="text" id="editUnit" />
+      </div>
+      <div class="setting-row">
+        <label>City</label>
+        <input type="text" id="editCity" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="editCancel">Cancel</button>
+        <button class="btn btn-accept" id="editSave">Save & Accept</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
