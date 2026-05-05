@@ -14,6 +14,7 @@ import {
 } from "@/components/sp2kp/CommodityGroupRow";
 import type { Island, SP2KPLatestRow } from "@/types/sp2kp";
 import { SP2KPHeader, type View, type SourceConfig } from "@/components/sp2kp/SP2KPHeader";
+import { ScrapeButton } from "@/components/scraper/ScrapeButton";
 
 const ISLANDS: (Island | "Lainnya" | "Semua")[] = ["Semua", "Jawa", "Madura", "Bali", "Lombok", "Lainnya"];
 
@@ -157,11 +158,12 @@ export function PIHPSPage() {
             {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
         </div>
-        <div className="fhint">
+        <div className="fhint flex-1">
           {view === "city"
             ? "Klik kota → komoditas · Klik komoditas → chart · Sumber: BI"
             : "Klik komoditas → kota · Klik kota → chart · Sumber: BI"}
         </div>
+        <ScrapeButton agent="pihps" />
       </div>
 
       {view === "city" ? (
