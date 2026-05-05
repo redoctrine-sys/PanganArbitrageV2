@@ -1,137 +1,212 @@
 # WORKBENCH — Current Task
 *Baca file ini PERTAMA setiap kali membuka project*
+*Updated: 2026-05-05 — based on blueprint_summary_review_v3.md*
 
-## Status: Phase 2 Complete ✅ → Phase 3 Planning
+## Status: Phase 2 ~85% ✅ → Phase 2.5 🟡 Next Sprint
+
+> **AI Stack**: Gemini Flash (primary, $0). Tidak ada DeepSeek.
 
 ---
 
-## Phase 1: Data Foundation — ✅ Complete
+## Phase 1: Data Foundation — ✅ ~90% Complete
 
 ### ✅ Done
-- [x] DB schema + seed migrations (001–013)
+- [x] DB schema + seed migrations (001–025)
 - [x] SP2KP parser (encoding, dates, ×1000)
 - [x] API routes (preview, ingest, prices, latest, cities, transport-vendors)
 - [x] CSVUploader → DropZone + UploadBlocks (split)
-- [x] SP2KP page (By City / By Commodity, filters, sortable) → SP2KPHeader extracted
-- [x] ChartPanel (daily line `connectNulls` fix + candlestick W/M)
+- [x] SP2KP page (By City / By Commodity, filters, sortable)
+- [x] ChartPanel (daily line + candlestick W/M)
 - [x] Auto-seed cities + RLS
 - [x] Server-side ingest + chunked bulk RPC
 - [x] Vercel deploy (vercel.json)
 - [x] Vendor Transport CRUD + detail panel
 - [x] Admin cities page → CityEditModal extracted
-- [x] Extract constants → `lib/constants.ts` (PROVINCE_MAP, ISLAND_MAP, COMMODITY_CATEGORIES)
+- [x] Extract constants → `lib/constants.ts`
 - [x] Unit tests: `parser.test.ts`, `metrics.test.ts`
 - [x] Tailwind-only migration (globals.css, all components)
-- [x] Split VendorTransportPage → 4 files
-- [x] **Split ArbitrasePage.tsx** (756 → ~80) → types, AISubtab, ManualSubtab, LegCard
 - [x] ErrorBoundary → dipasang di dashboard layout
+- [x] **useSWR migration** — all 6 components migrated
+
+### 🟡 Remaining Debt (Phase 1)
+- [ ] Split 6 oversized components (>200 lines):
+  - `VendorTransportPage.tsx` (291L)
+  - `CommodityGroupRow.tsx` (246L)
+  - `SP2KPPage.tsx` (237L)
+  - `ChartPanel.tsx` (235L)
+  - `AlertCenter.tsx` (235L)
+  - `CandlestickChart.tsx` (215L)
 
 ---
 
-## Phase 2: AI-Powered Arbitrage — ✅ Complete
+## Phase 2: AI-Powered Arbitrage — ✅ ~85% Complete
 
 ### ✅ Done
-- [x] `014_arbitrage_alerts.sql` — table + RLS
-- [x] `lib/ai/agents/arbitrage/types.ts`
 - [x] `lib/analytics/arbitrage.ts` — detectAnomalies(), findArbitrage() (pure, testable)
-- [x] `lib/ai/agents/arbitrage/prompts.ts` — Profit Scout system prompt
-- [x] `lib/ai/agents/arbitrage/gemini-agent.ts` — Gemini Flash + graceful fallback
+- [x] `lib/ai/gemini-wrapper.ts` — Gemini Flash + quota + cache + fallback
+- [x] `lib/ai/model-router.ts` — complexity classifier (Flash vs Pro)
+- [x] `lib/ai/gemini-cache.ts` — smart cache per (commodity, cities)
 - [x] `app/api/agents/arbitrage/route.ts` — POST, Layer 1 + Layer 2 + DB insert
-- [x] `components/arbitrase/AlertCard.tsx`
-- [x] `components/arbitrase/AlertBadge.tsx` — live unread count
-- [x] `components/arbitrase/AlertCenter.tsx` — filter bar + manual run trigger
-- [x] AISubtab: now renders AlertCenter (real alerts, not demo cards)
-- [x] Sidebar: AlertBadge di Arbitrase nav item
-- [x] ingest/sp2kp: fire-and-forget trigger post-ingest
+- [x] AlertCard.tsx split (530 → 79 lines) → 8 sub-components ✅ (2026-05-02)
+- [x] Alert → discriminated union `AnomalyAlertUI | ArbitrageAlertUI` ✅
+- [x] `arbitrage.test.ts` — 20 unit tests (detectAnomalies×8, findArbitrage×5, calcWeightLoss×5) ✅
+- [x] AlertCenter, AlertBadge, AlertCard, AlertFilter
+- [x] Logistics Risk Analysis (ETA, weight loss, volatility, spread, ASDP ferry)
+- [x] Manual Arbitrage Calculator (multi-leg, vendor selection, ROI)
+- [x] SWR migration — all components, `lib/utils/fetcher.ts`
 
-### ✅ Debt Cleared (2026-05-02)
-- [x] Split AlertCard.tsx (530 → 79 lines) → 8 sub-components, Alert discriminated union
-- [x] Write arbitrage.test.ts — 20 tests for detectAnomalies, findArbitrage, calcWeightLossPct
-
-### ✅ Debt Cleared (2026-05-02) — continued
-- [x] **useSWR migration** — raw fetch+useEffect removed from all 6 components
-  - `SP2KPPage.tsx` — useSWR key `/api/sp2kp/latest?island=...`
-  - `ChartPanel.tsx` — useSWR key `/api/prices?...&days=...`
-  - `ArbitrasePage.tsx` — useSWR `/api/transport-vendors` (shared cache with VendorPage)
-  - `AlertCenter.tsx` — useSWR + mutate() for runAgent/markRead
-  - `VendorTransportPage.tsx` — useSWR + mutate() after save/delete
-  - `AdminCitiesPage.tsx` — useSWR + mutate() after save
-  - New: `lib/utils/fetcher.ts` — typed generic fetcher
-
-### ⚠️ Next Steps Before Phase 2 Fully Live
-1. **Jalankan migration 014** di Supabase SQL Editor:
-   `supabase/migrations/014_arbitrage_alerts.sql`
-2. **Test manual**: POST `/api/agents/arbitrage` dari dashboard → klik "Jalankan Analisis"
-3. Verifikasi alerts muncul di AlertCenter
-4. (Opsional) Tambah cron trigger di `vercel.json`
+### ⚠️ Next Steps Phase 2
+- [ ] Run migration 022 (api_usage_log + quota RPC)
+- [ ] Run migration 023 (transport_edges, transfer_points, route_calculations)
+- [ ] Run migration 024 (ai_insight_cache)
+- [ ] Run migration 025 (agent_memory, experiment_log, workflow_checkpoint)
+- [ ] Test `POST /api/agents/arbitrage` → verify AlertCenter
 
 ---
 
-## Phase 3: Full Agentic System — ⚪ Planned
+## Phase 2.5: Scraper Agents + Route Maker + Quota Alert — 🟡 ~10% (Next Sprint)
+
+### 🔴 Priority 1: PIHPS Scraper Agent (~3 days)
+- [ ] Setup `pangan-scraper/` repo (terpisah dari commodity-dashboard)
+- [ ] `shared/browser.ts` — Playwright + stealth setup
+- [ ] `shared/normalizer.ts` — **Gemini Flash** price normalization
+- [ ] `shared/supabase.ts` — upsert ke `prices_raw` (source: "pihps")
+- [ ] `shared/types.ts` — ScrapedPrice interface
+- [ ] `agents/pihps.ts` — scrape bi.go.id/hargapangan (82 kota × 11 komoditas)
+- [ ] `.github/workflows/scrape.yml` — cron 4×/day (06:00, 12:00, 18:00, 00:00 WIB)
+- [ ] Test: run manual → verify ~900 price points upserted
+
+### 🔴 Priority 2: Paskomnas Scraper Agent (~2 days)
+- [ ] `agents/paskomnas.ts` — scrape paskomnas.id (Sayur/Buah/Bumbu/Daging)
+- [ ] Normalize per-kg pricing (mostly already per-kg)
+- [ ] Fuzzy match ke SP2KP commodity names
+- [ ] Upsert ke prices_raw (source: "paskomnas")
+- [ ] Add to scrape.yml (cron 1×/day)
+
+### 🟡 Priority 3: Facebook Chrome Extension (~1 week)
+- [ ] `agents/facebook/manifest.json` — Chrome MV3
+- [ ] `agents/facebook/content-script.ts` — MutationObserver + price regex
+- [ ] `agents/facebook/background.ts` — **Gemini Flash** AI extraction (commodity, price, unit, city)
+- [ ] `agents/facebook/popup.html` — toggle ON/OFF + today's count
+- [ ] `app/api/scraper/ingest/route.ts` — receive + validate + dedup
+- [ ] Test: browse Facebook group → verify prices captured
+
+### 🟡 Priority 4: Route Maker (~1 week)
+- [ ] `lib/route-maker/graph.ts` — Dijkstra/A* multi-modal graph
+- [ ] `lib/route-maker/asdp-seed.ts` — ASDP ferry: Ketapang-Gilimanuk, Padangbai-Lembar
+- [ ] `lib/route-maker/types.ts` — RouteLeg, RouteOption, EdgeWeight
+- [ ] `app/api/route-maker/calculate/route.ts` — POST endpoint
+- [ ] `app/dashboard/route-maker/page.tsx` — UI: from/to/commodity selector + result map
+- [ ] Seed transport_edges (migration 023 data)
+
+### 🟡 Priority 5: Gemini Quota Alert (~1 day)
+- [ ] Run migration 022 — api_usage_log + RPC + daily view
+- [ ] `lib/ai/gemini-wrapper.ts` — auto-log every Gemini call to api_usage_log
+- [ ] `app/api/quota/status/route.ts` — real-time quota check
+- [ ] `app/api/quota/daily/route.ts` — daily summary
+- [ ] `components/layout/QuotaAlertBanner.tsx` — warning at 80%, block at 95%
+- [ ] Add to dashboard layout.tsx
+
+### 🟡 Priority 6: Source Filter on Dashboard (~0.5 day)
+- [ ] SP2KP dashboard: toggle filter by source (SP2KP / PIHPS / Paskomnas / Facebook)
+- [ ] Cross-source price comparison view
+
+---
+
+## Phase 3: Full Agentic System — ⚪ ~5% (Spec Ready, Future)
+
+> **AI**: Semua Gemini Flash. Tidak ada DeepSeek, tidak ada Claude/Anthropic.
 
 ### Infrastructure
-- [ ] Oracle Cloud VPS (Hermes)
-- [ ] GitHub Actions cron
+- [ ] GitHub Actions — orchestrator cron trigger
+- [ ] Supabase migrations 025 (agent_memory, experiment_log, workflow_checkpoint) — run!
 
-### Agents
-- [ ] Multi-Scraper — SP2KP, Pedagang, Marketplace, External (cron)
-- [ ] Analisis upgrade — cross-source comparison
-- [ ] Prediksi — exponential smoothing + weather + sentiment
-- [ ] NLQ Chat — Vercel AI SDK, ChatPanel, 7 tools
+### Hermes Orchestrator (Gemini Flash)
+- [ ] `lib/agents/orchestrator.ts` — DAG workflow engine
+- [ ] `lib/agents/roles/research-agent.ts` — Hermes specialist
+- [ ] `lib/agents/roles/validator-agent.ts` — Hermes judge
+- [ ] `lib/agents/roles/route-planner-agent.ts` — Dijkstra/A* via Gemini
+- [ ] `app/api/agents/orchestrate/route.ts` — trigger Hermes DAG
 
-### Database
-- [ ] `prices_pedagang`, `prices_marketplace`, `external_sources`
-- [ ] `price_predictions`, `agent_logs`
-- [ ] `prices_all` VIEW (unified)
+### Karpathy Experiment Loop (Gemini Flash)
+- [ ] `lib/agents/experiment-loop.ts` — ratchet loop (10-min cycles)
+- [ ] `lib/agents/roles/experiment-agent.ts` — modify arbitrage.ts + measure
+- [ ] `app/api/agents/experiment/route.ts` — POST trigger
+- [ ] Scalar metric: `precision_at_k` (alert accuracy)
 
-### UI
-- [ ] `components/ai/ChatPanel.tsx`
-- [ ] `components/ai/SuggestionChips.tsx`
-- [ ] `components/ai/AgentStatusBadge.tsx`
+### Agent Dashboard UI
+- [ ] `app/dashboard/agentic/page.tsx`
+- [ ] `components/agentic/AgentDashboard.tsx`
+- [ ] `components/agentic/ExperimentLogViewer.tsx`
+- [ ] `components/agentic/MemoryInspector.tsx`
+- [ ] `app/api/agents/memory/route.ts` — GET/POST shared memory
+
+### Future (Backlog)
+- [ ] Sayurbox / Segari scraper (retail, Jabodetabek)
+- [ ] TaniHub scraper (5-city)
+- [ ] NLQ Chat (PanganBot) — Vercel AI SDK
+- [ ] Price Prediction (Oracle) — exponential smoothing + weather
+- [ ] Pedagang Data Input form
+- [ ] Naming Agent (city + commodity fuzzy match)
+- [ ] Dark mode
+- [ ] Mobile responsive (fixed sidebar issue)
+- [ ] E2E tests (Playwright)
+- [ ] Pagination on SP2KP + AlertCenter
 
 ---
 
-## Task Aktif
-**Jalankan migration 014 di Supabase** → test `POST /api/agents/arbitrage` → cek AlertCenter.
+## Task Aktif (May 2026)
 
-Sidebar nav sudah distrukturisasi: SP2KP · Harga Pedagang · Vendor Transport · Data Lain (masing-masing main tab).
+**Sprint Goal: Phase 2.5 Kickoff**
+1. Run pending migrations (022–025) di Supabase
+2. Init `pangan-scraper/` repo
+3. Build PIHPS agent (Playwright + Gemini Flash)
+4. Build Paskomnas agent
+5. Wire QuotaAlertBanner ke dashboard
 
 ---
 
-## Alur Data (Data Flow Architecture)
+## Data Flow Architecture
 
 ```
 SUMBER DATA
 ├── SP2KP (Live ✅)
-│   └── Upload CSV/XLSX → ingest/sp2kp → sp2kp_prices → sp2kp_latest VIEW
+│   └── Upload CSV/XLSX → ingest/sp2kp → prices_raw (source: sp2kp)
 │       └── ──→ (trigger) agents/arbitrage → arbitrage_alerts
 │
-├── Harga Pedagang (Phase 3 🔲)
-│   └── Scraper / Manual input → prices_pedagang table
-│       └── ──→ prices_all VIEW (unified)
+├── PIHPS / BI (🟡 Phase 2.5)
+│   └── Playwright scraper → prices_raw (source: pihps)
+│       └── ──→ cross-check SP2KP (independent govt agency)
 │
-├── Vendor Transport (Live ✅)
-│   └── Manual CRUD → transport_vendors table
-│       └── ──→ dikonsumsi arbitrase kalkulator (Layer 1 cost calc)
+├── Paskomnas (🟡 Phase 2.5)
+│   └── Playwright/HTTP scraper → prices_raw (source: paskomnas)
+│       └── ──→ wholesale benchmark
 │
-└── Data Lain (Phase 3 🔲)
-    └── Marketplace scraper / External API → external_sources table
-        └── ──→ prices_all VIEW (unified)
+├── Facebook Pedagang (🟡 Phase 2.5)
+│   └── Chrome Extension → /api/scraper/ingest → prices_raw (source: facebook)
+│       └── ──→ real trader ground truth
+│
+└── Vendor Transport (Live ✅)
+    └── Manual CRUD → transport_vendors table
+        └── ──→ dikonsumsi arbitrase kalkulator + Route Maker
 
 ANALITIK
-├── Komparasi (Phase 3 🔲)
-│   └── Membandingkan SP2KP vs Pedagang vs Marketplace (dari prices_all)
+├── Arbitrase (Phase 2 ✅)
+│   ├── Layer 1: detectAnomalies() + findArbitrage() — pure TypeScript
+│   └── Layer 2: Gemini Flash → insights → arbitrage_alerts
 │
-└── Arbitrase (Phase 2 ✅)
-    ├── Layer 1: detectAnomalies() + findArbitrage() dari sp2kp_latest + transport_vendors
-    └── Layer 2: Gemini Flash → insights → arbitrage_alerts table
-        └── UI: AlertCenter (filter, mark read, manual run)
+└── Route Maker (🟡 Phase 2.5)
+    └── Dijkstra/A* graph → route_calculations → Route Maker UI
 
-FUTURE: prices_all VIEW akan unify SP2KP + Pedagang + Marketplace
-         → Arbitrase bisa cross-source (lebih akurat)
-         → Komparasi bisa cross-source comparison
+FUTURE
+└── Hermes Orchestrator (⚪ Phase 3)
+    ├── Research → Experiment → Validator → Route Planner (all Gemini Flash)
+    └── Karpathy Loop → auto-improve arbitrage.ts
 ```
 
+---
+
 ## Reference
-- `Project Update/` — archived planning docs
-- `CLAUDE.md` — project brain + AI agent architecture
+- `Project Update/blueprint_summary_review_v3.md` — latest blueprint (2026-05-04)
+- `CLAUDE.md` — project brain + AI architecture (Gemini-only)
+- AI: Gemini Flash ($0) untuk semua — scraper normalization, arbitrage L2, orchestrator, experiment agent
