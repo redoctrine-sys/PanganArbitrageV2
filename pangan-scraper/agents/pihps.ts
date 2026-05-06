@@ -24,11 +24,12 @@
  *   PIHPS_REGENCY         0=disable regency drill (default: ON — set to 0 to skip)
  *   PIHPS_INCLUDE_PROVINCE 1=also store province-level rows when regency drill is ON
  *   PIHPS_PROVINCE_FILTER comma-separated province IDs (regency drill scope)
+ *   PIHPS_CONCURRENCY     max parallel requests in regency drill (default: 5)
  *
- * Performance (json mode, proven):
+ * Performance (json mode):
  *   Province-only (PIHPS_REGENCY=0): ~10 calls × ~500ms = ~5 sec
- *   Regency drill (default): 34 prov × 10 com × 500ms = ~3 min per price type
- *   All 4 types with regency drill: ~12–15 min total
+ *   Regency drill concurrency=5: 340 tasks ÷ 5 = ~34s per price type
+ *   All 4 types with regency drill: ~2–3 min total
  */
 
 import "dotenv/config";
@@ -110,6 +111,30 @@ function parsePrice(s: string | number | null | undefined): number | null {
   if (!cleaned || cleaned === "-") return null;
   const n = Number(cleaned);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * Run `fns` with at most `concurrency` in-flight at once.
+ * Returns results in original order as PromiseSettledResult[].
+ */
+async function pLimit<T>(
+  fns: Array<() => Promise<T>>,
+  concurrency: number,
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = Array(fns.length);
+  let next = 0;
+  async function worker() {
+    let idx: number;
+    while ((idx = next++) < fns.length) {
+      try {
+        results[idx] = { status: "fulfilled", value: await fns[idx]() };
+      } catch (e) {
+        results[idx] = { status: "rejected", reason: e };
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, fns.length) }, worker));
+  return results;
 }
 
 /** "DD/MM/YYYY" → "YYYY-MM-DD" */
@@ -461,6 +486,7 @@ async function runJsonMode(
   endDate: string,
   regencyDrill: boolean,
   provinceFilter: number[],
+  concurrency: number,
 ): Promise<{ prices: ScrapedPrice[]; errors: string[] }> {
   const prices: ScrapedPrice[] = [];
   const errors: string[] = [];
@@ -498,15 +524,17 @@ async function runJsonMode(
       provinceFilter.length > 0
         ? provinces.filter((p) => provinceFilter.includes(p.id))
         : provinces;
+    const totalTasks = targets.length * commodities.length;
     log(
-      `\n=== Regency drill (${targets.length} prov × ${commodities.length} com) ===`,
+      `\n=== Regency drill (${targets.length} prov × ${commodities.length} com = ${totalTasks} calls, concurrency=${concurrency}) ===`,
     );
-    for (let pi = 0; pi < targets.length; pi++) {
-      const prov = targets[pi];
-      log(`[${pi + 1}/${targets.length}] ${prov.name} (id=${prov.id})`);
-      let provPrices = 0;
+
+    // Build flat task list then run with capped concurrency
+    type TaskResult = { prov: RefProvinceRow; com: RefCommodityRow; p: ScrapedPrice[] };
+    const tasks: Array<() => Promise<TaskResult>> = [];
+    for (const prov of targets) {
       for (const com of commodities) {
-        try {
+        tasks.push(async () => {
           const rows = await fetchGrid({
             priceTypeId,
             catId: com.id,
@@ -515,16 +543,24 @@ async function runJsonMode(
             provinceId: prov.id,
             showKota: true,
           });
-          const p = pivotRegencyGrid(rows, com, prov, priceTypeName);
-          prices.push(...p);
-          provPrices += p.length;
-        } catch (err) {
-          debug(`  ✗ ${com.id}: ${(err as Error).message}`);
-          errors.push(`regency/${prov.id}/${com.id}: ${(err as Error).message}`);
-        }
+          return { prov, com, p: pivotRegencyGrid(rows, com, prov, priceTypeName) };
+        });
       }
-      log(`  → ${provPrices} regency prices`);
     }
+
+    const settled = await pLimit(tasks, concurrency);
+    let regencyTotal = 0;
+    for (const r of settled) {
+      if (r.status === "fulfilled") {
+        prices.push(...r.value.p);
+        regencyTotal += r.value.p.length;
+      } else {
+        const err = r.reason as Error;
+        debug(`  ✗ regency task: ${err.message}`);
+        errors.push(`regency: ${err.message}`);
+      }
+    }
+    log(`  → ${regencyTotal} total regency prices (${settled.filter(r => r.status === "rejected").length} errors)`);
   }
 
   return { prices, errors };
@@ -615,17 +651,33 @@ async function run(): Promise<ScrapeRunResult> {
   const startedAt = Date.now();
   const isDebug = process.env.DEBUG === "1";
 
+  // Validate required credentials early — fail fast with actionable message
+  const missingEnv: string[] = [];
+  if (!process.env.SUPABASE_URL) missingEnv.push("SUPABASE_URL");
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missingEnv.push("SUPABASE_SERVICE_ROLE_KEY");
+  if (missingEnv.length > 0) {
+    throw new Error(
+      `Missing required env vars: ${missingEnv.join(", ")}. ` +
+      `Jika berjalan di GitHub Actions: tambahkan secrets di ` +
+      `GitHub repo → Settings → Secrets and variables → Actions. ` +
+      `Jika lokal: pastikan .env sudah terisi dan diload via dotenv.`,
+    );
+  }
+
   const mode = (process.env.PIHPS_MODE ?? "json").toLowerCase() as
     | "download"
     | "json";
   const downloadEndpoint =
     process.env.PIHPS_DOWNLOAD_ENDPOINT ?? `${BASE}/DownloadDataKomoditas`;
 
-  const startDate = process.env.PIHPS_START_DATE ?? todayWIB();
-  const endDate = process.env.PIHPS_END_DATE ?? todayWIB();
+  // Use || not ?? — GitHub Actions sends "" for unset workflow_dispatch inputs
+  const startDate = process.env.PIHPS_START_DATE || todayWIB();
+  const endDate = process.env.PIHPS_END_DATE || todayWIB();
   const priceTypeIds = parsePriceTypes();
   // Regency drill default ON — opt-out via PIHPS_REGENCY=0
   const regencyDrill = process.env.PIHPS_REGENCY !== "0";
+  // Concurrent requests for regency drill — default 5, set PIHPS_CONCURRENCY to tune
+  const concurrency = Math.max(1, Number(process.env.PIHPS_CONCURRENCY || "5"));
   const provinceFilter = (process.env.PIHPS_PROVINCE_FILTER ?? "")
     .split(",")
     .map((s) => Number(s.trim()))
@@ -635,7 +687,7 @@ async function run(): Promise<ScrapeRunResult> {
   log(`Date range: ${startDate} → ${endDate}`);
   log(`Price types: ${priceTypeIds.map((id) => `${id}=${PRICE_TYPE_NAMES[id]}`).join(", ")}`);
   if (mode === "json") {
-    log(`Regency drill: ${regencyDrill ? "ON" : "off"}`);
+    log(`Regency drill: ${regencyDrill ? `ON (concurrency=${concurrency})` : "off"}`);
     if (provinceFilter.length > 0) log(`Province filter: ${provinceFilter.join(",")}`);
   }
 
@@ -695,6 +747,7 @@ async function run(): Promise<ScrapeRunResult> {
         endDate,
         regencyDrill,
         provinceFilter,
+        concurrency,
       );
       prices = result.prices;
       errors = result.errors;
