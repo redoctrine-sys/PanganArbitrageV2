@@ -210,8 +210,10 @@ export function PIHPSPage() {
             key={g.kode_wilayah}
             group={g}
             index={i}
-            isOpen={openCity === g.kode_wilayah}
-            onToggle={() => toggleCity(g.kode_wilayah)}
+            isOpen={g.entity_type !== "provinsi" && openCity === g.kode_wilayah}
+            onToggle={g.entity_type === "provinsi"
+              ? () => setProvince(g.city_raw)
+              : () => toggleCity(g.kode_wilayah)}
             source="pihps"
           />
         ))}

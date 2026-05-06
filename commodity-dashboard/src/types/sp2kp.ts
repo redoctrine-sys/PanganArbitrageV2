@@ -53,7 +53,7 @@ export interface SP2KPLatestRow {
   city_raw: string;
   province: string;
   island: Island;
-  entity_type: "kota" | "kabupaten" | null;
+  entity_type: "kota" | "kabupaten" | "provinsi" | null;
   commodity_id: string;
   commodity_name: string;
   category: "bumbu" | "pokok" | "protein" | null;

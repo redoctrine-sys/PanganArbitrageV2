@@ -13,7 +13,7 @@ interface CityGroup {
   city_raw: string;
   province: string;
   island: string;
-  entity_type: "kota" | "kabupaten" | null;
+  entity_type: "kota" | "kabupaten" | "provinsi" | null;
   rows: SP2KPLatestRow[];
 }
 
@@ -84,12 +84,21 @@ export function CityRow({ group, index, isOpen, onToggle, source = "sp2kp" }: Pr
           <div className={`l1-name ${hasAnomaly ? "text-dn" : ""}`}>
             {group.city_raw}{hasAnomaly ? " ⚠" : ""}
           </div>
-          <div className={`l1-sub ${hasAnomaly ? "anom" : ""}`}>
-            {group.province} · {group.island} · {rows.length} komoditas
-            {hasAnomaly
-              ? ` · ${aboveHetCommodities.length} di atas HET`
-              : ""}
-          </div>
+          {group.entity_type === "provinsi" ? (
+            <div className="l1-sub flex items-center gap-1.5">
+              <span className="text-[10px] text-[#0369a1] bg-[#e0f2fe] px-1.5 py-0.5 rounded font-mono leading-none">
+                Harga Agregat Provinsi
+              </span>
+              <span>{rows.length} komoditas · klik untuk filter</span>
+            </div>
+          ) : (
+            <div className={`l1-sub ${hasAnomaly ? "anom" : ""}`}>
+              {group.province} · {group.island} · {rows.length} komoditas
+              {hasAnomaly
+                ? ` · ${aboveHetCommodities.length} di atas HET`
+                : ""}
+            </div>
+          )}
         </div>
         <div className={`l1-price ${hasAnomaly ? "text-dn" : "text-sp"}`}>
           {formatRupiah(avgPriceLatest)}
@@ -97,7 +106,7 @@ export function CityRow({ group, index, isOpen, onToggle, source = "sp2kp" }: Pr
         <div><ChangePill value={avgChange} /></div>
         <div><VolatilityPill value={avgVol} withLabel /></div>
         <div><MiniSparkline values={sparkSeries} trend={trend} /></div>
-        <div className="l1-chev">▾</div>
+        <div className="l1-chev">{group.entity_type === "provinsi" ? "→" : "▾"}</div>
       </div>
       {isOpen && (
         <div className="l1-exp">
