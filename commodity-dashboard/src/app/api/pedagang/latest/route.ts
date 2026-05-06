@@ -22,7 +22,6 @@ interface RawPrice {
   city_raw: string;
   commodity_raw: string;
   price: number;
-  source: string;
   commodity_id: string | null;
   city_id: string | null;
 }
@@ -58,9 +57,8 @@ export async function GET(): Promise<NextResponse> {
   const cutoffStr = cutoff.toISOString().slice(0, 10);
 
   const { data: rawPrices, error: priceError } = await sb
-    .from("prices_raw")
-    .select("id, date, city_raw, commodity_raw, price, source, commodity_id, city_id")
-    .eq("source", "facebook")
+    .from("facebook_raw")
+    .select("id, date, city_raw, commodity_raw, price, commodity_id, city_id")
     .gte("date", cutoffStr)
     .order("date", { ascending: false })
     .limit(5000);

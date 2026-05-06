@@ -25,10 +25,23 @@ export async function GET(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: msg, data: [] }, { status: 200 });
   }
 
+  // Route reads to isolated Bronze tables (Medallion Architecture)
+  const SOURCE_TABLE: Record<string, string> = {
+    sp2kp:     "sp2kp_raw",
+    pihps:     "pihps_raw",
+    facebook:  "facebook_raw",
+    paskomnas: "paskomnas_raw",
+  };
+  const table = SOURCE_TABLE[source] ?? "v_prices_comparison";
+
+  // sp2kp_raw has het_ha + kode_wilayah; others do not
+  const selectCols = source === "sp2kp"
+    ? "date, price, het_ha, kode_wilayah, commodity_id, city_raw, commodity_raw"
+    : "date, price, city_raw, commodity_raw, commodity_id";
+
   let query = sb
-    .from("prices_raw")
-    .select("date, price, het_ha, kode_wilayah, commodity_id, city_raw, commodity_raw")
-    .eq("source", source)
+    .from(table)
+    .select(selectCols)
     .gte("date", daysAgoIso(days))
     .order("date", { ascending: true })
     .limit(PRICE_LIMIT_PER_QUERY);
@@ -39,7 +52,6 @@ export async function GET(req: Request): Promise<NextResponse> {
     if (kode_wilayah) query = query.eq("kode_wilayah", kode_wilayah);
     if (commodity_id) query = query.eq("commodity_id", commodity_id);
   } else {
-    // pihps / paskomnas / facebook → filter by raw text
     const city_raw = searchParams.get("city_raw");
     const commodity_raw = searchParams.get("commodity_raw");
     if (city_raw) query = query.eq("city_raw", city_raw);

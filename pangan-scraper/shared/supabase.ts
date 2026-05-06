@@ -25,39 +25,104 @@ export interface UpsertStats {
 }
 
 /**
- * Upsert scraped prices to prices_raw.
- * UNIQUE constraint: (date, city_raw, commodity_raw, source).
- * Strategy: bulk upsert with onConflict — DB resolves insert vs update.
+ * Upsert scraped prices to isolated source tables (Medallion Bronze layer).
  *
- * Note: PostgREST upsert returns a single count; differentiating insert vs
- * update requires a pre-check. For Phase 1 we report a single "writes" count
- * (mapped to inserted). DB-side conditional logic can be added later if needed.
+ * Routes:
+ *   source='pihps'     → pihps_raw     UNIQUE(date, city_raw, commodity_raw, market_type)
+ *   source='paskomnas' → paskomnas_raw  UNIQUE(date, city_raw, commodity_raw)
+ *   source='facebook'  → facebook_raw   UNIQUE(date, city_raw, commodity_raw)
+ *
+ * SP2KP is handled separately via bulk_insert_sp2kp_prices() RPC.
  */
 export async function upsertPrices(prices: ScrapedPrice[]): Promise<UpsertStats> {
   if (prices.length === 0) return { inserted: 0, updated: 0, skipped: 0 };
   const sb = getClient();
 
-  const rows = prices.map((p) => ({
-    date: p.date,
-    city_raw: p.city_raw,
-    commodity_raw: p.commodity_raw,
-    source: p.source,
-    price: p.price,
-    het_ha: null,
-    kode_wilayah: null,
-    city_id: null,
-    commodity_id: null,
-  }));
+  let totalInserted = 0;
+  let totalSkipped = 0;
 
-  const { error, count } = await sb
-    .from("prices_raw")
-    .upsert(rows, {
-      onConflict: "date,city_raw,commodity_raw,source",
-      ignoreDuplicates: false,
-      count: "exact",
-    });
+  // ── PIHPS → pihps_raw ──────────────────────────────────────────────────────
+  const pihpsPrices = prices.filter((p) => p.source === "pihps");
+  if (pihpsPrices.length > 0) {
+    const rows = pihpsPrices.map((p) => ({
+      date: p.date,
+      city_raw: p.city_raw,
+      commodity_raw: p.commodity_raw,
+      price: p.price,
+      market_type: p.market_name ?? "",
+      kode_wilayah: null as null,
+      city_id: null as null,
+      commodity_id: null as null,
+    }));
 
-  if (error) throw new Error(`Supabase upsert failed: ${error.message}`);
+    const { count, error } = await sb
+      .from("pihps_raw")
+      .upsert(rows, {
+        onConflict: "date,city_raw,commodity_raw,market_type",
+        ignoreDuplicates: false,
+        count: "exact",
+      });
 
-  return { inserted: count ?? rows.length, updated: 0, skipped: 0 };
+    if (error) throw new Error(`pihps_raw upsert failed: ${error.message}`);
+    totalInserted += count ?? rows.length;
+  }
+
+  // ── Paskomnas → paskomnas_raw ───────────────────────────────────────────────
+  const pasPrices = prices.filter((p) => p.source === "paskomnas");
+  if (pasPrices.length > 0) {
+    const rows = pasPrices.map((p) => ({
+      date: p.date,
+      city_raw: p.city_raw,
+      commodity_raw: p.commodity_raw,
+      price: p.price,
+      market_name: p.market_name ?? null,
+      kode_wilayah: null as null,
+      city_id: null as null,
+      commodity_id: null as null,
+    }));
+
+    const { count, error } = await sb
+      .from("paskomnas_raw")
+      .upsert(rows, {
+        onConflict: "date,city_raw,commodity_raw",
+        ignoreDuplicates: false,
+        count: "exact",
+      });
+
+    if (error) throw new Error(`paskomnas_raw upsert failed: ${error.message}`);
+    totalInserted += count ?? rows.length;
+  }
+
+  // ── Facebook → facebook_raw ─────────────────────────────────────────────────
+  const fbPrices = prices.filter((p) => p.source === "facebook");
+  if (fbPrices.length > 0) {
+    const rows = fbPrices.map((p) => ({
+      date: p.date,
+      city_raw: p.city_raw,
+      commodity_raw: p.commodity_raw,
+      price: p.price,
+      confidence: p.confidence ?? null,
+      city_id: null as null,
+      commodity_id: null as null,
+    }));
+
+    const { count, error } = await sb
+      .from("facebook_raw")
+      .upsert(rows, {
+        onConflict: "date,city_raw,commodity_raw",
+        ignoreDuplicates: false,
+        count: "exact",
+      });
+
+    if (error) throw new Error(`facebook_raw upsert failed: ${error.message}`);
+    totalInserted += count ?? rows.length;
+  }
+
+  // Unknown sources
+  const unknownCount = prices.filter(
+    (p) => !["pihps", "paskomnas", "facebook"].includes(p.source),
+  ).length;
+  totalSkipped += unknownCount;
+
+  return { inserted: totalInserted, updated: 0, skipped: totalSkipped };
 }

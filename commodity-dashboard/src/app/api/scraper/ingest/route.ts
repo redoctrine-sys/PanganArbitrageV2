@@ -156,43 +156,50 @@ export async function POST(req: Request): Promise<NextResponse> {
     return null;
   }
 
-  // ── Build rows for upsert ──────────────────────────────────────────
-  const rows = validPrices.map((p) => ({
-    date: p.date,
-    city_raw: p.city_raw,
-    commodity_raw: p.commodity_raw,
-    price: p.price,
-    source: body.source,
-    commodity_id: findCommodityId(p.commodity_raw),
-    // Store extra metadata in existing fields where possible
-    het_ha: null, // not applicable for scraped data
-  }));
+  // ── Route to isolated table by source (Medallion Bronze layer) ───────
+  const TABLE_MAP: Record<string, { table: string; conflict: string }> = {
+    pihps:     { table: "pihps_raw",     conflict: "date,city_raw,commodity_raw,market_type" },
+    facebook:  { table: "facebook_raw",  conflict: "date,city_raw,commodity_raw" },
+    paskomnas: { table: "paskomnas_raw", conflict: "date,city_raw,commodity_raw" },
+  };
 
-  // ── Upsert: insert with ON CONFLICT (date, city_raw, commodity_raw, source) ──
-  // Use individual upserts to handle deduplication properly
+  const target = TABLE_MAP[body.source];
+  if (!target) {
+    return NextResponse.json({ error: `No table mapping for source: ${body.source}` }, { status: 400 });
+  }
+
+  const rows = validPrices.map((p) => {
+    const base = {
+      date: p.date,
+      city_raw: p.city_raw,
+      commodity_raw: p.commodity_raw,
+      price: p.price,
+      commodity_id: findCommodityId(p.commodity_raw),
+    };
+    if (body.source === "pihps") {
+      return { ...base, market_type: "" };
+    }
+    if (body.source === "facebook") {
+      return { ...base, confidence: p.confidence ?? null, source_url: p.source_url ?? null };
+    }
+    // paskomnas
+    return base;
+  });
+
   let inserted = 0;
   let updated = 0;
   const upsertErrors: string[] = [];
 
   for (const row of rows) {
     const { error } = await sb
-      .from("prices_raw")
+      .from(target.table)
       .upsert(row, {
-        onConflict: "date,city_raw,commodity_raw,source",
+        onConflict: target.conflict,
         ignoreDuplicates: false,
       });
 
     if (error) {
-      // If the conflict columns don't exist, fall back to simple insert
-      const { error: insertError } = await sb
-        .from("prices_raw")
-        .insert(row);
-
-      if (insertError) {
-        upsertErrors.push(`${row.commodity_raw}@${row.city_raw}: ${insertError.message}`);
-      } else {
-        inserted++;
-      }
+      upsertErrors.push(`${(row as Record<string, unknown>).commodity_raw}@${(row as Record<string, unknown>).city_raw}: ${error.message}`);
     } else {
       inserted++;
     }

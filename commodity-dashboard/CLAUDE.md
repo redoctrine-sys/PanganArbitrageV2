@@ -1,7 +1,8 @@
 # PanganArbitrage V2 — Project Brain
 
-> **Updated**: 2026-05-05 · Stack: Next.js 14 App Router · TypeScript · Supabase · Tailwind 3 · Recharts · Gemini Flash
+> **Updated**: 2026-05-06 · Stack: Next.js 14 App Router · TypeScript · Supabase · Tailwind 3 · Recharts · Gemini Flash
 > **Deploy**: Vercel Hobby ($0) · AI: Gemini Flash ($0) · Scraper: GitHub Actions ($0)
+> **DB Architecture**: Medallion (Bronze → Silver → Gold) — Isolated raw tables per source
 
 ## ⚠️ WAJIB: Baca & Update WORKBENCH.md
 
@@ -75,11 +76,26 @@ User Request → Complexity Classifier
 - **Skala**: SP2KP simpan dalam RIBU — `35` = Rp 35.000. Parser × 1000 sekali.
 - HET/HA: ~9% null = normal. Tanggal: `DD/MM/YYYY` → `YYYY-MM-DD`.
 
-### Database (25 migrations, 001–025)
-- `prices_raw`: UNIQUE(date, city_raw, commodity_raw, source). Bulk RPC insert.
+### Database Architecture — Medallion (Bronze/Silver/Gold)
+
+> ⚠️ **REFACTORING AKTIF**: Migrasi dari single `prices_raw` → isolated tables per source.
+> Bug yang memicu: `ON CONFLICT DO UPDATE cannot affect row a second time` karena
+> PIHPS punya 4 price types untuk (date, city, commodity) yang sama.
+
+**Layer Bronze (Raw — Isolated per Source):**
+- `pihps_raw`: UNIQUE(date, city_raw, commodity_raw, market_type). Kolom spesifik: `market_type` (Pasar Tradisional/Modern/Pedagang Besar/Produsen).
+- `sp2kp_raw`: UNIQUE(date, city_raw, commodity_raw). Kolom spesifik: `het_ha`, `kode_wilayah`.
+- `facebook_raw`: UNIQUE(date, city_raw, commodity_raw). Kolom spesifik: `source_url`, `confidence`, `source_snippet`.
+- `paskomnas_raw`: UNIQUE(date, city_raw, commodity_raw). Kolom spesifik: `category_paskomnas`.
+- ~~`prices_raw`~~: DEPRECATED — data lama dimigrasikan ke tabel spesifik. Tetap ada sementara untuk backward compat.
+
+**Layer Silver/Gold (Aggregator View):**
+- `v_prices_comparison`: View `UNION ALL` dari semua `_raw` tables. Kolom: date, city_raw, commodity_raw, price, source, market_type. Digunakan oleh halaman Komparasi.
+
+**Tabel Pendukung (tidak berubah):**
 - `cities`: auto-seeded dari kode_wilayah.
-- `transport_vendors`: biaya transport untuk kalkulasi arbitrase.
 - `commodities`: 17 komoditas SP2KP (seeded).
+- `transport_vendors`: biaya transport untuk kalkulasi arbitrase.
 - `arbitrage_alerts`: AI-detected opportunities + anomalies.
 - `api_usage_log`: Gemini quota tracking (migration 022).
 - `transport_edges`, `transfer_points`, `route_calculations`: Route Maker (migration 023).
@@ -155,7 +171,8 @@ components/arbitrase/     (16 files, AlertCard split ✅)
 ```
 
 ### Phase 2 → Phase 2.5 Migration Hooks
-- `prices_raw.source` field → multi-source ready ('sp2kp', 'pihps', 'paskomnas', 'facebook')
+- ~~`prices_raw.source` field~~ → **DEPRECATED**. Digantikan oleh isolated tables: `pihps_raw`, `sp2kp_raw`, `facebook_raw`, `paskomnas_raw`.
+- `v_prices_comparison` view → aggregator UNION ALL untuk komparasi antar sumber.
 - `api_usage_log` → Gemini quota tracking ready
 - `arbitrage_alerts` → Route Maker dapat baca alert ini untuk kalkulasi rute
 
@@ -169,19 +186,29 @@ pangan-scraper/
 ├── shared/
 │   ├── browser.ts         (Playwright + stealth)
 │   ├── normalizer.ts      (Gemini Flash price normalization)
-│   ├── supabase.ts        (DB client + upsert ke prices_raw)
+│   ├── supabase.ts        (DB client + upsert ke tabel spesifik: pihps_raw, sp2kp_raw, dll)
 │   ├── logger.ts          (scrape_runs logging)
 │   └── types.ts           (ScrapedPrice interface)
 ├── agents/
-│   ├── pihps.ts           (Agent 1: Bank Indonesia)
+│   ├── pihps.ts           (Agent 1: BI — loop 4 price types, JSON mode + concurrency pLimit=5)
+│   ├── test-download-all.ts (Backup Excel lokal — all 4 price types)
 │   ├── paskomnas.ts       (Agent 2: Wholesale B2B)
 │   └── facebook/          (Agent 3: Chrome Extension MV3)
 │       ├── manifest.json
 │       ├── content-script.ts
 │       ├── popup.html
 │       └── background.ts
-└── .github/workflows/scrape.yml  (cron: 4×/day)
+├── backups/               (Excel backup arsip per-run)
+└── .github/workflows/scrape.yml  (cron 1×/day + manual trigger via UI)
 ```
+
+> **PIHPS Scraper Status (2026-05-06):**
+> - ✅ Loop all 4 price types dalam 1 run
+> - ✅ Regency drill (level kota) dengan concurrency pLimit=5
+> - ✅ Backup Excel lokal sebelum upsert
+> - ✅ GitHub Actions workflow (cron + workflow_dispatch)
+> - ✅ Node 22 + ws package (WebSocket fix)
+> - 🔴 Upsert error: `ON CONFLICT` clash → FIX: migrasi ke `pihps_raw` dengan unique constraint `(date, city_raw, commodity_raw, market_type)`
 
 ### ScrapedPrice Interface
 ```typescript
@@ -192,12 +219,13 @@ interface ScrapedPrice {
   unit: string;             // "kg" (always normalized)
   city_raw: string;         // City/location name
   date: string;             // YYYY-MM-DD
-  market_name?: string;
+  market_name?: string;     // Jenis pasar (PIHPS: Tradisional/Modern/Pedagang/Produsen)
   original_price?: number;
   original_unit?: string;   // e.g., "100g", "pack", "ikat"
   confidence: number;       // Gemini normalization confidence (0-1)
 }
-// Maps to prices_raw via source field
+// Upsert target: tabel spesifik per source (pihps_raw, sp2kp_raw, dll)
+// Aggregator: v_prices_comparison (UNION ALL view)
 ```
 
 ### Agent 1: PIHPS (Bank Indonesia)
