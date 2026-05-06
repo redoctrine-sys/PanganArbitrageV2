@@ -122,7 +122,7 @@ export function ScrapeButton({ agent = "pihps" }: { agent?: string }) {
         )}
 
         {!configured && (
-          <span className="text-[10px] text-ink-dim font-mono">
+          <span className="text-[10px] text-[#92400e] font-mono" title="Set GITHUB_PAT di .env.local lalu restart dev server (Ctrl+C → npm run dev)">
             ⚠ GITHUB_PAT belum di-set
           </span>
         )}

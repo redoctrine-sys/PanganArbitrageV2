@@ -62,9 +62,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       },
       body: JSON.stringify({
         ref: DEFAULT_BRANCH,
-        inputs: {
-          agent,
-        },
+        inputs: {},
       }),
     });
 
@@ -110,7 +108,11 @@ export async function GET(): Promise<NextResponse> {
   const githubPat = process.env.GITHUB_PAT;
 
   if (!githubPat) {
-    return NextResponse.json({ runs: [], configured: false });
+    return NextResponse.json({
+      runs: [],
+      configured: false,
+      hint: "Set GITHUB_PAT di .env.local, lalu restart dev server",
+    });
   }
 
   try {
