@@ -97,16 +97,19 @@ export function CommodityGroupRow({ group, index, isOpen, onToggle, source = "sp
       {isOpen && (
         <div className="l1-exp">
           <CitySubColHeader sort={sort} onSort={onSort} />
-          {sortedRows.map((r, i) => (
-            <CitySubRow
-              key={r.kode_wilayah}
-              row={r}
-              index={i}
-              isOpen={openId === r.kode_wilayah}
-              onToggle={() => toggle(r.kode_wilayah)}
-              source={source}
-            />
-          ))}
+          {sortedRows.map((r, i) => {
+            const cityKey = r.kode_wilayah ?? r.city_raw;
+            return (
+              <CitySubRow
+                key={cityKey}
+                row={r}
+                index={i}
+                isOpen={openId === cityKey}
+                onToggle={() => toggle(cityKey)}
+                source={source}
+              />
+            );
+          })}
         </div>
       )}
     </div>

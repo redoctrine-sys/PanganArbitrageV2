@@ -74,17 +74,18 @@ export function PIHPSPage() {
   const cityGroups = useMemo<CityGroup[]>(() => {
     const map = new Map<string, CityGroup>();
     for (const r of filtered) {
-      let g = map.get(r.kode_wilayah);
+      const key = r.kode_wilayah ?? r.city_raw;
+      let g = map.get(key);
       if (!g) {
         g = {
-          kode_wilayah: r.kode_wilayah,
+          kode_wilayah: key,
           city_raw: r.city_raw,
           province: r.province,
           island: r.island,
           entity_type: r.entity_type,
           rows: [],
         };
-        map.set(r.kode_wilayah, g);
+        map.set(key, g);
       }
       g.rows.push(r);
     }
@@ -168,7 +169,7 @@ export function PIHPSPage() {
       </div>
 
       {view === "city" ? (
-        <CityColHeader />
+        <CityColHeader label="Provinsi" />
       ) : (
         <CommodityGroupColHeader sort={commoditySort} onSort={onCommoditySort} />
       )}

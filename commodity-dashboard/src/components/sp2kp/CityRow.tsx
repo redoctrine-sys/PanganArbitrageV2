@@ -102,27 +102,30 @@ export function CityRow({ group, index, isOpen, onToggle, source = "sp2kp" }: Pr
       {isOpen && (
         <div className="l1-exp">
           <CommodityColHeader />
-          {sortedRows.map((r, i) => (
-            <CommodityRow
-              key={r.commodity_id}
-              row={r}
-              index={i}
-              isOpen={openId === r.commodity_id}
-              onToggle={() => toggle(r.commodity_id)}
-              source={source}
-            />
-          ))}
+          {sortedRows.map((r, i) => {
+            const comKey = r.commodity_id ?? r.commodity_name;
+            return (
+              <CommodityRow
+                key={comKey}
+                row={r}
+                index={i}
+                isOpen={openId === comKey}
+                onToggle={() => toggle(comKey)}
+                source={source}
+              />
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
 
-export function CityColHeader() {
+export function CityColHeader({ label = "Kota" }: { label?: string }) {
   return (
     <div className="colhd" style={{ gridTemplateColumns: COLS }}>
       <span></span>
-      <span>Kota</span>
+      <span>{label}</span>
       <span>Harga Avg</span>
       <span>Ubah</span>
       <span>Volatilitas</span>
