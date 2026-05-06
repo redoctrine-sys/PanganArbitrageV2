@@ -8,3 +8,7 @@ test-results/
 .cache/
 debug-*.html
 debug-*.png
+debug-*.json
+backups/
+pihps-all-*.xlsx
+pihps-backup-*.xlsx

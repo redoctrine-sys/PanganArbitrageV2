@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useToggleSelector } from "@/lib/hooks/useToggleSelector";
 import { ChangePill } from "@/components/pills/ChangePill";
 import { VolatilityPill } from "@/components/pills/VolatilityPill";
 import { ChartPanel } from "@/components/sp2kp/ChartPanel";
@@ -87,9 +87,5 @@ export function CommodityColHeader() {
 }
 
 export function useCommoditySelector() {
-  const [openId, setOpenId] = useState<string | null>(null);
-  return {
-    openId,
-    toggle: (id: string) => setOpenId((cur) => (cur === id ? null : id)),
-  };
+  return useToggleSelector();
 }

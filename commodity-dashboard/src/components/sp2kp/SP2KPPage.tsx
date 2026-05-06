@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/utils/fetcher";
+import { useToggleSelector } from "@/lib/hooks/useToggleSelector";
 import { CityColHeader, CityRow, type CityGroup } from "@/components/sp2kp/CityRow";
 import {
   CommodityGroupColHeader,
@@ -24,8 +25,8 @@ export function SP2KPPage() {
   const [island, setIsland] = useState<Island | "Semua">("Semua");
   const [province, setProvince] = useState<string | "Semua">("Semua");
   const [search, setSearch] = useState("");
-  const [openCity, setOpenCity] = useState<string | null>(null);
-  const [openCommodity, setOpenCommodity] = useState<string | null>(null);
+  const { openId: openCity, toggle: toggleCity } = useToggleSelector();
+  const { openId: openCommodity, toggle: toggleCommodity } = useToggleSelector();
   const [commoditySort, setCommoditySort] = useState<CommodityGroupSort>({ key: null, dir: "desc" });
 
   const onCommoditySort = (key: CommodityGroupSortKey) => {
@@ -200,7 +201,7 @@ export function SP2KPPage() {
             group={g}
             index={i}
             isOpen={openCity === g.kode_wilayah}
-            onToggle={() => setOpenCity((cur) => (cur === g.kode_wilayah ? null : g.kode_wilayah))}
+            onToggle={() => toggleCity(g.kode_wilayah)}
           />
         ))}
         {!loading && !error && view === "commodity" && commodityGroups.map((g, i) => (
@@ -209,7 +210,7 @@ export function SP2KPPage() {
             group={g}
             index={i}
             isOpen={openCommodity === g.commodity_id}
-            onToggle={() => setOpenCommodity((cur) => (cur === g.commodity_id ? null : g.commodity_id))}
+            onToggle={() => toggleCommodity(g.commodity_id)}
           />
         ))}
       </div>

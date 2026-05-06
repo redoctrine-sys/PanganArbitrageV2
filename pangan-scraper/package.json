@@ -6,14 +6,20 @@
   "scripts": {
     "scrape:pihps": "tsx agents/pihps.ts",
     "scrape:pihps:debug": "tsx agents/pihps.ts",
+    "probe:pihps": "tsx agents/probe-api.ts",
+    "probe:tabel": "tsx agents/probe-tabel.ts",
+    "probe:bulk": "tsx agents/probe-bulk.ts",
+    "probe:download": "tsx agents/probe-download.ts",
+    "test:download": "tsx agents/test-download-all.ts",
     "typecheck": "tsc --noEmit",
     "install-browsers": "playwright install chromium"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.45.4",
+    "dotenv": "^16.4.5",
     "playwright": "^1.49.0",
-    "dotenv": "^16.4.5"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20.16.5",
