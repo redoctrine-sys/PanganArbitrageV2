@@ -21,13 +21,14 @@
  *                         "1"=Pasar Tradisional, "2"=Pasar Modern,
  *                         "3"=Pedagang Besar, "4"=Produsen.
  *                         Comma-separated for subset: "1,3"
- *   PIHPS_REGENCY         1=enable regency drill in json mode (default 0)
+ *   PIHPS_REGENCY         0=disable regency drill (default: ON — set to 0 to skip)
+ *   PIHPS_INCLUDE_PROVINCE 1=also store province-level rows when regency drill is ON
  *   PIHPS_PROVINCE_FILTER comma-separated province IDs (regency drill scope)
  *
  * Performance (json mode, proven):
- *   Province-only, 1 day  → ~10 calls × ~500ms = ~5 sec
- *   Province-only, 30 day → ~10 calls = ~5 sec, ~6300 prices
- *   With regency drill    → ~340 calls × 500ms = ~3 min
+ *   Province-only (PIHPS_REGENCY=0): ~10 calls × ~500ms = ~5 sec
+ *   Regency drill (default): 34 prov × 10 com × 500ms = ~3 min per price type
+ *   All 4 types with regency drill: ~12–15 min total
  */
 
 import "dotenv/config";
@@ -418,7 +419,7 @@ function pivotProvinceGrid(
 function pivotRegencyGrid(
   rows: GridRow[],
   category: RefCommodityRow,
-  province: RefProvinceRow,
+  _province: RefProvinceRow,
   priceTypeName: string,
 ): ScrapedPrice[] {
   const out: ScrapedPrice[] = [];
@@ -438,7 +439,7 @@ function pivotRegencyGrid(
       if (price == null) continue;
       out.push({
         source: "pihps",
-        city_raw: `${province.name} — ${cityRaw}`,
+        city_raw: cityRaw,
         commodity_raw: category.name,
         price,
         unit: category.denomination || "kg",
@@ -464,24 +465,31 @@ async function runJsonMode(
   const prices: ScrapedPrice[] = [];
   const errors: string[] = [];
 
-  log(`\n=== Province-level scrape (${commodities.length} commodities) ===`);
-  for (let i = 0; i < commodities.length; i++) {
-    const com = commodities[i];
-    log(`[${i + 1}/${commodities.length}] ${com.name} (${com.id})`);
-    try {
-      const rows = await fetchGrid({
-        priceTypeId,
-        catId: com.id,
-        startDate,
-        endDate,
-        showKota: false,
-      });
-      const p = pivotProvinceGrid(rows, com, priceTypeName);
-      log(`  → ${p.length} prices`);
-      prices.push(...p);
-    } catch (err) {
-      log(`  ✗ ${(err as Error).message}`);
-      errors.push(`province/${com.id}: ${(err as Error).message}`);
+  // Skip province-level when regency drill is on — province aggregates would
+  // pollute city_raw with province names alongside actual kota/kabupaten names.
+  // Set PIHPS_INCLUDE_PROVINCE=1 to store both levels.
+  const includeProvince = !regencyDrill || process.env.PIHPS_INCLUDE_PROVINCE === "1";
+
+  if (includeProvince) {
+    log(`\n=== Province-level scrape (${commodities.length} commodities) ===`);
+    for (let i = 0; i < commodities.length; i++) {
+      const com = commodities[i];
+      log(`[${i + 1}/${commodities.length}] ${com.name} (${com.id})`);
+      try {
+        const rows = await fetchGrid({
+          priceTypeId,
+          catId: com.id,
+          startDate,
+          endDate,
+          showKota: false,
+        });
+        const p = pivotProvinceGrid(rows, com, priceTypeName);
+        log(`  → ${p.length} prices`);
+        prices.push(...p);
+      } catch (err) {
+        log(`  ✗ ${(err as Error).message}`);
+        errors.push(`province/${com.id}: ${(err as Error).message}`);
+      }
     }
   }
 
@@ -616,7 +624,8 @@ async function run(): Promise<ScrapeRunResult> {
   const startDate = process.env.PIHPS_START_DATE ?? todayWIB();
   const endDate = process.env.PIHPS_END_DATE ?? todayWIB();
   const priceTypeIds = parsePriceTypes();
-  const regencyDrill = process.env.PIHPS_REGENCY === "1";
+  // Regency drill default ON — opt-out via PIHPS_REGENCY=0
+  const regencyDrill = process.env.PIHPS_REGENCY !== "0";
   const provinceFilter = (process.env.PIHPS_PROVINCE_FILTER ?? "")
     .split(",")
     .map((s) => Number(s.trim()))
