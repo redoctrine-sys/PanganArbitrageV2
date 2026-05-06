@@ -782,7 +782,7 @@ async function run(): Promise<ScrapeRunResult> {
     }
   }
 
-  log(`\nUpserting ${allPrices.length} total prices to prices_raw...`);
+  log(`\nUpserting ${allPrices.length} total prices to pihps_raw...`);
   const stats = await upsertPrices(allPrices);
   log(`✓ inserted=${stats.inserted}, updated=${stats.updated}, skipped=${stats.skipped}`);
 

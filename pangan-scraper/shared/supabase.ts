@@ -44,7 +44,15 @@ export async function upsertPrices(prices: ScrapedPrice[]): Promise<UpsertStats>
   // ── PIHPS → pihps_raw ──────────────────────────────────────────────────────
   const pihpsPrices = prices.filter((p) => p.source === "pihps");
   if (pihpsPrices.length > 0) {
-    const rows = pihpsPrices.map((p) => ({
+    // Deduplicate by unique key to prevent "affect row a second time" error.
+    // Concurrent regency drill can produce duplicate (date,city,commodity,market_type)
+    // tuples if the same city name appears in multiple province responses.
+    const pihpsDeduped = new Map<string, typeof pihpsPrices[0]>();
+    for (const p of pihpsPrices) {
+      const key = `${p.date}|||${p.city_raw}|||${p.commodity_raw}|||${p.market_name ?? ""}`;
+      pihpsDeduped.set(key, p); // last-write-wins (same price expected anyway)
+    }
+    const rows = Array.from(pihpsDeduped.values()).map((p) => ({
       date: p.date,
       city_raw: p.city_raw,
       commodity_raw: p.commodity_raw,
