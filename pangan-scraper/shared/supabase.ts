@@ -1,4 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const WebSocket = require("ws") as typeof globalThis.WebSocket;
 import type { ScrapedPrice } from "./types";
 
 let cached: SupabaseClient | null = null;
@@ -9,7 +11,10 @@ export function getClient(): SupabaseClient {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url) throw new Error("SUPABASE_URL not set");
   if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY not set");
-  cached = createClient(url, key, { auth: { persistSession: false } });
+  cached = createClient(url, key, {
+    auth: { persistSession: false },
+    realtime: { transport: WebSocket },
+  });
   return cached;
 }
 
