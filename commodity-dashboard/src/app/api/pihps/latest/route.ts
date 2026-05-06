@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,9 +13,11 @@ export async function GET(req: Request): Promise<NextResponse> {
   const island = searchParams.get("island");
   const province = searchParams.get("province");
 
+  // Use service role (no statement_timeout) — anon role has 3s limit which
+  // would trigger on large PIHPS datasets as data grows.
   let sb;
   try {
-    sb = getServerClient();
+    sb = getServiceClient();
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Supabase belum dikonfigurasi";
     return NextResponse.json({ error: msg, data: [] }, { status: 200 });
